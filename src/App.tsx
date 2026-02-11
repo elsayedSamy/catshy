@@ -6,9 +6,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppShell } from "@/components/layout/AppShell";
 import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
 import AcceptInvite from "./pages/AcceptInvite";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import Sources from "./pages/Sources";
@@ -46,9 +48,11 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/signup" element={<SignUp />} />
             <Route path="/auth/accept-invite" element={<AcceptInvite />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
             <Route path="/auth/reset-password" element={<ResetPassword />} />
+            <Route path="/auth/verify-email" element={<VerifyEmail />} />
             <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />

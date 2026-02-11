@@ -58,6 +58,11 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+
 
 # ── Helpers ──
 def create_access_token(user_id: str, role: str) -> str:
@@ -106,6 +111,81 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return TokenResponse(access_token=access, refresh_token=refresh,
                          user={"id": user.id, "email": user.email, "name": user.name, "role": user.role})
+
+
+# ── Register (public sign-up with email verification) ──
+@router.post("/register")
+async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    _check_rate_limit(f"register-ip:{request.client.host}", max_per_minute=5)
+    _check_rate_limit(f"register-email:{req.email}", max_per_minute=3)
+
+    if len(req.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    existing = await db.execute(select(User).where(User.email == req.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    # Create user as inactive until email verified
+    user = User(
+        email=req.email,
+        name=req.name or req.email.split("@")[0],
+        hashed_password=pwd_context.hash(req.password),
+        role="analyst",
+        is_active=False,  # Requires email verification
+    )
+    db.add(user)
+    await db.flush()
+
+    # Generate verification token
+    raw_token, token_hash = _generate_token()
+    auth_token = AuthToken(
+        token_hash=token_hash,
+        token_type="verify_email",
+        email=req.email,
+        user_id=user.id,
+        expires_at=datetime.utcnow() + timedelta(hours=24),
+    )
+    db.add(auth_token)
+    db.add(AuditLog(action="user_registered", entity_type="user", entity_id=user.id, user_email=req.email))
+    await db.commit()
+
+    # Send verification email
+    try:
+        from app.services.mail import send_verification_email
+        send_verification_email(req.email, raw_token)
+    except Exception:
+        logger.exception("Failed to send verification email")
+
+    return {"message": "Account created. Please check your email to verify your account."}
+
+
+# ── Verify Email ──
+@router.post("/verify-email")
+async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    result = await db.execute(select(AuthToken).where(
+        AuthToken.token_hash == token_hash,
+        AuthToken.token_type == "verify_email",
+    ))
+    at = result.scalar_one_or_none()
+    if not at:
+        raise HTTPException(status_code=400, detail="Invalid verification token")
+    if at.used_at is not None:
+        raise HTTPException(status_code=400, detail="Token already used")
+    if at.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token expired")
+
+    user_result = await db.execute(select(User).where(User.id == at.user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="User not found")
+
+    user.is_active = True
+    at.used_at = datetime.utcnow()
+    db.add(AuditLog(action="email_verified", entity_type="user", entity_id=user.id, user_email=user.email))
+    await db.commit()
+    return {"message": "Email verified. You can now log in."}
 
 
 # ── Invite (admin only) ──

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Cat, Eye, EyeOff, Loader2, Mail, ShieldCheck } from 'lucide-react';
+import { Cat, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
@@ -94,21 +94,9 @@ export default function Login() {
               <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">or</span></div>
             </div>
 
-            <div className="rounded-lg border border-border bg-secondary/20 p-3">
-              <div className="flex items-start gap-2">
-                <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-foreground">Need an account?</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    This platform uses invite-only registration. Ask your administrator to send you an invite link via email.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-center text-[10px] text-muted-foreground">
-              Already have an invite link? Check your email and click the link to set up your account.
-            </p>
+            <Button variant="outline" className="w-full" onClick={() => navigate('/auth/signup')}>
+              Create New Account
+            </Button>
           </div>
         </div>
       </motion.div>
