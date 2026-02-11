@@ -113,6 +113,90 @@ cd /opt/catshy/backend && source venv/bin/activate
 celery -A app.tasks.celery_app call app.tasks.retention.cleanup_old_intel_items
 ```
 
+### Button-to-Endpoint Map (Feed / History / Reports)
+
+| Page | UI Control | Action | API Endpoint | Backend Handler | DB Table | I/O |
+|------|-----------|--------|-------------|----------------|----------|-----|
+| Feed | **Refresh** button | Re-fetch fresh items | `GET /api/threats/feed` | `threats.threat_feed()` | `intel_items` (read) | Returns items < 24h |
+| Feed | **Severity** select | Filter by severity | `GET /api/threats/feed?severity=X` | `threats.threat_feed()` | `intel_items` (read) | Filtered result |
+| Feed | **Type** select | Filter by observable type | Client-side filter | N/A | N/A | Filters displayed items |
+| Feed | **Company Match** toggle | Filter asset-matched items | Client-side filter / `?asset_match_only=true` | `threats.threat_feed()` | `intel_items` (read) | Only asset-matched |
+| Feed | **Company First** toggle | Sort asset-matched to top | Client-side sort | N/A | N/A | Re-orders displayed list |
+| Feed | **View History** button | Navigate to /history | N/A (navigation) | N/A | N/A | Page redirect |
+| Feed | **Download Report** button | Generate + download report | `POST /api/threats/reports/generate` | `threats.generate_threat_report()` | `intel_items` (read) | Streams CSV/HTML/JSON file |
+| Feed | **Time Window** select | Set report time scope | Used in report POST body | `threats.generate_threat_report()` | `intel_items` (read) | `preset: today\|7d\|30d` |
+| Feed | **Start/End** date pickers | Custom date range for report | Used in report POST body | `threats.generate_threat_report()` | `intel_items` (read) | `start/end` ISO dates |
+| Feed | **Format** select | Set export format | Used in report POST body | `threats.generate_threat_report()` | N/A | `format: csv\|html\|json` |
+| Feed | **Clear** filters button | Reset all URL filter params | Client-side URL reset | N/A | N/A | Clears search params |
+| Feed | **External Link** icon | Open original source URL | N/A (external link) | N/A | N/A | Opens `original_url` |
+| History | **Refresh** button | Re-fetch history items | `GET /api/threats/history?range=X` | `threats.threat_history()` | `intel_items` (read) | Returns items in range |
+| History | **Last 24h/7d/30d** tabs | Change time range | `GET /api/threats/history?range=X` | `threats.threat_history()` | `intel_items` (read) | Filtered by range |
+| History | **Search** input | Keyword search in title/desc | `GET /api/threats/history?search=X` | `threats.threat_history()` | `intel_items` (read) | ILIKE search |
+| History | **Severity** select | Filter by severity | Client-side filter | N/A | N/A | Filters displayed items |
+| History | **Type** select | Filter by observable type | Client-side filter | N/A | N/A | Filters displayed items |
+| History | **Company Match** toggle | Filter asset-matched items | Client-side filter | N/A | N/A | Only asset-matched |
+| History | **Live Feed** button | Navigate to /feed | N/A (navigation) | N/A | N/A | Page redirect |
+| History | **External Link** icon | Open original source URL | N/A (external link) | N/A | N/A | Opens `original_url` |
+
+### How to Verify (Click-Through Checklist)
+
+**Prerequisites:** Start the app (dev mode or with backend).
+
+**Feed Page (`/feed`):**
+1. ✅ Page loads with items < 24h old
+2. ✅ Click "Severity" → select "Critical" → only critical items shown
+3. ✅ Click "Type" → select "CVE" → only CVE items shown
+4. ✅ Click "Company Match" → only asset-matched items shown
+5. ✅ Click "Clear" → all filters removed, all items shown
+6. ✅ Click "Company First" → asset-matched items sort to top
+7. ✅ Click "Refresh" → feed re-fetches (loading spinner appears)
+8. ✅ Click "View History" → navigates to /history
+9. ✅ Click external link icon → opens source URL in new tab
+10. ✅ Select "Today (24h)" + CSV → click "Download Report" → CSV downloads with only <24h items
+11. ✅ Select "Last 7 days" + CSV → download → CSV includes items from past 7 days
+12. ✅ Select "Custom Range" → pick start/end dates → download → correct date range in file
+13. ✅ Select "Custom Range" with end < start → error shown, button disabled
+14. ✅ Select HTML format → download → opens as styled HTML report
+15. ✅ Select JSON format → download → valid JSON with metadata
+
+**History Page (`/history`):**
+1. ✅ Page loads with items older than 24h
+2. ✅ Click "Last 24h" tab → shows only recent history items
+3. ✅ Click "Last 7 days" tab → shows items within 7 days
+4. ✅ Click "Last 30 days" tab → shows all items within 30 days
+5. ✅ Type in search box → filters by title/description match
+6. ✅ Click "Severity" → select "High" → only high-severity items
+7. ✅ Click "Company Match" → only asset-matched items
+8. ✅ Click "Clear" → all filters removed
+9. ✅ Click "Refresh" → data re-fetches
+10. ✅ Click "Live Feed" → navigates to /feed
+
+**API Verification (with backend):**
+```bash
+# Feed: fresh items only
+curl -s http://localhost/api/threats/feed | jq '.total, (.items | length)'
+
+# History: default (>24h, <30d)
+curl -s http://localhost/api/threats/history | jq '.total'
+
+# History: specific range
+curl -s "http://localhost/api/threats/history?range=7d" | jq '.total'
+
+# Report: CSV for today
+curl -X POST http://localhost/api/threats/reports/generate \
+  -H "Content-Type: application/json" \
+  -d '{"preset":"today","format":"csv"}' -o report.csv
+
+# Report: custom range (should reject >30d)
+curl -X POST http://localhost/api/threats/reports/generate \
+  -H "Content-Type: application/json" \
+  -d '{"start":"2025-01-01","end":"2026-02-11","format":"csv"}'
+# Expected: 400 "Max range is 30 days"
+
+# Retention: verify no items >30d
+curl -s "http://localhost/api/threats/history?range=30d" | jq '[.items[] | select(.published_at < "2026-01-12")] | length'
+# Expected: 0
+```
 
 
 ```bash
