@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import Sources from "./pages/Sources";
 import Feed from "./pages/Feed";
+import History from "./pages/History";
 import SearchPage from "./pages/SearchPage";
 import Graph from "./pages/Graph";
 import Alerts from "./pages/Alerts";
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="assets" element={<Assets />} />
               <Route path="sources" element={<Sources />} />
               <Route path="feed" element={<Feed />} />
+              <Route path="history" element={<History />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="graph" element={<Graph />} />
               <Route path="alerts" element={<Alerts />} />

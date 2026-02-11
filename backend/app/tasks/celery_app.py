@@ -30,6 +30,10 @@ app.conf.update(
             "task": "app.tasks.polling.health_check_sources",
             "schedule": 300.0,
         },
+        "cleanup-old-intel": {
+            "task": "app.tasks.retention.cleanup_old_intel_items",
+            "schedule": 3600.0,  # Every hour
+        },
     },
 )
 
@@ -158,6 +162,27 @@ def poll_single_source(self, source_id: str):
 def health_check_sources():
     """Check health of all enabled sources"""
     pass  # Implemented via poll with lightweight HEAD requests
+
+# ── Retention Cleanup ──
+@app.task(name="app.tasks.retention.cleanup_old_intel_items")
+def cleanup_old_intel_items():
+    """Delete intel items older than 30 days (retention policy)."""
+    from sqlalchemy import create_engine, func
+    from sqlalchemy.orm import Session
+    from app.models import IntelItem
+    from datetime import datetime, timedelta
+    import os, logging
+    logger = logging.getLogger("catshy.retention")
+    engine = create_engine(os.getenv("DATABASE_URL_SYNC", "postgresql://catshy:catshy_secret@localhost:5432/catshy"))
+    cutoff = datetime.utcnow() - timedelta(days=30)
+    with Session(engine) as db:
+        # Delete items where COALESCE(published_at, fetched_at) < cutoff
+        deleted = db.query(IntelItem).filter(
+            func.coalesce(IntelItem.published_at, IntelItem.fetched_at) < cutoff
+        ).delete(synchronize_session=False)
+        db.commit()
+        logger.info(f"Retention cleanup: deleted {deleted} intel items older than 30 days")
+    return {"deleted": deleted}
 
 # ── Alerting Tasks ──
 @app.task(name="app.tasks.alerting.evaluate_all_rules")

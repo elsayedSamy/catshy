@@ -86,7 +86,34 @@ FROM pg_tables WHERE schemaname = 'public' ORDER BY pg_total_relation_size(schem
 "
 ```
 
-### Source Catalog Management
+### Threat Feed & History — Time Windows & Retention
+
+**Time Windows:**
+- **Fresh Feed** (`/api/threats/feed`): Items where `COALESCE(published_at, fetched_at)` is within the last 24 hours.
+- **History** (`/api/threats/history`): Items older than 24h but within 30 days. Supports `range=24h|7d|30d` or custom `start`/`end` ISO dates (max 30 days).
+- **Retention**: Items older than 30 days are hard-deleted by an hourly Celery task (`cleanup_old_intel_items`).
+
+**API Endpoints:**
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/threats/feed` | GET | Fresh items < 24h. Params: `severity`, `source_id`, `asset_match_only`, `sort`, `offset`, `limit` |
+| `/api/threats/history` | GET | Aged items. Params: `range`, `start`, `end`, `severity`, `search`, `offset`, `limit` |
+| `/api/threats/reports/generate` | POST | Generate report. Body: `{ scope, preset, start, end, format, severity }` |
+
+**Report Formats:** CSV (default), HTML, JSON. PDF available if WeasyPrint is installed.
+
+**Cleanup Job:**
+- Runs hourly via Celery Beat (`cleanup-old-intel`).
+- Deletes all `intel_items` where `COALESCE(published_at, fetched_at) < now - 30d`.
+- Logs count of deleted records.
+
+**Manual cleanup (dev/debug):**
+```bash
+cd /opt/catshy/backend && source venv/bin/activate
+celery -A app.tasks.celery_app call app.tasks.retention.cleanup_old_intel_items
+```
+
+
 
 ```bash
 # Re-initialize source catalog (safe, skips existing)

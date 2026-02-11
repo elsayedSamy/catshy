@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import {
   Home, Database, Radio, Rss, Search, Globe, Bell,
   FileSearch, Briefcase, FileText, AlertTriangle,
-  Map as MapIcon, Workflow, Shield, Settings, ChevronLeft, Cat
+  Map as MapIcon, Workflow, Shield, Settings, ChevronLeft, Cat, History
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -13,6 +13,7 @@ const navSections = [
     items: [
       { label: 'Dashboard', path: '/dashboard', icon: Home },
       { label: 'Intel Feed', path: '/feed', icon: Rss },
+      { label: 'History', path: '/history', icon: History },
       { label: 'Global Search', path: '/search', icon: Search },
       { label: 'Assets', path: '/assets', icon: Database },
       { label: 'Source Catalog', path: '/sources', icon: Radio },

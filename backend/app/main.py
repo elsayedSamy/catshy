@@ -7,6 +7,7 @@ from app.config import settings
 from app.database import engine, Base, async_session
 from app.routers import auth, assets, sources, feed, search, entities, alerts, cases, reports, leaks, admin, health
 from app.routers.dashboard import dashboard_router, map_router
+from app.routers.threats import threats_router, reports_gen_router
 from app.middleware.audit import AuditMiddleware
 from app.services.admin_seed import seed_admin
 from app.services.mail import validate_smtp_config
@@ -61,3 +62,5 @@ app.include_router(leaks.router, prefix="/api/leaks", tags=["leaks"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(map_router, prefix="/api/map", tags=["map"])
+app.include_router(threats_router, prefix="/api/threats", tags=["threats"])
+app.include_router(reports_gen_router, prefix="/api/threats/reports", tags=["threat-reports"])
