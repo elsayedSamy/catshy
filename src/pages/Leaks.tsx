@@ -44,9 +44,10 @@ function LeaksContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [items] = useState<LeakItem[]>(DEMO_LEAKS);
   const [selectedItem, setSelectedItem] = useState<LeakItem | null>(null);
-  const { isEnabled } = useFeatureFlags();
+  const { isEnabled, setFlag } = useFeatureFlags();
   const { hasRole } = useAuth();
   const torEnabled = isEnabled('leaks_tor');
+  const [showTorWarning, setShowTorWarning] = useState(false);
 
   const filtered = useMemo(() => {
     let result = items;
@@ -112,17 +113,33 @@ function LeaksContent() {
       </div>
 
       {/* TOR notice */}
-      <Card className="border-border bg-secondary/20">
+      <Card className={`border-border ${torEnabled ? 'bg-destructive/10 border-destructive/30' : 'bg-secondary/20'}`}>
         <CardContent className="flex items-center justify-between p-3">
           <div className="flex items-center gap-3">
-            <Shield className="h-5 w-5 text-success" />
+            <Shield className={`h-5 w-5 ${torEnabled ? 'text-destructive' : 'text-success'}`} />
             <div>
-              <p className="text-xs font-medium">Public Sources Only</p>
-              <p className="text-[10px] text-muted-foreground">TOR/dark web connectors are {torEnabled ? 'enabled' : 'disabled'}.</p>
+              <p className="text-xs font-medium">{torEnabled ? '⚠ TOR/Dark Web Sources Active' : 'Public Sources Only'}</p>
+              <p className="text-[10px] text-muted-foreground">TOR/dark web connectors are {torEnabled ? 'enabled — use with caution' : 'disabled'}.</p>
             </div>
           </div>
-          {!torEnabled && hasRole(['admin']) && (
-            <Button variant="outline" size="sm" className="text-xs" onClick={() => window.location.href = '/admin'}><Lock className="mr-1 h-3 w-3" />Enable TOR</Button>
+          {hasRole(['admin']) && (
+            torEnabled ? (
+              <Button variant="destructive" size="sm" className="text-xs" onClick={() => { setFlag('leaks_tor', false); toast.success('TOR sources disabled'); }}>
+                <Lock className="mr-1 h-3 w-3" />Disable TOR
+              </Button>
+            ) : showTorWarning ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-destructive font-medium">⚠ This enables dark web scanning</span>
+                <Button variant="destructive" size="sm" className="text-xs" onClick={() => { setFlag('leaks_tor', true); toast.success('TOR sources enabled'); }}>
+                  Confirm Enable
+                </Button>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowTorWarning(false)}>Cancel</Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => setShowTorWarning(true)}>
+                <Lock className="mr-1 h-3 w-3" />Enable TOR
+              </Button>
+            )
           )}
         </CardContent>
       </Card>
