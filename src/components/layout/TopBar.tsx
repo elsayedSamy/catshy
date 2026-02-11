@@ -1,19 +1,71 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bell, Moon, Sun, User, LogOut, Command } from 'lucide-react';
+import { Bell, Moon, Sun, User, LogOut, Command, Check, Trash2, AlertTriangle, CheckCircle2, Info, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription
+} from '@/components/ui/sheet';
+
+interface Notification {
+  id: string;
+  type: 'alert' | 'system' | 'info';
+  title: string;
+  message: string;
+  read: boolean;
+  timestamp: string;
+}
+
+const DEMO_NOTIFICATIONS: Notification[] = [
+  { id: 'n1', type: 'alert', title: 'Critical CVE detected', message: 'CVE-2024-3400 matches monitored asset paloalto.company.com', read: false, timestamp: new Date(Date.now() - 600000).toISOString() },
+  { id: 'n2', type: 'alert', title: 'Credential leak found', message: '12 company email:password pairs discovered on paste site.', read: false, timestamp: new Date(Date.now() - 3600000).toISOString() },
+  { id: 'n3', type: 'system', title: 'Source fetch failed', message: 'Feodo Tracker returned HTTP 503. Will retry in 15 minutes.', read: false, timestamp: new Date(Date.now() - 7200000).toISOString() },
+  { id: 'n4', type: 'info', title: 'Daily report generated', message: 'Daily Brief for Jan 10 is ready for download.', read: true, timestamp: new Date(Date.now() - 86400000).toISOString() },
+  { id: 'n5', type: 'system', title: 'Retention cleanup', message: '42 items older than 30 days were purged.', read: true, timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
+];
+
+const typeIcon = (type: Notification['type']) => {
+  if (type === 'alert') return <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />;
+  if (type === 'system') return <RefreshCw className="h-4 w-4 text-warning shrink-0" />;
+  return <Info className="h-4 w-4 text-primary shrink-0" />;
+};
+
+function timeAgo(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime();
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
+}
 
 export function TopBar() {
   const { user, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const toggleTheme = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('light', darkMode);
+  };
+
+  const markAsRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const clearAll = () => {
+    setNotifications([]);
   };
 
   return (
@@ -32,8 +84,13 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => setDrawerOpen(true)}>
           <Bell className="h-4 w-4" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+              {unreadCount}
+            </span>
+          )}
         </Button>
 
         <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={toggleTheme}>
@@ -61,6 +118,63 @@ export function TopBar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Notifications Drawer */}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent className="w-[380px] sm:w-[420px] bg-card border-border p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 border-b border-border">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-base">Notifications</SheetTitle>
+              <div className="flex gap-1">
+                {unreadCount > 0 && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllRead}>
+                    <Check className="mr-1 h-3 w-3" />Mark all read
+                  </Button>
+                )}
+                {notifications.length > 0 && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={clearAll}>
+                    <Trash2 className="mr-1 h-3 w-3" />Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+            <SheetDescription className="text-xs">
+              {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+            </SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(100vh-100px)]">
+            {notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Bell className="h-10 w-10 mb-3 opacity-30" />
+                <p className="text-sm font-medium">No notifications</p>
+                <p className="text-xs mt-1">Alerts and system events will appear here.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {notifications.map(n => (
+                  <button
+                    key={n.id}
+                    onClick={() => markAsRead(n.id)}
+                    className={`w-full text-left px-4 py-3 transition-colors hover:bg-secondary/30 ${!n.read ? 'bg-primary/5' : ''}`}
+                  >
+                    <div className="flex gap-3">
+                      {typeIcon(n.type)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-medium truncate ${!n.read ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</p>
+                          {!n.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{timeAgo(n.timestamp)}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </header>
   );
 }
