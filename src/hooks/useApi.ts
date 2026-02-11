@@ -86,7 +86,7 @@ export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => api
 export const useAuditLogs = (limit = 100) => useQuery({ queryKey: ['audit-logs', limit], queryFn: () => api.get<AuditEntry[]>(`/admin/audit-logs?limit=${limit}`), enabled: enabled(), retry: 1 });
 export const useHealth = () => useQuery({ queryKey: ['health'], queryFn: () => api.get<{ status: string; service: string; version: string }>('/health'), enabled: enabled(), retry: 1, refetchInterval: 30000 });
 
-// Dashboard Stats
+// Dashboard Stats (legacy)
 export const useDashboardStats = () => useQuery({
   queryKey: ['dashboard-stats'],
   queryFn: async () => {
@@ -102,5 +102,37 @@ export const useDashboardStats = () => useQuery({
       alertCount: alerts.length,
     };
   },
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard KPIs
+export const useDashboardKpis = (range: string) => useQuery({
+  queryKey: ['dashboard-kpis', range],
+  queryFn: () => api.get<{
+    criticalAlerts: number; criticalAlertsDelta: number;
+    newIocs: number; newIocsDelta: number;
+    assetsAffected: number; topAssetGroup: string;
+    activeCampaigns: number;
+  }>(`/dashboard/kpis?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Live Feed
+export const useDashboardFeed = (range: string) => useQuery({
+  queryKey: ['dashboard-feed', range],
+  queryFn: () => api.get<{ items: IntelItem[] }>(`/dashboard/live-feed?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Map Events
+export const useDashboardMapEvents = (range: string) => useQuery({
+  queryKey: ['dashboard-map', range],
+  queryFn: () => api.get<{
+    events: { source: string; target: string; severity: 'critical' | 'high' | 'medium' | 'low' }[];
+    hotlist: { assetValue: string; assetType: string; threatCount: number; topSeverity: 'critical' | 'high' | 'medium' | 'low'; relevanceScore: number }[];
+    topThreats: { type: string; count: number; severity: 'critical' | 'high' | 'medium' | 'low'; weightedScore: number }[];
+    topCountries: { code: string; name: string; score: number; eventCount: number }[];
+    topCves: { id: string; cvss: number; summary: string; kev: boolean; patchAvailable: boolean }[];
+  }>(`/map/summary?range=${range}`),
   enabled: enabled(), retry: 1,
 });

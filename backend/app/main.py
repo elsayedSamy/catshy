@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import engine, Base, async_session
 from app.routers import auth, assets, sources, feed, search, entities, alerts, cases, reports, leaks, admin, health
+from app.routers.dashboard import dashboard_router, map_router
 from app.middleware.audit import AuditMiddleware
 from app.services.admin_seed import seed_admin
 from app.services.mail import validate_smtp_config
@@ -58,3 +59,5 @@ app.include_router(cases.router, prefix="/api/cases", tags=["cases"])
 app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 app.include_router(leaks.router, prefix="/api/leaks", tags=["leaks"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(map_router, prefix="/api/map", tags=["map"])
