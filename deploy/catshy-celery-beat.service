@@ -1,0 +1,25 @@
+[Unit]
+Description=CATSHY Celery Beat Scheduler
+After=network.target redis-server.service catshy-celery-worker.service
+
+[Service]
+Type=simple
+User=catshy
+Group=catshy
+WorkingDirectory=/opt/catshy/backend
+EnvironmentFile=/opt/catshy/backend/.env
+ExecStart=/opt/catshy/backend/venv/bin/celery -A app.tasks.celery_app beat \
+    --loglevel=info \
+    --schedule=/opt/catshy/data/celerybeat-schedule
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=catshy-beat
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

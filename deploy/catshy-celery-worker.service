@@ -1,0 +1,27 @@
+[Unit]
+Description=CATSHY Celery Worker (polling, scoring, alerting)
+After=network.target postgresql.service redis-server.service catshy-api.service
+
+[Service]
+Type=simple
+User=catshy
+Group=catshy
+WorkingDirectory=/opt/catshy/backend
+EnvironmentFile=/opt/catshy/backend/.env
+ExecStart=/opt/catshy/backend/venv/bin/celery -A app.tasks.celery_app worker \
+    --loglevel=info \
+    --concurrency=4 \
+    --max-tasks-per-child=100 \
+    -Q default,polling,alerting,scoring
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=catshy-worker
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

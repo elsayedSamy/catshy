@@ -1,0 +1,32 @@
+[Unit]
+Description=CATSHY API Server (FastAPI + Uvicorn)
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=catshy
+Group=catshy
+WorkingDirectory=/opt/catshy/backend
+EnvironmentFile=/opt/catshy/backend/.env
+ExecStart=/opt/catshy/backend/venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 4 \
+    --access-log \
+    --log-level info
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=catshy-api
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/catshy/logs /opt/catshy/reports /opt/catshy/data
+
+[Install]
+WantedBy=multi-user.target
