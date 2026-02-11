@@ -81,3 +81,18 @@ def send_reset_email(to_email: str, token: str):
     </div>
     """
     _send(to_email, "CATSHY — Password Reset", html)
+
+
+def send_verification_email(to_email: str, token: str):
+    link = f"{settings.FRONTEND_BASE_URL}/auth/verify-email?token={token}"
+    html = f"""
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+        <h2 style="color:#06b6d4;">Verify Your Email</h2>
+        <p>Welcome to CATSHY! Please verify your email address to activate your account.</p>
+        <a href="{link}" style="display:inline-block;padding:12px 24px;background:#06b6d4;color:#fff;
+           text-decoration:none;border-radius:6px;font-weight:bold;margin:16px 0;">Verify Email</a>
+        <p style="color:#888;font-size:12px;">This link expires in 24 hours.
+        If you didn't create this account, ignore this email.</p>
+    </div>
+    """
+    _send(to_email, "CATSHY — Verify Your Email", html)

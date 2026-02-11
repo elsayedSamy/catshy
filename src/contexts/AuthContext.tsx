@@ -73,25 +73,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     setState(s => ({ ...s, isLoading: true }));
+
+    // Check if real backend is available
+    let backendAvailable = false;
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: 'Login failed' }));
-        throw new Error(err.detail || 'Login failed');
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 3000);
+      const healthRes = await fetch(`${API_BASE}/health`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (healthRes.ok) {
+        const hData = await healthRes.json().catch(() => ({}));
+        backendAvailable = hData?.service === 'catshy-api';
       }
-      const data = await res.json();
-      localStorage.setItem('catshy_token', data.access_token);
-      localStorage.setItem('catshy_user', JSON.stringify(data.user));
-      api.setToken(data.access_token);
-      api.setDevMode(false);
-      setIsDevMode(false);
-      setState({ user: data.user, token: data.access_token, isAuthenticated: true, isLoading: false });
-    } catch (e) {
-      setState(s => ({ ...s, isLoading: false }));
-      throw e;
+    } catch {}
+
+    if (backendAvailable) {
+      // Real backend login
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Login failed' }));
+          throw new Error(err.detail || 'Login failed');
+        }
+        const data = await res.json();
+        localStorage.setItem('catshy_token', data.access_token);
+        localStorage.setItem('catshy_user', JSON.stringify(data.user));
+        api.setToken(data.access_token);
+        api.setDevMode(false);
+        setIsDevMode(false);
+        setState({ user: data.user, token: data.access_token, isAuthenticated: true, isLoading: false });
+      } catch (e) {
+        setState(s => ({ ...s, isLoading: false }));
+        throw e;
+      }
+    } else {
+      // Dev mode fallback — accept any credentials
+      const devUser: User = {
+        id: 'dev-admin', email, name: email.split('@')[0] || 'Dev User',
+        role: 'admin', created_at: new Date().toISOString(), is_active: true,
+      };
+      api.setDevMode(true);
+      api.setToken('dev-token');
+      setIsDevMode(true);
+      localStorage.setItem('catshy_token', 'dev-token');
+      localStorage.setItem('catshy_user', JSON.stringify(devUser));
+      setState({ user: devUser, token: 'dev-token', isAuthenticated: true, isLoading: false });
     }
   }, []);
 
