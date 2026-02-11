@@ -16,7 +16,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(String(50), nullable=False, default="analyst")  # admin/analyst/hunter/manager/readonly
+    role = Column(String(50), nullable=False, default="analyst")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -29,14 +29,28 @@ class RefreshToken(Base):
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class AuthToken(Base):
+    """One-time tokens for invite sign-up and password reset"""
+    __tablename__ = "auth_tokens"
+    id = Column(UUID(as_uuid=False), primary_key=True, default=gen_uuid)
+    token_hash = Column(String(255), nullable=False, unique=True, index=True)
+    token_type = Column(String(20), nullable=False)  # "invite" or "reset"
+    email = Column(String(255), nullable=False)
+    user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=True)
+    role = Column(String(50), default="analyst")
+    name = Column(String(255), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 # ── Assets ──
 class Asset(Base):
     __tablename__ = "assets"
     id = Column(UUID(as_uuid=False), primary_key=True, default=gen_uuid)
-    type = Column(String(50), nullable=False, index=True)  # domain/ip_range/asn/brand/email_domain/app/subsidiary
+    type = Column(String(50), nullable=False, index=True)
     value = Column(String(500), nullable=False, index=True)
     label = Column(String(255))
-    criticality = Column(String(20), default="medium")  # critical/high/medium/low/info
+    criticality = Column(String(20), default="medium")
     tags = Column(ARRAY(String), default=[])
     notes = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -54,7 +68,7 @@ class Source(Base):
     resolved_url = Column(Text)
     requires_auth = Column(Boolean, default=False)
     auth_type = Column(String(50))
-    auth_credentials = Column(JSONB)  # encrypted in production
+    auth_credentials = Column(JSONB)
     polling_interval_minutes = Column(Integer, default=60)
     rate_limit_rpm = Column(Integer)
     enabled = Column(Boolean, default=False)
@@ -76,7 +90,7 @@ class IntelItem(Base):
     severity = Column(String(20), default="info")
     observable_type = Column(String(50), index=True)
     observable_value = Column(String(500), index=True)
-    canonical_value = Column(String(500), index=True)  # for dedup
+    canonical_value = Column(String(500), index=True)
     source_id = Column(String(100), ForeignKey("sources.id"))
     source_name = Column(String(255))
     fetched_at = Column(DateTime, default=datetime.utcnow)
@@ -142,7 +156,7 @@ class Alert(Base):
     id = Column(UUID(as_uuid=False), primary_key=True, default=gen_uuid)
     rule_id = Column(UUID(as_uuid=False), ForeignKey("alert_rules.id"), nullable=False)
     severity = Column(String(20))
-    status = Column(String(20), default="new")  # new/acknowledged/resolved/false_positive
+    status = Column(String(20), default="new")
     matched_items = Column(ARRAY(String), default=[])
     triggered_at = Column(DateTime, default=datetime.utcnow)
     acknowledged_by = Column(UUID(as_uuid=False), ForeignKey("users.id"))

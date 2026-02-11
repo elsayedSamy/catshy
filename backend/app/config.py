@@ -26,6 +26,34 @@ class Settings(BaseSettings):
     # Report branding
     REPORT_COMPANY_NAME: str = "CATSHY"
 
+    # ── Admin Seed ──
+    ADMIN_EMAIL: str = ""
+    ADMIN_PASSWORD: str = ""
+    ADMIN_NAME: str = "Admin"
+    ADMIN_FORCE_CHANGE_PASSWORD: bool = False
+    DEV_AUTO_ADMIN: bool = False
+
+    # ── SMTP (Gmail) ──
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASS: str = ""
+    SMTP_FROM_NAME: str = "CATSHY"
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_USE_TLS: bool = True
+    SMTP_REPLY_TO: str = ""
+
+    # ── URLs ──
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+    BACKEND_BASE_URL: str = "http://127.0.0.1:8080"
+    INVITE_PATH: str = "/auth/accept-invite"
+    RESET_PATH: str = "/auth/reset-password"
+
+    # ── Token secrets & TTL ──
+    TOKEN_SECRET: str = "CHANGE_ME_USE_openssl_rand_hex_64"
+    INVITE_TOKEN_TTL_MIN: int = 1440
+    RESET_TOKEN_TTL_MIN: int = 30
+
     class Config:
         env_file = ".env"
 
