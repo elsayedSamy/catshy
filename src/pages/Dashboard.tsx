@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Clock, Layers, Settings2, ArrowRight, Radio, Database } from 'lucide-react';
+import { Search, Clock, Layers, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,20 +21,26 @@ export default function Dashboard() {
   const [timeRange, setTimeRange] = useState('24h');
   const [myAssetsFirst, setMyAssetsFirst] = useState(false);
 
-  const { data: kpis, isLoading: kpisLoading } = useDashboardKpis(timeRange);
+  const { data: kpis, isLoading: kpisLoading, refetch: refetchKpis } = useDashboardKpis(timeRange);
   const { data: feedData, isLoading: feedLoading, refetch: refetchFeed } = useDashboardFeed(timeRange);
-  const { data: mapData, isLoading: mapLoading } = useDashboardMapEvents(timeRange);
+  const { data: mapData, isLoading: mapLoading, refetch: refetchMap } = useDashboardMapEvents(timeRange);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
   };
 
+  const handleRefreshAll = () => {
+    refetchKpis();
+    refetchFeed();
+    refetchMap();
+  };
+
   const hasNoSetup = !kpis && !kpisLoading;
 
   return (
-    <div className="space-y-6">
-      {/* Top Bar: Search + Time Range + Environment */}
+    <div className="space-y-4">
+      {/* Top Bar: Search + Time Range + Quick Actions */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <form onSubmit={handleSearch} className="flex-1 w-full">
           <div className="relative">
@@ -47,7 +53,7 @@ export default function Dashboard() {
             />
           </div>
         </form>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-[120px] h-9 text-xs bg-secondary/50 border-border">
               <Clock className="h-3 w-3 mr-1" /><SelectValue />
@@ -71,15 +77,25 @@ export default function Dashboard() {
               <SelectItem value="ips">IP Ranges</SelectItem>
             </SelectContent>
           </Select>
+          {/* Quick actions */}
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleRefreshAll}>
+            <RefreshCw className="h-3 w-3 mr-1" />Refresh
+          </Button>
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/feed')}>
+            <FileText className="h-3 w-3 mr-1" />Report
+          </Button>
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/history')}>
+            <History className="h-3 w-3 mr-1" />History
+          </Button>
         </div>
       </motion.div>
 
       {/* KPI Row */}
       <KpiCards data={kpis} isLoading={kpisLoading} />
 
-      {/* Main Row: Map + Side Panels */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/* Hero: Globe (dominant) + Side Panels */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        <div className="min-w-0">
           <ThreatMapWidget
             events={mapData?.events ?? []}
             isLoading={mapLoading}
@@ -93,16 +109,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Third Row: Feed + Countries + CVEs */}
+      {/* Feed + Countries + CVEs */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <LiveFeedWidget items={feedData?.items ?? []} isLoading={feedLoading} onRefresh={() => refetchFeed()} />
-        </div>
+        <LiveFeedWidget items={feedData?.items ?? []} isLoading={feedLoading} onRefresh={() => refetchFeed()} />
         <TopCountries items={mapData?.topCountries ?? []} isLoading={mapLoading} />
         <TopCves items={mapData?.topCves ?? []} isLoading={mapLoading} />
       </div>
 
-      {/* Setup CTA (shown when no data) */}
+      {/* Setup CTA */}
       {hasNoSetup && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
           <Card className="border-primary/20 bg-card">
