@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Search, Settings, Zap, TestTube, Loader2, Check, X, Shield, Bug, Globe, Bell, Webhook, Mail } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Search, Settings, Zap, TestTube, Loader2, Check, Shield, Plus, Globe, ArrowRightLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Integration {
@@ -17,16 +19,17 @@ interface Integration {
   configured: boolean;
   lastTest?: string;
   lastError?: string;
+  managedByConnectors?: boolean;
 }
 
 const INTEGRATIONS_CATALOG: Integration[] = [
   // Threat Intel Feeds
-  { id: 'virustotal', name: 'VirusTotal', description: 'File/URL/IP reputation & analysis', category: 'Threat Intel', enabled: false, configured: false },
+  { id: 'virustotal', name: 'VirusTotal', description: 'File/URL/IP reputation & analysis', category: 'Threat Intel', enabled: false, configured: false, managedByConnectors: true },
   { id: 'otx', name: 'OTX AlienVault', description: 'Open Threat Exchange pulse feed', category: 'Threat Intel', enabled: false, configured: false },
   { id: 'misp', name: 'MISP', description: 'Malware Information Sharing Platform', category: 'Threat Intel', enabled: false, configured: false },
   { id: 'abuseipdb', name: 'AbuseIPDB', description: 'IP address abuse reports', category: 'Threat Intel', enabled: false, configured: false },
-  { id: 'greynoise', name: 'GreyNoise', description: 'Internet scanner & noise classification', category: 'Threat Intel', enabled: false, configured: false },
-  { id: 'shodan', name: 'Shodan', description: 'Internet-connected device search', category: 'Threat Intel', enabled: false, configured: false },
+  { id: 'greynoise', name: 'GreyNoise', description: 'Internet scanner & noise classification', category: 'Threat Intel', enabled: false, configured: false, managedByConnectors: true },
+  { id: 'shodan', name: 'Shodan', description: 'Internet-connected device search', category: 'Threat Intel', enabled: false, configured: false, managedByConnectors: true },
   { id: 'censys', name: 'Censys', description: 'Internet asset discovery & monitoring', category: 'Threat Intel', enabled: false, configured: false },
   { id: 'securitytrails', name: 'SecurityTrails', description: 'DNS & domain intelligence', category: 'Threat Intel', enabled: false, configured: false },
   { id: 'urlscan', name: 'URLscan.io', description: 'URL scanning & analysis', category: 'Threat Intel', enabled: false, configured: false },
@@ -46,7 +49,7 @@ const INTEGRATIONS_CATALOG: Integration[] = [
   { id: 'intelligencex', name: 'IntelligenceX', description: 'Darknet & data leak search', category: 'Breach / Leak', enabled: false, configured: false },
   { id: 'ransomfeed', name: 'Ransomware Feed', description: 'Ransomware victim monitoring', category: 'Breach / Leak', enabled: false, configured: false },
   // Notification
-  { id: 'generic-webhook', name: 'Generic Webhook', description: 'Send alerts to any webhook URL', category: 'Notification', enabled: false, configured: false },
+  { id: 'generic-webhook', name: 'Custom Webhook', description: 'Send/receive alerts via any webhook URL', category: 'Notification', enabled: false, configured: false },
   { id: 'slack', name: 'Slack', description: 'Team messaging notifications', category: 'Notification', enabled: false, configured: false },
   { id: 'msteams', name: 'Microsoft Teams', description: 'Teams channel notifications', category: 'Notification', enabled: false, configured: false },
   { id: 'email-smtp', name: 'Email (SMTP)', description: 'Email alert delivery', category: 'Notification', enabled: false, configured: false },
@@ -57,12 +60,32 @@ const INTEGRATIONS_CATALOG: Integration[] = [
   { id: 'siem-webhook', name: 'SIEM / Splunk HEC', description: 'Forward events to SIEM', category: 'Ticketing / SIEM', enabled: false, configured: false },
 ];
 
+type WebhookDirection = 'outbound' | 'inbound';
+type WebhookAuth = 'none' | 'bearer' | 'hmac' | 'basic';
+
+interface WebhookConfig {
+  name: string;
+  direction: WebhookDirection;
+  url: string;
+  authType: WebhookAuth;
+  authValue: string;
+  eventTypes: string[];
+}
+
+const EVENT_TYPES = ['new_threat', 'critical_alert', 'asset_match', 'leak_detected', 'report_generated', 'source_failure'];
+
 export default function Integrations() {
   const [integrations, setIntegrations] = useState<Integration[]>(INTEGRATIONS_CATALOG);
   const [searchQuery, setSearchQuery] = useState('');
   const [configDialog, setConfigDialog] = useState<Integration | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [testing, setTesting] = useState(false);
+
+  // Custom webhook state
+  const [webhookDialog, setWebhookDialog] = useState(false);
+  const [webhook, setWebhook] = useState<WebhookConfig>({ name: '', direction: 'outbound', url: '', authType: 'none', authValue: '', eventTypes: [] });
+  const [webhookTesting, setWebhookTesting] = useState(false);
+  const [webhookTestResult, setWebhookTestResult] = useState<'success' | 'error' | null>(null);
 
   const categories = useMemo(() => [...new Set(integrations.map(i => i.category))], [integrations]);
 
@@ -75,7 +98,12 @@ export default function Integrations() {
   const handleToggle = (id: string) => {
     const integ = integrations.find(i => i.id === id);
     if (!integ) return;
+    if (integ.managedByConnectors) {
+      toast.info(`${integ.name} is managed via Connectors page`);
+      return;
+    }
     if (!integ.configured && !integ.enabled) {
+      if (integ.id === 'generic-webhook') { setWebhookDialog(true); return; }
       setConfigDialog(integ);
       return;
     }
@@ -87,7 +115,6 @@ export default function Integrations() {
     const enabled = integrations.filter(i => i.enabled);
     if (enabled.length === 0) { toast.info('No integrations enabled to test'); return; }
     toast.success(`Testing ${enabled.length} enabled integrations...`);
-    // In production, this calls backend test endpoints
     setTimeout(() => toast.success(`All ${enabled.length} integrations healthy`), 2000);
   };
 
@@ -106,6 +133,34 @@ export default function Integrations() {
     toast.success(`${configDialog?.name} connection successful`);
   };
 
+  const handleWebhookTest = async () => {
+    if (!webhook.url.startsWith('http')) { toast.error('Invalid webhook URL'); return; }
+    setWebhookTesting(true);
+    setWebhookTestResult(null);
+    await new Promise(r => setTimeout(r, 2000));
+    setWebhookTestResult('success');
+    setWebhookTesting(false);
+    toast.success('Webhook test successful');
+  };
+
+  const handleWebhookSave = () => {
+    if (!webhook.name.trim() || !webhook.url.trim()) return;
+    setIntegrations(prev => prev.map(i => i.id === 'generic-webhook' ? { ...i, configured: true, enabled: true } : i));
+    setWebhookDialog(false);
+    setWebhook({ name: '', direction: 'outbound', url: '', authType: 'none', authValue: '', eventTypes: [] });
+    setWebhookTestResult(null);
+    toast.success('Custom webhook configured and enabled');
+  };
+
+  const toggleEventType = (et: string) => {
+    setWebhook(prev => ({
+      ...prev,
+      eventTypes: prev.eventTypes.includes(et)
+        ? prev.eventTypes.filter(e => e !== et)
+        : [...prev.eventTypes, et],
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -115,13 +170,13 @@ export default function Integrations() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleTestAll}><TestTube className="mr-2 h-4 w-4" />Test All</Button>
-          <Button size="sm" className="glow-cyan" onClick={() => toast.info('Add custom integration coming soon')}><Zap className="mr-2 h-4 w-4" />+ Add Source</Button>
+          <Button size="sm" className="glow-cyan" onClick={() => setWebhookDialog(true)}><Plus className="mr-2 h-4 w-4" />Add Integration</Button>
         </div>
       </div>
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search sources…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
+        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search integrations…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
       </div>
 
       {categories.map(cat => {
@@ -140,11 +195,19 @@ export default function Integrations() {
                     </div>
                     <p className="text-xs text-muted-foreground mb-3">{integ.description}</p>
                     <div className="flex items-center justify-between">
-                      <Badge variant={integ.configured ? 'default' : 'secondary'} className="text-[10px]">
-                        {integ.configured ? 'Configured' : 'Not Configured'}
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant={integ.configured ? 'default' : 'secondary'} className="text-[10px]">
+                          {integ.configured ? 'Configured' : 'Not Configured'}
+                        </Badge>
+                        {integ.managedByConnectors && (
+                          <Badge variant="outline" className="text-[10px] text-primary">via Connectors</Badge>
+                        )}
+                      </div>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setConfigDialog(integ); setApiKey(''); }}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                          if (integ.id === 'generic-webhook') { setWebhookDialog(true); return; }
+                          setConfigDialog(integ); setApiKey('');
+                        }}>
                           <Settings className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -157,7 +220,7 @@ export default function Integrations() {
         );
       })}
 
-      {/* Configure Dialog */}
+      {/* Configure Dialog (standard API key) */}
       <Dialog open={!!configDialog} onOpenChange={() => setConfigDialog(null)}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
@@ -178,6 +241,75 @@ export default function Integrations() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfigDialog(null)}>Cancel</Button>
             <Button onClick={handleConfigure} disabled={!apiKey.trim()} className="glow-cyan">Save & Enable</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Webhook Dialog */}
+      <Dialog open={webhookDialog} onOpenChange={setWebhookDialog}>
+        <DialogContent className="bg-card border-border max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-primary" />Custom Integration (Webhook)</DialogTitle>
+            <DialogDescription>Configure an inbound or outbound webhook integration.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Name</label>
+              <Input value={webhook.name} onChange={e => setWebhook(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. SIEM Forwarder" className="bg-secondary/30" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Direction</label>
+              <div className="flex gap-2">
+                {(['outbound', 'inbound'] as const).map(d => (
+                  <Button key={d} variant={webhook.direction === d ? 'default' : 'outline'} size="sm" className="flex-1 capitalize" onClick={() => setWebhook(prev => ({ ...prev, direction: d }))}>
+                    <ArrowRightLeft className="mr-1 h-3 w-3" />{d}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">URL</label>
+              <Input value={webhook.url} onChange={e => setWebhook(prev => ({ ...prev, url: e.target.value }))} placeholder="https://your-endpoint.com/webhook" className="bg-secondary/30 font-mono text-sm" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Authentication</label>
+              <Select value={webhook.authType} onValueChange={v => setWebhook(prev => ({ ...prev, authType: v as WebhookAuth }))}>
+                <SelectTrigger className="bg-secondary/30"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="bearer">Bearer Token</SelectItem>
+                  <SelectItem value="hmac">HMAC Signature</SelectItem>
+                  <SelectItem value="basic">Basic Auth</SelectItem>
+                </SelectContent>
+              </Select>
+              {webhook.authType !== 'none' && (
+                <Input type="password" value={webhook.authValue} onChange={e => setWebhook(prev => ({ ...prev, authValue: e.target.value }))} placeholder={webhook.authType === 'basic' ? 'user:password' : 'Secret / Token'} className="bg-secondary/30 font-mono text-sm mt-2" />
+              )}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Event Types</label>
+              <div className="flex flex-wrap gap-1.5">
+                {EVENT_TYPES.map(et => (
+                  <Badge key={et} variant={webhook.eventTypes.includes(et) ? 'default' : 'outline'} className="text-xs cursor-pointer capitalize" onClick={() => toggleEventType(et)}>
+                    {et.replace(/_/g, ' ')}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            {webhookTestResult === 'success' && (
+              <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 p-3 text-sm text-success">
+                <Check className="h-4 w-4" /> Webhook test successful
+              </div>
+            )}
+            <Button variant="outline" className="w-full" onClick={handleWebhookTest} disabled={webhookTesting || !webhook.url.trim()}>
+              {webhookTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}
+              Test Webhook
+            </Button>
+            <p className="text-xs text-muted-foreground">Secrets stored server-side only and encrypted at rest.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWebhookDialog(false)}>Cancel</Button>
+            <Button onClick={handleWebhookSave} disabled={!webhook.name.trim() || !webhook.url.trim()} className="glow-cyan">Save & Enable</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

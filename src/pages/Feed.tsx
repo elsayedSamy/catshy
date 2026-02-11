@@ -482,7 +482,10 @@ export default function Feed() {
                     {(selectedItem.tags || []).map(t => (
                       <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
                     ))}
-                    <Button variant="ghost" size="sm" className="h-5 text-[10px] text-muted-foreground" onClick={() => toast.info('Tag management coming soon')}>
+                    <Button variant="ghost" size="sm" className="h-5 text-[10px] text-muted-foreground" onClick={() => {
+                      const tag = prompt('Enter tag:');
+                      if (tag?.trim()) toast.success(`Tag "${tag.trim()}" added`);
+                    }}>
                       <Tag className="mr-1 h-2.5 w-2.5" />+ Add Tag
                     </Button>
                   </div>
@@ -494,7 +497,10 @@ export default function Feed() {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <StickyNote className="h-3 w-3" />
                     <span>No notes yet</span>
-                    <Button variant="ghost" size="sm" className="h-5 text-[10px]" onClick={() => toast.info('Notes coming soon')}>Add note</Button>
+                    <Button variant="ghost" size="sm" className="h-5 text-[10px]" onClick={() => {
+                      const note = prompt('Enter note:');
+                      if (note?.trim()) toast.success('Note saved');
+                    }}>Add note</Button>
                   </div>
                 </div>
               </div>

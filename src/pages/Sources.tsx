@@ -102,7 +102,13 @@ export default function Sources() {
           <Button variant="outline" size="sm" onClick={handleTestAll} disabled={testingAll}>
             {testingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}Test All
           </Button>
-          <Button size="sm" className="glow-cyan" onClick={() => toast.info('Add custom source coming soon')}>
+          <Button size="sm" className="glow-cyan" onClick={() => {
+            setWizardSource({ id: `custom-${Date.now()}`, name: '', description: 'Custom feed source', category: 'research' as any, connector_type: 'rss_atom' as any, default_url: '', requires_auth: false, polling_interval_minutes: 60, enabled: false, health: 'disabled' as const, item_count: 0 });
+            setWizardUrl('');
+            setWizardStep(0);
+            setWizardResult(null);
+            setWizardOpen(true);
+          }}>
             <Plus className="mr-2 h-4 w-4" />Add Source
           </Button>
         </div>
