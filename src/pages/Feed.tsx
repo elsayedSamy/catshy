@@ -1,6 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyState } from '@/components/EmptyState';
-import { FilterBar } from '@/components/FilterBar';
 import { SeverityBadge, ObservableTypeBadge } from '@/components/StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,32 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Rss, ExternalLink, Building2, RefreshCw, FileDown, CalendarIcon, Clock } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { Rss, ExternalLink, Building2, RefreshCw, FileDown, CalendarIcon, Clock, Filter, X } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useThreatFeed } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
 import type { IntelItem, SeverityLevel, ObservableType } from '@/types';
-
-const severityOptions = [
-  { value: 'critical', label: 'Critical' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-  { value: 'info', label: 'Info' },
-];
-
-const typeOptions = [
-  { value: 'ip', label: 'IP' },
-  { value: 'domain', label: 'Domain' },
-  { value: 'url', label: 'URL' },
-  { value: 'hash_sha256', label: 'Hash' },
-  { value: 'cve', label: 'CVE' },
-  { value: 'email', label: 'Email' },
-];
 
 // Dev mode demo data — only items < 24h old
 const DEMO_FEED: IntelItem[] = [
@@ -47,11 +28,80 @@ const DEMO_FEED: IntelItem[] = [
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+/**
+ * Generate a CSV string from IntelItem array with proper escaping.
+ */
+function generateCsvFromItems(items: IntelItem[]): string {
+  const headers = ['Title', 'Severity', 'Observable Type', 'Observable Value', 'Source', 'Published At', 'URL', 'Asset Match', 'Risk Score', 'Confidence Score', 'Tags'];
+  const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  const rows = items.map(i => [
+    escape(i.title), i.severity, i.observable_type, escape(i.observable_value),
+    i.source_name, i.published_at, i.original_url, i.asset_match ? 'Yes' : 'No',
+    i.risk_score.toString(), i.confidence_score.toString(), (i.tags || []).join('; '),
+  ].join(','));
+  return [headers.join(','), ...rows].join('\n');
+}
+
+/**
+ * Generate an HTML report string from IntelItem array.
+ */
+function generateHtmlFromItems(items: IntelItem[], title: string, period: string): string {
+  const critCount = items.filter(i => i.severity === 'critical').length;
+  const highCount = items.filter(i => i.severity === 'high').length;
+  const medCount = items.filter(i => i.severity === 'medium').length;
+  const itemRows = items.map(i =>
+    `<tr><td>${i.severity.toUpperCase()}</td><td>${i.title}</td><td><code>${i.observable_value}</code></td><td>${i.source_name}</td><td>${i.published_at}</td><td>${i.asset_match ? '✓' : ''}</td></tr>`
+  ).join('\n');
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#0d1117;color:#c9d1d9;padding:40px}
+.header{border-bottom:2px solid #00bcd4;padding-bottom:20px;margin-bottom:24px}h1{color:#e6edf3;font-size:24px}
+.meta{color:#8b949e;font-size:13px;margin-top:8px}.brand{color:#00bcd4;font-weight:700;letter-spacing:2px;font-size:11px;text-transform:uppercase}
+.summary{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px;margin:16px 0}
+.summary span{margin-right:16px;font-size:14px}table{width:100%;border-collapse:collapse;margin-top:16px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #21262d;font-size:13px}th{color:#e6edf3;font-weight:600}
+code{background:#161b22;padding:2px 6px;border-radius:3px;font-size:12px}
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid #30363d;color:#484f58;font-size:11px;text-align:center}
+</style></head><body>
+<div class="header"><div class="brand">CATSHY — Threat Intelligence Report</div><h1>${title}</h1>
+<div class="meta">Period: ${period} · Generated: ${new Date().toISOString().slice(0, 16)} UTC · Classification: TLP:AMBER</div></div>
+<div class="summary"><span>Total: <strong>${items.length}</strong></span><span style="color:#f85149">Critical: <strong>${critCount}</strong></span>
+<span style="color:#d29922">High: <strong>${highCount}</strong></span><span style="color:#388bfd">Medium: <strong>${medCount}</strong></span></div>
+<table><thead><tr><th>Severity</th><th>Title</th><th>Observable</th><th>Source</th><th>Published</th><th>Asset</th></tr></thead><tbody>${itemRows}</tbody></table>
+<div class="footer">CATSHY Threat Intelligence Platform — Confidential</div></body></html>`;
+}
+
+/**
+ * Generate a JSON report string from IntelItem array.
+ */
+function generateJsonFromItems(items: IntelItem[], title: string, period: string): string {
+  return JSON.stringify({
+    title,
+    metadata: { generated_at: new Date().toISOString(), period, total: items.length, classification: 'TLP:AMBER' },
+    summary: {
+      critical: items.filter(i => i.severity === 'critical').length,
+      high: items.filter(i => i.severity === 'high').length,
+      medium: items.filter(i => i.severity === 'medium').length,
+      low: items.filter(i => i.severity === 'low').length,
+    },
+    items: items.map(i => ({
+      id: i.id, title: i.title, severity: i.severity, observable_type: i.observable_type,
+      observable_value: i.observable_value, source_name: i.source_name, published_at: i.published_at,
+      original_url: i.original_url, asset_match: i.asset_match, risk_score: i.risk_score,
+      confidence_score: i.confidence_score, tags: i.tags,
+    })),
+  }, null, 2);
+}
+
 export default function Feed() {
   const navigate = useNavigate();
   const { isDevMode } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Filter state from URL params
+  const severityFilter = searchParams.get('severity') || '';
+  const typeFilter = searchParams.get('type') || '';
+  const assetMatchOnly = searchParams.get('asset_match') === 'true';
   const [companyFirst, setCompanyFirst] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Report generation state
   const [reportPreset, setReportPreset] = useState<string>('today');
@@ -60,63 +110,181 @@ export default function Feed() {
   const [reportEndDate, setReportEndDate] = useState<Date | undefined>();
   const [generating, setGenerating] = useState(false);
 
-  const { data, isLoading, refetch } = useThreatFeed();
+  // API query — passes severity filter to backend
+  const { data, isLoading, refetch, isFetching } = useThreatFeed(severityFilter || undefined);
 
-  const items = isDevMode ? DEMO_FEED : (data?.items ?? []);
+  // Build filtered items list
+  const rawItems = isDevMode ? DEMO_FEED : (data?.items ?? []);
 
-  const handleRefresh = useCallback(() => {
-    if (isDevMode) {
-      setRefreshing(true);
-      toast.info('Refreshing intel feed...');
-      setTimeout(() => {
-        setRefreshing(false);
-        toast.success(`Feed refreshed — ${items.length} items`);
-      }, 1200);
-    } else {
-      refetch();
+  const filteredItems = useMemo(() => {
+    let result = rawItems;
+    // Apply severity filter (client-side for dev mode; backend handles it in production but double-filter is safe)
+    if (severityFilter) {
+      result = result.filter(i => i.severity === severityFilter);
     }
-  }, [isDevMode, items.length, refetch]);
+    // Apply type filter (client-side)
+    if (typeFilter) {
+      result = result.filter(i => i.observable_type === typeFilter);
+    }
+    // Asset match filter
+    if (assetMatchOnly) {
+      result = result.filter(i => i.asset_match);
+    }
+    return result;
+  }, [rawItems, severityFilter, typeFilter, assetMatchOnly]);
+
+  const displayItems = companyFirst
+    ? [...filteredItems].sort((a, b) => (b.asset_match ? 1 : 0) - (a.asset_match ? 1 : 0))
+    : filteredItems;
+
+  const activeFilterCount = [severityFilter, typeFilter, assetMatchOnly].filter(Boolean).length;
+
+  // ── Filter handlers ──
+  const setFilter = useCallback((key: string, value: string) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (!value || value === 'all') { next.delete(key); } else { next.set(key, value); }
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const clearFilters = useCallback(() => {
+    setSearchParams({});
+  }, [setSearchParams]);
+
+  // ── Refresh handler ──
+  const handleRefresh = useCallback(() => {
+    if (!isDevMode) {
+      refetch();
+    } else {
+      toast.success(`Feed refreshed — ${filteredItems.length} items (Dev Mode)`);
+    }
+  }, [isDevMode, filteredItems.length, refetch]);
+
+  // ── Report generation ──
+  const customRangeValid = useMemo(() => {
+    if (reportPreset !== 'custom') return true;
+    if (!reportStartDate || !reportEndDate) return false;
+    if (reportEndDate < reportStartDate) return false;
+    const diffDays = (reportEndDate.getTime() - reportStartDate.getTime()) / 86400000;
+    if (diffDays > 30) return false;
+    return true;
+  }, [reportPreset, reportStartDate, reportEndDate]);
+
+  const customRangeError = useMemo(() => {
+    if (reportPreset !== 'custom' || !reportStartDate || !reportEndDate) return '';
+    if (reportEndDate < reportStartDate) return 'End date must be after start date';
+    const diffDays = (reportEndDate.getTime() - reportStartDate.getTime()) / 86400000;
+    if (diffDays > 30) return 'Range cannot exceed 30 days (retention policy)';
+    return '';
+  }, [reportPreset, reportStartDate, reportEndDate]);
 
   const handleGenerateReport = useCallback(async () => {
+    if (!customRangeValid) {
+      toast.error(customRangeError || 'Invalid date range');
+      return;
+    }
     setGenerating(true);
     try {
+      // Determine time window for dev mode report filtering
+      const now = Date.now();
+      let reportItems: IntelItem[];
+      let periodLabel: string;
+
       if (isDevMode) {
-        // Dev mode: generate CSV locally
-        const headers = ['Title', 'Severity', 'Type', 'Observable', 'Source', 'Published', 'URL', 'Asset Match', 'Risk Score'];
-        const csvRows = [headers.join(',')];
-        items.forEach(i => {
-          csvRows.push([
-            `"${i.title}"`, i.severity, i.observable_type, `"${i.observable_value}"`,
-            i.source_name, i.published_at, i.original_url, i.asset_match ? 'Yes' : 'No',
-            i.risk_score.toString(),
-          ].join(','));
+        // Dev mode: apply time-window filter to ALL demo data (feed + history combined)
+        const allDemoItems = [...DEMO_FEED];
+        // Also include history-aged items for 7d/30d reports
+        const DEMO_HISTORY: IntelItem[] = [
+          { id: 'h1', title: 'CVE-2024-1709 — ConnectWise ScreenConnect Auth Bypass', description: 'Authentication bypass allowing admin access.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-1709', source_id: 'nvd-cve', source_name: 'NVD', fetched_at: new Date(now - 86400000 * 2).toISOString(), published_at: new Date(now - 86400000 * 2).toISOString(), original_url: 'https://nvd.nist.gov', excerpt: 'Critical auth bypass', dedup_count: 6, asset_match: true, matched_assets: ['remote.company.com'], confidence_score: 98, risk_score: 99, tags: ['rce'] },
+          { id: 'h2', title: 'APT28 spear-phishing campaign', description: 'Russian state-sponsored phishing.', severity: 'high' as SeverityLevel, observable_type: 'actor' as ObservableType, observable_value: 'APT28', source_id: 'hackernews-sec', source_name: 'The Hacker News', fetched_at: new Date(now - 86400000 * 3).toISOString(), published_at: new Date(now - 86400000 * 3).toISOString(), original_url: 'https://thehackernews.com', excerpt: 'APT28 phishing', dedup_count: 3, asset_match: false, matched_assets: [], confidence_score: 85, risk_score: 78, tags: ['apt'] },
+          { id: 'h3', title: 'CVE-2024-0204 — GoAnywhere MFT RCE', description: 'Remote code execution in Fortra GoAnywhere.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-0204', source_id: 'cisa-kev', source_name: 'CISA KEV', fetched_at: new Date(now - 86400000 * 8).toISOString(), published_at: new Date(now - 86400000 * 8).toISOString(), original_url: 'https://www.cisa.gov', excerpt: 'GoAnywhere RCE', dedup_count: 10, asset_match: true, matched_assets: ['filetransfer.company.com'], confidence_score: 99, risk_score: 97, tags: ['rce'] },
+          { id: 'h4', title: 'DDoS botnet targeting financial services', description: 'Mirai variant targeting finance.', severity: 'medium' as SeverityLevel, observable_type: 'ip' as ObservableType, observable_value: '203.0.113.42', source_id: 'feodo-tracker', source_name: 'Feodo Tracker', fetched_at: new Date(now - 86400000 * 12).toISOString(), published_at: new Date(now - 86400000 * 12).toISOString(), original_url: 'https://feodotracker.abuse.ch', excerpt: 'Mirai C2', dedup_count: 1, asset_match: false, matched_assets: [], confidence_score: 75, risk_score: 55, tags: ['botnet'] },
+        ];
+        const fullPool = [...allDemoItems, ...DEMO_HISTORY];
+
+        let cutoffStart: number;
+        let cutoffEnd: number = now;
+
+        if (reportPreset === 'today') {
+          cutoffStart = now - 86400000;
+          periodLabel = 'Last 24 hours';
+        } else if (reportPreset === '7d') {
+          cutoffStart = now - 86400000 * 7;
+          periodLabel = 'Last 7 days';
+        } else if (reportPreset === '30d') {
+          cutoffStart = now - 86400000 * 30;
+          periodLabel = 'Last 30 days';
+        } else if (reportPreset === 'custom' && reportStartDate && reportEndDate) {
+          cutoffStart = reportStartDate.getTime();
+          cutoffEnd = reportEndDate.getTime();
+          periodLabel = `${format(reportStartDate, 'MMM d, yyyy')} to ${format(reportEndDate, 'MMM d, yyyy')}`;
+        } else {
+          cutoffStart = now - 86400000;
+          periodLabel = 'Last 24 hours';
+        }
+
+        reportItems = fullPool.filter(i => {
+          const pubTime = new Date(i.published_at).getTime();
+          return pubTime >= cutoffStart && pubTime <= cutoffEnd;
         });
-        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+
+        // Generate file based on selected format
+        const reportTitle = `CATSHY Threat Report — ${periodLabel}`;
+        let content: string;
+        let mimeType: string;
+        let fileExt: string;
+
+        if (reportFormat === 'html') {
+          content = generateHtmlFromItems(reportItems, reportTitle, periodLabel);
+          mimeType = 'text/html';
+          fileExt = 'html';
+        } else if (reportFormat === 'json') {
+          content = generateJsonFromItems(reportItems, reportTitle, periodLabel);
+          mimeType = 'application/json';
+          fileExt = 'json';
+        } else {
+          content = generateCsvFromItems(reportItems);
+          mimeType = 'text/csv';
+          fileExt = 'csv';
+        }
+
+        const blob = new Blob([content], { type: mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `catshy-report-${reportPreset || 'custom'}.csv`;
+        a.download = `catshy-report-${reportPreset}.${fileExt}`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success('Report downloaded');
+        toast.success(`Report downloaded — ${reportItems.length} items (${periodLabel})`);
       } else {
-        // Real backend: call report endpoint
+        // Production: call backend report endpoint with auth
         const body: Record<string, unknown> = {
           scope: 'feed',
-          preset: reportPreset === 'custom' ? undefined : reportPreset,
           format: reportFormat,
         };
         if (reportPreset === 'custom' && reportStartDate && reportEndDate) {
           body.start = reportStartDate.toISOString();
           body.end = reportEndDate.toISOString();
-          body.preset = undefined;
+        } else {
+          body.preset = reportPreset;
         }
+
+        const token = localStorage.getItem('catshy_token');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token && token !== 'dev-token') {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const res = await fetch(`${API_BASE}/threats/reports/generate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(body),
         });
-        if (!res.ok) throw new Error('Report generation failed');
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Report generation failed' }));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -125,18 +293,14 @@ export default function Feed() {
         a.download = `catshy-report.${ext}`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success('Report downloaded');
+        toast.success('Report downloaded successfully');
       }
     } catch (e: any) {
       toast.error(e.message || 'Failed to generate report');
     } finally {
       setGenerating(false);
     }
-  }, [isDevMode, items, reportPreset, reportFormat, reportStartDate, reportEndDate]);
-
-  const displayItems = companyFirst
-    ? [...items].sort((a, b) => (b.asset_match ? 1 : 0) - (a.asset_match ? 1 : 0))
-    : items;
+  }, [isDevMode, reportPreset, reportFormat, reportStartDate, reportEndDate, customRangeValid, customRangeError]);
 
   return (
     <div className="space-y-6">
@@ -146,15 +310,12 @@ export default function Feed() {
           <h1 className="text-2xl font-bold text-foreground">Intel Feed</h1>
           <p className="text-sm text-muted-foreground mt-1">
             <Clock className="inline h-3 w-3 mr-1" />
-            Fresh items from the last 24 hours · {items.length} items
+            Fresh items from the last 24 hours · {filteredItems.length} items
+            {activeFilterCount > 0 && ` (filtered from ${rawItems.length})`}
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/history')}
-          >
+          <Button variant="outline" size="sm" onClick={() => navigate('/history')}>
             <Clock className="mr-2 h-4 w-4" /> View History
           </Button>
           <Button
@@ -164,8 +325,8 @@ export default function Feed() {
           >
             <Building2 className="mr-2 h-4 w-4" /> Company First
           </Button>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
           </Button>
         </div>
       </div>
@@ -256,36 +417,87 @@ export default function Feed() {
               size="sm"
               className="h-9"
               onClick={handleGenerateReport}
-              disabled={generating || (reportPreset === 'custom' && (!reportStartDate || !reportEndDate))}
+              disabled={generating || !customRangeValid}
             >
               <FileDown className="mr-2 h-4 w-4" />
               {generating ? 'Generating...' : 'Download Report'}
             </Button>
           </div>
+          {customRangeError && (
+            <p className="text-xs text-destructive mt-2">{customRangeError}</p>
+          )}
         </CardContent>
       </Card>
 
-      {/* Filters */}
-      <FilterBar
-        filterOptions={[
-          { key: 'severity', label: 'Severity', options: severityOptions },
-          { key: 'type', label: 'Type', options: typeOptions },
-        ]}
-        showAssetMatchToggle
-      />
+      {/* Filters — fully wired to data */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <Select value={severityFilter || 'all'} onValueChange={v => setFilter('severity', v)}>
+          <SelectTrigger className="h-8 w-auto min-w-[120px] border-border bg-secondary/50 text-xs">
+            <SelectValue placeholder="Severity" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Severity</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+            <SelectItem value="info">Info</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter || 'all'} onValueChange={v => setFilter('type', v)}>
+          <SelectTrigger className="h-8 w-auto min-w-[120px] border-border bg-secondary/50 text-xs">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="ip">IP</SelectItem>
+            <SelectItem value="domain">Domain</SelectItem>
+            <SelectItem value="url">URL</SelectItem>
+            <SelectItem value="hash_sha256">Hash</SelectItem>
+            <SelectItem value="cve">CVE</SelectItem>
+            <SelectItem value="email">Email</SelectItem>
+            <SelectItem value="actor">Actor</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          variant={assetMatchOnly ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => setFilter('asset_match', assetMatchOnly ? '' : 'true')}
+        >
+          Company Match
+        </Button>
+        {activeFilterCount > 0 && (
+          <>
+            <Badge variant="secondary" className="text-xs">{activeFilterCount} active</Badge>
+            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={clearFilters}>
+              <X className="mr-1 h-3 w-3" /> Clear
+            </Button>
+          </>
+        )}
+      </div>
 
       {/* Items */}
-      <div className="space-y-2">
-        {displayItems.length === 0 && !isLoading ? (
-          <EmptyState
-            icon="radio"
-            title="No fresh intel items"
-            description="Items from the last 24 hours will appear here. Enable sources to start collecting intelligence."
-            actionLabel="Enable Sources"
-            onAction={() => navigate('/sources')}
-          />
-        ) : (
-          displayItems.map(item => (
+      {isLoading && !isDevMode ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-20 w-full rounded-lg bg-secondary/20 animate-pulse" />
+          ))}
+        </div>
+      ) : displayItems.length === 0 ? (
+        <EmptyState
+          icon="radio"
+          title="No fresh intel items"
+          description={activeFilterCount > 0
+            ? 'No items match the current filters. Try adjusting or clearing filters.'
+            : 'Items from the last 24 hours will appear here. Enable sources to start collecting intelligence.'}
+          actionLabel={activeFilterCount > 0 ? 'Clear Filters' : 'Enable Sources'}
+          onAction={activeFilterCount > 0 ? clearFilters : () => navigate('/sources')}
+        />
+      ) : (
+        <div className="space-y-2">
+          {displayItems.map(item => (
             <Card
               key={item.id}
               className={`border-border bg-card transition-all hover:border-primary/20 ${
@@ -321,9 +533,9 @@ export default function Feed() {
                 </div>
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
