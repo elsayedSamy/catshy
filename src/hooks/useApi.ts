@@ -124,6 +124,28 @@ export const useDashboardFeed = (range: string) => useQuery({
   enabled: enabled(), retry: 1,
 });
 
+// Threat Feed (fresh < 24h)
+export const useThreatFeed = (severity?: string) => {
+  const params = new URLSearchParams();
+  if (severity) params.set('severity', severity);
+  return useQuery({
+    queryKey: ['threat-feed', severity],
+    queryFn: () => api.get<{ items: IntelItem[]; total: number }>(`/threats/feed?${params.toString()}`),
+    enabled: enabled(), retry: 1,
+  });
+};
+
+// Threat History (aged >= 24h, <= 30d)
+export const useThreatHistory = (range: string, search?: string) => {
+  const params = new URLSearchParams({ range });
+  if (search) params.set('search', search);
+  return useQuery({
+    queryKey: ['threat-history', range, search],
+    queryFn: () => api.get<{ items: IntelItem[]; total: number; queried_at: string }>(`/threats/history?${params.toString()}`),
+    enabled: enabled(), retry: 1,
+  });
+};
+
 // Dashboard Map Events
 export const useDashboardMapEvents = (range: string) => useQuery({
   queryKey: ['dashboard-map', range],

@@ -1,0 +1,170 @@
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SeverityBadge, ObservableTypeBadge } from '@/components/StatusBadge';
+import { EmptyState } from '@/components/EmptyState';
+// Note: EmptyState uses string icon prop
+import { History as HistoryIcon, ExternalLink, Search, Clock, RefreshCw } from 'lucide-react';
+import { useThreatHistory } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
+import type { IntelItem, SeverityLevel, ObservableType } from '@/types';
+
+// Dev mode demo data — aged items (older than 24h)
+const DEMO_HISTORY: IntelItem[] = [
+  { id: 'h1', title: 'CVE-2024-1709 — ConnectWise ScreenConnect Auth Bypass', description: 'Authentication bypass allowing admin access to ScreenConnect instances.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-1709', source_id: 'nvd-cve', source_name: 'NVD', fetched_at: new Date(Date.now() - 86400000 * 2).toISOString(), published_at: new Date(Date.now() - 86400000 * 2).toISOString(), original_url: 'https://nvd.nist.gov', excerpt: 'Critical auth bypass in ConnectWise ScreenConnect', dedup_count: 6, asset_match: true, matched_assets: ['remote.company.com'], confidence_score: 98, risk_score: 99, tags: ['rce', 'auth-bypass'] },
+  { id: 'h2', title: 'APT28 spear-phishing campaign targeting EU defense', description: 'Russian state-sponsored group targeting EU defense sector with macro-laden documents.', severity: 'high' as SeverityLevel, observable_type: 'actor' as ObservableType, observable_value: 'APT28', source_id: 'hackernews-sec', source_name: 'The Hacker News', fetched_at: new Date(Date.now() - 86400000 * 3).toISOString(), published_at: new Date(Date.now() - 86400000 * 3).toISOString(), original_url: 'https://thehackernews.com', excerpt: 'APT28 spear-phishing with macro documents.', dedup_count: 3, asset_match: false, matched_assets: [], confidence_score: 85, risk_score: 78, tags: ['apt', 'phishing'] },
+  { id: 'h3', title: 'Qakbot resurgence via OneNote attachments', description: 'New distribution vector for Qakbot trojan using malicious OneNote files.', severity: 'high' as SeverityLevel, observable_type: 'hash_sha256' as ObservableType, observable_value: 'a1b2c3d4e5f6...', source_id: 'malwarebazaar', source_name: 'MalwareBazaar', fetched_at: new Date(Date.now() - 86400000 * 5).toISOString(), published_at: new Date(Date.now() - 86400000 * 5).toISOString(), original_url: 'https://bazaar.abuse.ch', excerpt: 'Qakbot distributed via OneNote.', dedup_count: 2, asset_match: false, matched_assets: [], confidence_score: 90, risk_score: 72, tags: ['trojan', 'qakbot'] },
+  { id: 'h4', title: 'CVE-2024-0204 — GoAnywhere MFT RCE', description: 'Remote code execution in Fortra GoAnywhere MFT allowing unauthenticated access.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-0204', source_id: 'cisa-kev', source_name: 'CISA KEV', fetched_at: new Date(Date.now() - 86400000 * 8).toISOString(), published_at: new Date(Date.now() - 86400000 * 8).toISOString(), original_url: 'https://www.cisa.gov', excerpt: 'Fortra GoAnywhere MFT RCE vulnerability', dedup_count: 10, asset_match: true, matched_assets: ['filetransfer.company.com'], confidence_score: 99, risk_score: 97, tags: ['rce', 'file-transfer'] },
+  { id: 'h5', title: 'DDoS botnet targeting financial services', description: 'Mirai variant targeting financial sector infrastructure with amplification attacks.', severity: 'medium' as SeverityLevel, observable_type: 'ip' as ObservableType, observable_value: '203.0.113.42', source_id: 'feodo-tracker', source_name: 'Feodo Tracker', fetched_at: new Date(Date.now() - 86400000 * 12).toISOString(), published_at: new Date(Date.now() - 86400000 * 12).toISOString(), original_url: 'https://feodotracker.abuse.ch', excerpt: 'Mirai variant C2 for DDoS campaigns.', dedup_count: 1, asset_match: false, matched_assets: [], confidence_score: 75, risk_score: 55, tags: ['botnet', 'ddos'] },
+  { id: 'h6', title: 'Supply chain compromise via npm typosquatting', description: 'Malicious npm packages mimicking popular libraries with data exfiltration payloads.', severity: 'medium' as SeverityLevel, observable_type: 'domain' as ObservableType, observable_value: 'npm-safe-eval.com', source_id: 'openphish', source_name: 'OpenPhish', fetched_at: new Date(Date.now() - 86400000 * 18).toISOString(), published_at: new Date(Date.now() - 86400000 * 18).toISOString(), original_url: 'https://openphish.com', excerpt: 'npm typosquatting supply chain attack.', dedup_count: 4, asset_match: false, matched_assets: [], confidence_score: 82, risk_score: 65, tags: ['supply-chain', 'npm'] },
+];
+
+type RangeFilter = '24h' | '7d' | '30d';
+
+export default function History() {
+  const navigate = useNavigate();
+  const { isDevMode } = useAuth();
+  const [range, setRange] = useState<RangeFilter>('30d');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const { data, isLoading, refetch, isFetching } = useThreatHistory(range, searchQuery);
+
+  // In dev mode, use demo data filtered by range
+  const getDevItems = useCallback(() => {
+    const now = Date.now();
+    const cutoffs: Record<RangeFilter, number> = {
+      '24h': 86400000,
+      '7d': 86400000 * 7,
+      '30d': 86400000 * 30,
+    };
+    const cutoff = cutoffs[range];
+    let items = DEMO_HISTORY.filter(i => {
+      const age = now - new Date(i.published_at).getTime();
+      return age <= cutoff;
+    });
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(i => i.title.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
+    }
+    return items;
+  }, [range, searchQuery]);
+
+  const items = isDevMode ? getDevItems() : (data?.items ?? []);
+  const total = isDevMode ? items.length : (data?.total ?? 0);
+  const queriedAt = isDevMode ? new Date().toISOString() : data?.queried_at;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <HistoryIcon className="h-6 w-6 text-muted-foreground" />
+            Threat History
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {total} items · Retention: 30 days
+            {queriedAt && <span className="ml-2">· Last queried: {format(new Date(queriedAt), 'MMM d, HH:mm')}</span>}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch?.()} disabled={isFetching}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex rounded-lg border border-border overflow-hidden">
+          {(['24h', '7d', '30d'] as const).map(r => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                range === r
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary/30 text-muted-foreground hover:bg-secondary/60'
+              }`}
+            >
+              {r === '24h' ? 'Last 24h' : r === '7d' ? 'Last 7 days' : 'Last 30 days'}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search title or description..."
+            className="pl-10 bg-secondary/50 border-border h-9 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Items */}
+      {isLoading && !isDevMode ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon="search"
+          title="No historical items"
+          description="Items older than 24 hours will appear here. They are retained for up to 30 days."
+        />
+      ) : (
+        <div className="space-y-2">
+          {items.map(item => (
+            <Card
+              key={item.id}
+              className={`border-border bg-card transition-all hover:border-primary/20 ${
+                item.asset_match ? 'border-l-2 border-l-primary' : ''
+              }`}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <SeverityBadge severity={item.severity} />
+                      <ObservableTypeBadge type={item.observable_type} />
+                      {item.asset_match && (
+                        <Badge className="bg-primary/20 text-primary text-xs">Asset Match</Badge>
+                      )}
+                      {item.dedup_count > 1 && (
+                        <Badge variant="outline" className="text-xs">×{item.dedup_count}</Badge>
+                      )}
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span className="text-[10px]">
+                          {format(new Date(item.published_at), 'MMM d, yyyy HH:mm')}
+                        </span>
+                      </div>
+                    </div>
+                    <h3 className="font-medium text-sm text-foreground">{item.title}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="font-mono">{item.observable_value}</span>
+                      <span>via {item.source_name}</span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
+                    <a href={item.original_url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
