@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Cat, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Cat, Eye, EyeOff, Loader2, Mail, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
@@ -83,14 +83,33 @@ export default function Login() {
             )}
 
             <Button type="submit" className="w-full glow-cyan" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
               Sign In
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            Need an account? Contact your administrator for an invite.
-          </p>
+          <div className="mt-6 space-y-3">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+              <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">or</span></div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-secondary/20 p-3">
+              <div className="flex items-start gap-2">
+                <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">Need an account?</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    This platform uses invite-only registration. Ask your administrator to send you an invite link via email.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-center text-[10px] text-muted-foreground">
+              Already have an invite link? Check your email and click the link to set up your account.
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>
