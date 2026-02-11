@@ -27,6 +27,8 @@ import ThreatMap from "./pages/ThreatMap";
 import Playbooks from "./pages/Playbooks";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
+import Integrations from "./pages/Integrations";
+import Connectors from "./pages/Connectors";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -70,6 +72,8 @@ const App = () => (
               <Route path="leaks" element={<Leaks />} />
               <Route path="threat-map" element={<ThreatMap />} />
               <Route path="playbooks" element={<Playbooks />} />
+              <Route path="integrations" element={<Integrations />} />
+              <Route path="connectors" element={<Connectors />} />
               <Route path="admin" element={<Admin />} />
               <Route path="settings" element={<Settings />} />
             </Route>
