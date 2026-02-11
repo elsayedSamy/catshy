@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { User, UserRole, AuthState } from '@/types';
+import { api } from '@/lib/api';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hasRole: (roles: UserRole[]) => boolean;
   canAccess: (requiredRoles?: UserRole[]) => boolean;
+  isDevMode: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -14,11 +16,9 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
-    user: null,
-    token: null,
-    isAuthenticated: false,
-    isLoading: true,
+    user: null, token: null, isAuthenticated: false, isLoading: true,
   });
+  const [isDevMode, setIsDevMode] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('catshy_token');
@@ -26,23 +26,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token && userData) {
       try {
         const user = JSON.parse(userData) as User;
+        api.setToken(token);
         setState({ user, token, isAuthenticated: true, isLoading: false });
       } catch {
         localStorage.removeItem('catshy_token');
         localStorage.removeItem('catshy_user');
-        setState(s => ({ ...s, isLoading: false }));
+        tryDevMode();
       }
     } else {
-      setState(s => ({ ...s, isLoading: false }));
+      tryDevMode();
     }
   }, []);
+
+  const tryDevMode = async () => {
+    const healthy = await api.checkHealth();
+    if (healthy) {
+      setState(s => ({ ...s, isLoading: false }));
+    } else {
+      const devUser: User = {
+        id: 'dev-admin', email: 'admin@catshy.local', name: 'Dev Admin',
+        role: 'admin', created_at: new Date().toISOString(), is_active: true,
+      };
+      api.setDevMode(true);
+      setIsDevMode(true);
+      setState({ user: devUser, token: 'dev-token', isAuthenticated: true, isLoading: false });
+    }
+  };
 
   const login = useCallback(async (email: string, password: string) => {
     setState(s => ({ ...s, isLoading: true }));
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
@@ -52,6 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       localStorage.setItem('catshy_token', data.access_token);
       localStorage.setItem('catshy_user', JSON.stringify(data.user));
+      api.setToken(data.access_token);
+      api.setDevMode(false);
+      setIsDevMode(false);
       setState({ user: data.user, token: data.access_token, isAuthenticated: true, isLoading: false });
     } catch (e) {
       setState(s => ({ ...s, isLoading: false }));
@@ -62,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem('catshy_token');
     localStorage.removeItem('catshy_user');
+    api.setToken(null);
     setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
   }, []);
 
@@ -77,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [state.isAuthenticated, state.user]);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, hasRole, canAccess }}>
+    <AuthContext.Provider value={{ ...state, login, logout, hasRole, canAccess, isDevMode }}>
       {children}
     </AuthContext.Provider>
   );
