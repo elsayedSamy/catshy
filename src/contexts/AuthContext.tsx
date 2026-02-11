@@ -39,8 +39,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const tryDevMode = async () => {
-    const healthy = await api.checkHealth();
-    if (healthy) {
+    // In preview/dev, always enter dev mode since there's no backend
+    // The health endpoint would need to return { "service": "catshy-api" } to be valid
+    let isRealBackend = false;
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 3000);
+      const res = await fetch(`${API_BASE}/health`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        isRealBackend = data?.service === 'catshy-api';
+      }
+    } catch {}
+    
+    if (isRealBackend) {
       setState(s => ({ ...s, isLoading: false }));
     } else {
       const devUser: User = {
