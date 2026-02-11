@@ -1,17 +1,27 @@
 """CATSHY Backend — FastAPI Application Entry Point"""
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine, Base, async_session
 from app.routers import auth, assets, sources, feed, search, entities, alerts, cases, reports, leaks, admin, health
 from app.middleware.audit import AuditMiddleware
+from app.services.admin_seed import seed_admin
+from app.services.mail import validate_smtp_config
+
+logger = logging.getLogger("catshy")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: create tables if not using alembic
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Seed admin user
+    async with async_session() as db:
+        await seed_admin(db)
+    # Validate SMTP
+    validate_smtp_config()
     yield
     # Shutdown
     await engine.dispose()

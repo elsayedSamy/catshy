@@ -13,6 +13,8 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// In preview (no backend), default to dev mode. In production, require VITE_DEV_AUTO_ADMIN=true
+const DEV_AUTO_ADMIN = import.meta.env.VITE_DEV_AUTO_ADMIN !== 'false';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -39,8 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const tryDevMode = async () => {
-    // In preview/dev, always enter dev mode since there's no backend
-    // The health endpoint would need to return { "service": "catshy-api" } to be valid
     let isRealBackend = false;
     try {
       const ctrl = new AbortController();
@@ -52,10 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isRealBackend = data?.service === 'catshy-api';
       }
     } catch {}
-    
+
     if (isRealBackend) {
+      // Real backend detected — user must login via /login
       setState(s => ({ ...s, isLoading: false }));
-    } else {
+    } else if (DEV_AUTO_ADMIN) {
+      // Dev mode only when explicitly enabled
       const devUser: User = {
         id: 'dev-admin', email: 'admin@catshy.local', name: 'Dev Admin',
         role: 'admin', created_at: new Date().toISOString(), is_active: true,
@@ -63,6 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.setDevMode(true);
       setIsDevMode(true);
       setState({ user: devUser, token: 'dev-token', isAuthenticated: true, isLoading: false });
+    } else {
+      // No backend + no dev mode = show login
+      setState(s => ({ ...s, isLoading: false }));
     }
   };
 
