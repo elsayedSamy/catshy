@@ -1,5 +1,6 @@
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import type { FeatureFlags, UserRole } from '@/types';
 import { Shield, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,9 @@ interface FeatureGateProps {
 }
 
 export function FeatureGate({ feature, children, moduleName, description }: FeatureGateProps) {
-  const { isEnabled } = useFeatureFlags();
+  const { isEnabled, setFlag } = useFeatureFlags();
   const { hasRole } = useAuth();
+  const navigate = useNavigate();
 
   if (isEnabled(feature)) return <>{children}</>;
 
@@ -29,12 +31,19 @@ export function FeatureGate({ feature, children, moduleName, description }: Feat
       <p className="mb-6 max-w-lg text-center text-sm text-muted-foreground leading-relaxed">
         {description || `The ${moduleName} module is currently disabled. An administrator can enable this module from the Admin Panel → Feature Flags.`}
       </p>
-      {hasRole(['admin']) && (
-        <Button variant="outline" className="border-primary/30 text-primary hover:bg-primary/10">
-          <Shield className="mr-2 h-4 w-4" />
-          Enable in Admin Panel
-        </Button>
-      )}
+      <div className="flex gap-3">
+        {hasRole(['admin']) && (
+          <>
+            <Button onClick={() => setFlag(feature, true)} className="glow-cyan">
+              <Shield className="mr-2 h-4 w-4" />
+              Enable {moduleName}
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/admin')}>
+              Go to Admin Panel
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
