@@ -19,12 +19,23 @@ export default function Reports() {
   );
 }
 
+const REPORT_TYPES = [
+  { value: 'threat_landscape', label: 'Threat Landscape Summary', desc: 'Overview of all active threats, IOCs, and campaigns detected in your environment.' },
+  { value: 'asset_risk', label: 'Asset Risk Assessment', desc: 'Risk analysis of your monitored assets based on matched intelligence.' },
+  { value: 'campaign_brief', label: 'Campaign / Incident Brief', desc: 'Detailed breakdown of a specific threat campaign or incident.' },
+  { value: 'compliance_audit', label: 'Compliance & Audit Trail', desc: 'Audit log of actions, alerts, and investigation timelines for compliance.' },
+  { value: 'executive_summary', label: 'Executive Summary', desc: 'High-level overview for leadership with key metrics and recommendations.' },
+];
+
 function ReportsContent() {
   const [reports, setReports] = useState<Report[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [reportType, setReportType] = useState('threat_landscape');
   const [format, setFormat] = useState<ReportFormat>('technical_pdf');
   const [generating, setGenerating] = useState(false);
+
+  const selectedType = REPORT_TYPES.find(r => r.value === reportType);
 
   const handleGenerate = () => {
     setGenerating(true);
@@ -32,7 +43,7 @@ function ReportsContent() {
     setTimeout(() => {
       const report: Report = {
         id: crypto.randomUUID(),
-        title: title || `Threat Intelligence Report — ${new Date().toLocaleDateString()}`,
+        title: title || `${selectedType?.label || 'Threat Intelligence Report'} — ${new Date().toLocaleDateString()}`,
         format,
         generated_at: new Date().toISOString(),
         generated_by: 'Dev Admin',
@@ -87,10 +98,21 @@ function ReportsContent() {
             <DialogDescription>Create a new threat intelligence report.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div><label className="mb-1.5 block text-sm font-medium">Report Title</label>
-              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Weekly Threat Summary" className="bg-secondary/30" />
+            <div><label className="mb-1.5 block text-sm font-medium">Report Type</label>
+              <Select value={reportType} onValueChange={setReportType}>
+                <SelectTrigger className="bg-secondary/30"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {REPORT_TYPES.map(rt => (
+                    <SelectItem key={rt.value} value={rt.value}>{rt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedType && <p className="text-xs text-muted-foreground mt-1.5">{selectedType.desc}</p>}
             </div>
-            <div><label className="mb-1.5 block text-sm font-medium">Format</label>
+            <div><label className="mb-1.5 block text-sm font-medium">Report Title (optional)</label>
+              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={selectedType?.label || 'e.g. Weekly Threat Summary'} className="bg-secondary/30" />
+            </div>
+            <div><label className="mb-1.5 block text-sm font-medium">Output Format</label>
               <Select value={format} onValueChange={v => setFormat(v as ReportFormat)}>
                 <SelectTrigger className="bg-secondary/30"><SelectValue /></SelectTrigger>
                 <SelectContent>

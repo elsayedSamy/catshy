@@ -11,11 +11,11 @@ const navSections = [
   {
     title: 'Core',
     items: [
-      { label: 'Mission Control', path: '/dashboard', icon: Home },
-      { label: 'Assets', path: '/assets', icon: Database },
-      { label: 'Source Catalog', path: '/sources', icon: Radio },
+      { label: 'Dashboard', path: '/dashboard', icon: Home },
       { label: 'Intel Feed', path: '/feed', icon: Rss },
       { label: 'Global Search', path: '/search', icon: Search },
+      { label: 'Assets', path: '/assets', icon: Database },
+      { label: 'Source Catalog', path: '/sources', icon: Radio },
     ],
   },
   {
