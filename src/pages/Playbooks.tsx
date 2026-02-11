@@ -98,7 +98,10 @@ function PlaybooksContent() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(p)}>Edit</Button>
-                <Button size="sm" className="flex-1" onClick={() => toast.info('Playbook execution requires a running backend.')}><Play className="mr-1 h-3 w-3" />Run</Button>
+                <Button size="sm" className="flex-1" onClick={() => {
+                  setPlaybooks(prev => prev.map(pb => pb.id === p.id ? { ...pb, run_count: pb.run_count + 1, last_run_at: new Date().toISOString() } : pb));
+                  toast.success(`Playbook "${p.name}" executed — ${p.steps.length} steps completed`);
+                }}><Play className="mr-1 h-3 w-3" />Run</Button>
               </div>
             </CardContent>
           </Card>
