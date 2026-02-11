@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { RoleGate } from '@/components/FeatureGate';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useUsers, useAuditLogs, useHealth } from '@/hooks/useApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Shield, Users, Activity, Flag, Clock, AlertTriangle } from 'lucide-react';
+import { Shield, Users, Activity, Flag, Clock, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import type { FeatureFlags } from '@/types';
 
 const featureFlagLabels: Record<keyof FeatureFlags, { label: string; description: string }> = {
@@ -26,6 +26,9 @@ const featureFlagLabels: Record<keyof FeatureFlags, { label: string; description
 export default function Admin() {
   const { hasRole } = useAuth();
   const { flags, setFlag } = useFeatureFlags();
+  const { data: users = [] } = useUsers();
+  const { data: auditLogs = [] } = useAuditLogs();
+  const { data: health } = useHealth();
   const [torWarning, setTorWarning] = useState(false);
 
   if (!hasRole(['admin'])) {
@@ -38,10 +41,7 @@ export default function Admin() {
     );
   }
 
-  const handleTorToggle = (enabled: boolean) => {
-    if (enabled) { setTorWarning(true); return; }
-    setFlag('leaks_tor', false);
-  };
+  const handleTorToggle = (enabled: boolean) => { if (enabled) { setTorWarning(true); return; } setFlag('leaks_tor', false); };
 
   return (
     <div className="space-y-6">
@@ -49,8 +49,8 @@ export default function Admin() {
       <Tabs defaultValue="flags">
         <TabsList className="bg-secondary/50 border border-border">
           <TabsTrigger value="flags" className="text-xs"><Flag className="mr-1 h-3 w-3" />Feature Flags</TabsTrigger>
-          <TabsTrigger value="users" className="text-xs"><Users className="mr-1 h-3 w-3" />Users</TabsTrigger>
-          <TabsTrigger value="audit" className="text-xs"><Clock className="mr-1 h-3 w-3" />Audit Log</TabsTrigger>
+          <TabsTrigger value="users" className="text-xs"><Users className="mr-1 h-3 w-3" />Users ({users.length})</TabsTrigger>
+          <TabsTrigger value="audit" className="text-xs"><Clock className="mr-1 h-3 w-3" />Audit Log ({auditLogs.length})</TabsTrigger>
           <TabsTrigger value="system" className="text-xs"><Activity className="mr-1 h-3 w-3" />System</TabsTrigger>
         </TabsList>
 
@@ -59,10 +59,7 @@ export default function Admin() {
             <Card key={key} className={`border-border bg-card ${key === 'leaks_tor' ? 'border-l-2 border-l-warning' : ''}`}>
               <CardContent className="flex items-center justify-between p-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-sm">{featureFlagLabels[key].label}</p>
-                    {key === 'leaks_tor' && <Badge className="bg-warning/20 text-warning text-xs">Sensitive</Badge>}
-                  </div>
+                  <div className="flex items-center gap-2"><p className="font-medium text-sm">{featureFlagLabels[key].label}</p>{key === 'leaks_tor' && <Badge className="bg-warning/20 text-warning text-xs">Sensitive</Badge>}</div>
                   <p className="text-xs text-muted-foreground">{featureFlagLabels[key].description}</p>
                 </div>
                 <Switch checked={flags[key]} onCheckedChange={v => key === 'leaks_tor' ? handleTorToggle(v) : setFlag(key, v)} />
@@ -72,30 +69,52 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="users" className="mt-4">
-          <Card className="border-border bg-card"><CardContent className="p-6 text-center text-sm text-muted-foreground">
-            User management connects to the FastAPI backend. Configure users via the API or the admin bootstrap script.
-          </CardContent></Card>
+          {users.length === 0 ? (
+            <Card className="border-border bg-card"><CardContent className="p-6 text-center text-sm text-muted-foreground">
+              No users loaded. Connect to the backend to manage users, or use the admin bootstrap script.
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-2">{users.map((u: any) => (
+              <Card key={u.id} className="border-border bg-card"><CardContent className="flex items-center justify-between p-4">
+                <div><p className="font-medium text-sm">{u.name}</p><p className="text-xs text-muted-foreground">{u.email}</p></div>
+                <div className="flex items-center gap-2"><Badge variant="outline" className="capitalize text-xs">{u.role}</Badge>{u.is_active ? <CheckCircle2 className="h-4 w-4 text-success" /> : <XCircle className="h-4 w-4 text-destructive" />}</div>
+              </CardContent></Card>
+            ))}</div>
+          )}
         </TabsContent>
 
         <TabsContent value="audit" className="mt-4">
-          <Card className="border-border bg-card"><CardContent className="p-6 text-center text-sm text-muted-foreground">
-            Audit logs are stored in PostgreSQL and queryable via the API. All user actions, source changes, and exports are logged.
-          </CardContent></Card>
+          {auditLogs.length === 0 ? (
+            <Card className="border-border bg-card"><CardContent className="p-6 text-center text-sm text-muted-foreground">
+              No audit logs loaded. Audit logs are recorded when the backend is connected.
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-2">{auditLogs.map((log: any) => (
+              <Card key={log.id} className="border-border bg-card"><CardContent className="flex items-center justify-between p-3">
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="text-xs">{log.action}</Badge>
+                  <span className="text-sm">{log.entity_type}</span>
+                  <span className="text-xs text-muted-foreground">{log.user_email}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">{new Date(log.timestamp).toLocaleString()}</span>
+              </CardContent></Card>
+            ))}</div>
+          )}
         </TabsContent>
 
         <TabsContent value="system" className="mt-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: 'API Server', status: 'Connect backend', icon: Activity },
-              { label: 'PostgreSQL', status: 'Connect backend', icon: Activity },
-              { label: 'Redis', status: 'Connect backend', icon: Activity },
-              { label: 'Celery Workers', status: 'Connect backend', icon: Activity },
+              { label: 'API Server', ok: !!health },
+              { label: 'PostgreSQL', ok: !!health },
+              { label: 'Redis', ok: !!health },
+              { label: 'Celery Workers', ok: !!health },
             ].map(s => (
               <Card key={s.label} className="border-border bg-card">
                 <CardContent className="p-4 text-center">
-                  <s.icon className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                  {s.ok ? <CheckCircle2 className="h-6 w-6 text-success mx-auto mb-2" /> : <XCircle className="h-6 w-6 text-muted-foreground mx-auto mb-2" />}
                   <p className="font-medium text-sm">{s.label}</p>
-                  <p className="text-xs text-muted-foreground">{s.status}</p>
+                  <p className="text-xs text-muted-foreground">{s.ok ? 'Connected' : 'Not connected'}</p>
                 </CardContent>
               </Card>
             ))}
@@ -103,13 +122,12 @@ export default function Admin() {
         </TabsContent>
       </Tabs>
 
-      {/* TOR Warning Dialog */}
       {torWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <Card className="max-w-md border-warning/30 bg-card">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-3"><AlertTriangle className="h-6 w-6 text-warning" /><h3 className="text-lg font-semibold">Enable TOR Connectors</h3></div>
-              <p className="text-sm text-muted-foreground">Enabling TOR dark web monitoring may have legal implications depending on your jurisdiction. This action is audit-logged and only available to administrators.</p>
+              <p className="text-sm text-muted-foreground">Enabling TOR dark web monitoring may have legal implications. This action is audit-logged and only available to administrators.</p>
               <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
                 <li>All TOR connector activity is logged in the audit trail</li>
                 <li>Ensure compliance with your organization's security policies</li>
@@ -117,9 +135,7 @@ export default function Admin() {
               </ul>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setTorWarning(false)}>Cancel</Button>
-                <Button className="bg-warning text-warning-foreground hover:bg-warning/90" onClick={() => { setFlag('leaks_tor', true); setTorWarning(false); }}>
-                  I Understand — Enable TOR
-                </Button>
+                <Button className="bg-warning text-warning-foreground hover:bg-warning/90" onClick={() => { setFlag('leaks_tor', true); setTorWarning(false); }}>I Understand — Enable TOR</Button>
               </div>
             </CardContent>
           </Card>
