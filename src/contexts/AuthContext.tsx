@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Dev mode only when explicitly enabled
       const devUser: User = {
         id: 'dev-admin', email: 'admin@catshy.local', name: 'Dev Admin',
-        role: 'admin', created_at: new Date().toISOString(), is_active: true,
+        role: 'system_owner', roles: ['system_owner', 'user'], created_at: new Date().toISOString(), is_active: true,
       };
       api.setDevMode(true);
       setIsDevMode(true);
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Dev mode fallback — accept any credentials
       const devUser: User = {
         id: 'dev-admin', email, name: email.split('@')[0] || 'Dev User',
-        role: 'admin', created_at: new Date().toISOString(), is_active: true,
+        role: 'system_owner', roles: ['system_owner', 'user'], created_at: new Date().toISOString(), is_active: true,
       };
       api.setDevMode(true);
       api.setToken('dev-token');

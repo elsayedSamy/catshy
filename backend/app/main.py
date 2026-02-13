@@ -5,9 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import engine, Base, async_session
-from app.routers import auth, assets, sources, feed, search, entities, alerts, cases, reports, leaks, admin, health
+from app.routers import auth, health
+from app.routers.all_routers import (
+    assets_router, sources_router, feed_router, search_router,
+    entities_router, alerts_router, cases_router, reports_router,
+    leaks_router, admin_router, health_router,
+)
 from app.routers.dashboard import dashboard_router, map_router
 from app.routers.threats import threats_router, reports_gen_router
+from app.routers.system import router as system_router
 from app.middleware.audit import AuditMiddleware
 from app.services.admin_seed import seed_admin
 from app.services.mail import validate_smtp_config
@@ -50,16 +56,17 @@ app.add_middleware(AuditMiddleware)
 # Register routers
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
-app.include_router(sources.router, prefix="/api/sources", tags=["sources"])
-app.include_router(feed.router, prefix="/api/feed", tags=["feed"])
-app.include_router(search.router, prefix="/api/search", tags=["search"])
-app.include_router(entities.router, prefix="/api/entities", tags=["entities"])
-app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
-app.include_router(cases.router, prefix="/api/cases", tags=["cases"])
-app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
-app.include_router(leaks.router, prefix="/api/leaks", tags=["leaks"])
-app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(system_router, prefix="/api/system", tags=["system"])
+app.include_router(assets_router, prefix="/api/assets", tags=["assets"])
+app.include_router(sources_router, prefix="/api/sources", tags=["sources"])
+app.include_router(feed_router, prefix="/api/feed", tags=["feed"])
+app.include_router(search_router, prefix="/api/search", tags=["search"])
+app.include_router(entities_router, prefix="/api/entities", tags=["entities"])
+app.include_router(alerts_router, prefix="/api/alerts", tags=["alerts"])
+app.include_router(cases_router, prefix="/api/cases", tags=["cases"])
+app.include_router(reports_router, prefix="/api/reports", tags=["reports"])
+app.include_router(leaks_router, prefix="/api/leaks", tags=["leaks"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(map_router, prefix="/api/map", tags=["map"])
 app.include_router(threats_router, prefix="/api/threats", tags=["threats"])

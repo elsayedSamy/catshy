@@ -122,7 +122,7 @@ function LeaksContent() {
               <p className="text-[10px] text-muted-foreground">TOR/dark web connectors are {torEnabled ? 'enabled — use with caution' : 'disabled'}.</p>
             </div>
           </div>
-          {hasRole(['admin']) && (
+          {hasRole(['system_owner']) && (
             torEnabled ? (
               <Button variant="destructive" size="sm" className="text-xs" onClick={() => { setFlag('leaks_tor', false); toast.success('TOR sources disabled'); }}>
                 <Lock className="mr-1 h-3 w-3" />Disable TOR

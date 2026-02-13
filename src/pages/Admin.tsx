@@ -68,7 +68,7 @@ function InviteUserDialog() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<UserRole>('analyst');
+  const [role, setRole] = useState<UserRole>('user');
   const [loading, setLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const { isDevMode } = useAuth();
@@ -96,7 +96,7 @@ function InviteUserDialog() {
         }
         toast.success(`Invite sent to ${email}`);
         setOpen(false);
-        setEmail(''); setName(''); setRole('analyst');
+        setEmail(''); setName(''); setRole('user');
       }
     } catch (err: any) {
       toast.error(err.message);
@@ -543,7 +543,7 @@ export default function Admin() {
 
   const allLogs = auditLogs.length > 0 ? auditLogs : DEMO_AUDIT;
 
-  if (!hasRole(['admin'])) {
+  if (!hasRole(['system_owner', 'team_admin'])) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center">
         <Shield className="h-12 w-12 text-muted-foreground mb-4" />

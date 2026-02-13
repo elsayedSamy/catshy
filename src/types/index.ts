@@ -1,13 +1,15 @@
 // ── Auth & RBAC ──
-export type UserRole = 'admin' | 'analyst' | 'hunter' | 'manager' | 'readonly';
+export type UserRole = 'system_owner' | 'team_admin' | 'team_member' | 'user';
 
 export interface User {
   id: string;
   email: string;
   name: string;
   role: UserRole;
+  roles?: UserRole[];
   created_at: string;
   is_active: boolean;
+  mfa_enabled?: boolean;
 }
 
 export interface AuthState {

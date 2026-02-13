@@ -26,12 +26,14 @@ class Settings(BaseSettings):
     # Report branding
     REPORT_COMPANY_NAME: str = "CATSHY"
 
-    # ── Admin Seed ──
+    # ── Admin / System Owner Seed ──
     ADMIN_EMAIL: str = ""
     ADMIN_PASSWORD: str = ""
     ADMIN_NAME: str = "Admin"
     ADMIN_FORCE_CHANGE_PASSWORD: bool = False
     DEV_AUTO_ADMIN: bool = False
+    # System owner MFA enforcement
+    SYSTEM_OWNER_REQUIRE_MFA: bool = True
 
     # ── SMTP (Gmail) ──
     SMTP_HOST: str = ""
