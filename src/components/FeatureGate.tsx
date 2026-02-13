@@ -32,7 +32,7 @@ export function FeatureGate({ feature, children, moduleName, description }: Feat
         {description || `The ${moduleName} module is currently disabled. An administrator can enable this module from the Admin Panel → Feature Flags.`}
       </p>
       <div className="flex gap-3">
-        {hasRole(['admin']) && (
+        {hasRole(['system_owner', 'team_admin']) && (
           <>
             <Button onClick={() => setFlag(feature, true)} className="glow-cyan">
               <Shield className="mr-2 h-4 w-4" />
