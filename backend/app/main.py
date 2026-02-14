@@ -14,6 +14,8 @@ from app.routers.all_routers import (
 from app.routers.dashboard import dashboard_router, map_router
 from app.routers.threats import threats_router, reports_gen_router
 from app.routers.system import router as system_router
+from app.routers.map_incidents import router as map_incidents_router
+from app.routers.feedback import router as feedback_router
 from app.middleware.audit import AuditMiddleware
 from app.services.admin_seed import seed_admin
 from app.services.mail import validate_smtp_config
@@ -71,3 +73,5 @@ app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"]
 app.include_router(map_router, prefix="/api/map", tags=["map"])
 app.include_router(threats_router, prefix="/api/threats", tags=["threats"])
 app.include_router(reports_gen_router, prefix="/api/threats/reports", tags=["threat-reports"])
+app.include_router(map_incidents_router, prefix="/api/map", tags=["map-incidents"])
+app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
