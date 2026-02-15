@@ -23,7 +23,7 @@ import Investigations from "./pages/Investigations";
 import Cases from "./pages/Cases";
 import Reports from "./pages/Reports";
 import Leaks from "./pages/Leaks";
-import ThreatMap from "./pages/ThreatMap";
+import GlobalThreats from "./pages/GlobalThreats";
 import Playbooks from "./pages/Playbooks";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
@@ -70,7 +70,7 @@ const App = () => (
               <Route path="cases" element={<Cases />} />
               <Route path="reports" element={<Reports />} />
               <Route path="leaks" element={<Leaks />} />
-              <Route path="threat-map" element={<ThreatMap />} />
+              <Route path="global-threats" element={<GlobalThreats />} />
               <Route path="playbooks" element={<Playbooks />} />
               <Route path="integrations" element={<Integrations />} />
               <Route path="connectors" element={<Connectors />} />
