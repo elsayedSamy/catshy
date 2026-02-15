@@ -158,3 +158,44 @@ export const useDashboardMapEvents = (range: string) => useQuery({
   }>(`/map/summary?range=${range}`),
   enabled: enabled(), retry: 1,
 });
+
+// Dashboard Pulse
+export const useDashboardPulse = (range: string) => useQuery({
+  queryKey: ['dashboard-pulse', range],
+  queryFn: () => api.get<{
+    newIntel: number; criticalCves: number; leakItems: number;
+    phishingSpikes: number; malwareSpikes: number;
+  }>(`/dashboard/pulse?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Changes
+export const useDashboardChanges = (range: string) => useQuery({
+  queryKey: ['dashboard-changes', range],
+  queryFn: () => api.get<{
+    sourceSpikes: { name: string; count: number; delta: number }[];
+    trendingKeywords: { keyword: string; count: number }[];
+    mostTargetedAssets: { value: string; count: number }[];
+  }>(`/dashboard/changes?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Map Incidents (real geo data)
+export const useMapIncidents = (params: {
+  range?: string; severity?: string; relevant_only?: boolean; cluster?: boolean;
+}) => useQuery({
+  queryKey: ['map-incidents', params],
+  queryFn: () => {
+    const sp = new URLSearchParams();
+    if (params.range) sp.set('range', params.range);
+    if (params.severity) sp.set('severity', params.severity);
+    if (params.relevant_only) sp.set('relevant_only', 'true');
+    if (params.cluster !== undefined) sp.set('cluster', String(params.cluster));
+    return api.get<{
+      type: string; count: number;
+      incidents?: { id: string; lat: number; lon: number; country?: string; country_name?: string; city?: string; title: string; severity: string; asset_match: boolean; confidence: number; risk: number; source_name: string; campaign?: string; timestamp: string }[];
+      clusters?: { lat: number; lon: number; count: number; severity_max: string; has_asset_match: boolean; countries: string[]; sample_titles: string[] }[];
+    }>(`/map/incidents?${sp.toString()}`);
+  },
+  enabled: enabled(), retry: 1,
+});
