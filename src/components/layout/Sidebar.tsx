@@ -34,7 +34,7 @@ const navSections = [
     title: 'Advanced',
     items: [
       { label: 'Leak Hub', path: '/leaks', icon: AlertTriangle },
-      { label: 'Global Threats', path: '/global-threats', icon: MapIcon },
+      { label: '3D Global Threats', path: '/3d-global-threats', icon: MapIcon },
       { label: 'Playbooks', path: '/playbooks', icon: Workflow },
     ],
   },

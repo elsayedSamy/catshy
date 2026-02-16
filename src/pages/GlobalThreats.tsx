@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,12 +9,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Map, ZoomIn, ZoomOut, Filter, Rss, AlertTriangle, Shield, ChevronRight,
-  Target, Brain, CheckCircle, Crosshair, Layers, Clock, Radio
+  ZoomIn, ZoomOut, Rss, AlertTriangle, Shield,
+  Target, Brain, CheckCircle, Crosshair, Layers, Clock, Radio,
+  RotateCcw, RefreshCw
 } from 'lucide-react';
 import { useMapIncidents, useCreateCase } from '@/hooks/useApi';
 import { toast } from '@/hooks/use-toast';
-import type { IntelItem } from '@/types';
 
 const SEV_COLORS: Record<string, string> = {
   critical: '239, 68, 68',
@@ -32,6 +31,12 @@ const SEV_BADGE: Record<string, string> = {
   low: 'bg-primary/10 text-primary border-primary/20',
   info: 'bg-muted text-muted-foreground border-border',
 };
+
+const THREAT_LEVELS = [
+  { label: 'L1 — LOW', color: '#eab308', key: 'low' },
+  { label: 'L2 — MEDIUM', color: '#f97316', key: 'medium' },
+  { label: 'L3 — HIGH / CRITICAL', color: '#ef4444', key: 'high' },
+];
 
 function projectMercator(lat: number, lon: number, w: number, h: number): [number, number] {
   const x = (lon + 180) * (w / 360);
@@ -73,7 +78,6 @@ export default function GlobalThreats() {
   const [severity, setSeverity] = useState<string>('all');
   const [relevantOnly, setRelevantOnly] = useState(false);
   const [liveToggle, setLiveToggle] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(true);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
 
@@ -95,7 +99,6 @@ export default function GlobalThreats() {
     cluster: true,
   });
 
-  // Auto-refresh when live
   useEffect(() => {
     if (!liveToggle) return;
     const timer = setInterval(() => refetch(), 15000);
@@ -125,7 +128,6 @@ export default function GlobalThreats() {
     timeRef.current += 0.015;
     const pulse = Math.sin(timeRef.current * 3) * 0.5 + 0.5;
 
-    // Dark background
     ctx.fillStyle = 'hsl(220, 20%, 5%)';
     ctx.fillRect(0, 0, W, H);
 
@@ -145,11 +147,10 @@ export default function GlobalThreats() {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
     }
 
-    // Equator + meridian
+    // Equator + prime meridian
     ctx.strokeStyle = 'rgba(6, 182, 212, 0.08)';
-    const [, eqY] = projectMercator(0, 0, W, H);
+    const [pmX, eqY] = projectMercator(0, 0, W, H);
     ctx.beginPath(); ctx.moveTo(0, eqY); ctx.lineTo(W, eqY); ctx.stroke();
-    const [pmX] = projectMercator(0, 0, W, H);
     ctx.beginPath(); ctx.moveTo(pmX, 0); ctx.lineTo(pmX, H); ctx.stroke();
 
     // Scan line
@@ -162,26 +163,23 @@ export default function GlobalThreats() {
     ctx.lineWidth = 2 / zoom;
     ctx.beginPath(); ctx.moveTo(scanX, 0); ctx.lineTo(scanX, H); ctx.stroke();
 
-    // Plot incidents/clusters
+    // Plot
     const positions: { x: number; y: number; incident: Incident }[] = [];
     for (const p of points) {
       const [x, y] = projectMercator(p.lat, p.lon, W, H);
       const rgb = SEV_COLORS[p.severity] || SEV_COLORS.info;
       const radius = Math.min(16, 3 + Math.sqrt(p.count) * 2) / zoom;
 
-      // Outer glow
       ctx.beginPath();
       ctx.arc(x, y, radius + 6 / zoom + pulse * 4 / zoom, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${rgb}, ${0.04 + pulse * 0.04})`;
       ctx.fill();
 
-      // Main dot
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${rgb}, 0.75)`;
       ctx.fill();
 
-      // Asset match ring
       if (p.has_asset_match) {
         ctx.strokeStyle = 'rgba(16, 185, 129, 0.9)';
         ctx.lineWidth = 2 / zoom;
@@ -190,7 +188,6 @@ export default function GlobalThreats() {
         ctx.stroke();
       }
 
-      // Count label for clusters
       if (p.count > 1) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.font = `bold ${Math.max(9, 11 / zoom)}px "JetBrains Mono", monospace`;
@@ -200,7 +197,6 @@ export default function GlobalThreats() {
       }
     }
 
-    // Store incident positions for click detection
     for (const inc of incidents) {
       const [x, y] = projectMercator(inc.lat, inc.lon, W, H);
       positions.push({ x: x * zoom + pan.x, y: y * zoom + pan.y, incident: inc });
@@ -230,7 +226,6 @@ export default function GlobalThreats() {
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [draw, isLoading]);
 
-  // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = true;
     lastMouse.current = { x: e.clientX, y: e.clientY };
@@ -278,99 +273,34 @@ export default function GlobalThreats() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
-      {/* Filter Sidebar */}
-      {filterOpen && (
-        <motion.div initial={{ x: -280 }} animate={{ x: 0 }} className="w-[280px] shrink-0 border-r border-border bg-card overflow-y-auto">
-          <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Filter className="h-4 w-4 text-primary" />Filters
-              </h3>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFilterOpen(false)}>
-                <ChevronRight className="h-3 w-3 rotate-180" />
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Time Range</Label>
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger className="h-8 text-xs bg-secondary/50 border-border">
-                  <Clock className="h-3 w-3 mr-1" /><SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1h">Last 1 hour</SelectItem>
-                  <SelectItem value="6h">Last 6 hours</SelectItem>
-                  <SelectItem value="24h">Last 24 hours</SelectItem>
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Severity</Label>
-              <Select value={severity} onValueChange={setSeverity}>
-                <SelectTrigger className="h-8 text-xs bg-secondary/50 border-border">
-                  <Layers className="h-3 w-3 mr-1" /><SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Severities</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="relevant-only" className="text-xs text-muted-foreground cursor-pointer">Asset Matched Only</Label>
-              <Switch id="relevant-only" checked={relevantOnly} onCheckedChange={setRelevantOnly} className="h-4 w-7" />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="live-toggle" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
-                <Radio className="h-3 w-3" />Live Updates
-              </Label>
-              <Switch id="live-toggle" checked={liveToggle} onCheckedChange={setLiveToggle} className="h-4 w-7" />
-            </div>
-
-            {/* Legend */}
-            <div className="pt-2 border-t border-border">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Legend</p>
-              <div className="space-y-1">
-                {Object.entries(SEV_COLORS).map(([sev, rgb]) => (
-                  <div key={sev} className="flex items-center gap-2">
-                    <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: `rgb(${rgb})` }} />
-                    <span className="text-[10px] text-muted-foreground capitalize">{sev}</span>
-                  </div>
-                ))}
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="h-2.5 w-2.5 rounded-full border-2 border-accent" />
-                  <span className="text-[10px] text-muted-foreground">Asset Match</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Map Canvas */}
+    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden -m-4">
+      {/* LEFT — Full cinematic map */}
       <div className="flex-1 relative">
-        {!filterOpen && (
-          <Button variant="outline" size="icon" className="absolute top-3 left-3 z-10 h-8 w-8 bg-card/80 backdrop-blur" onClick={() => setFilterOpen(true)}>
-            <Filter className="h-3.5 w-3.5" />
-          </Button>
-        )}
+        {/* Threat Levels floating panel */}
+        <div className="absolute top-4 left-4 z-10 rounded-lg border border-border bg-card/90 backdrop-blur-sm px-3 py-2.5 space-y-1.5">
+          <p className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider mb-1">Threat Levels</p>
+          {THREAT_LEVELS.map(tl => (
+            <div key={tl.key} className="flex items-center gap-2">
+              <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tl.color }} />
+              <span className="text-[10px] font-mono text-muted-foreground">{tl.label}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-2 pt-1 border-t border-border mt-1">
+            <div className="h-2.5 w-2.5 rounded-full border-2 border-accent" />
+            <span className="text-[10px] font-mono text-muted-foreground">Asset Match</span>
+          </div>
+        </div>
 
-        {/* Zoom controls */}
-        <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-card/80 backdrop-blur" onClick={() => { zoomRef.current = Math.min(5, zoomRef.current + 0.3); }}>
+        {/* Zoom + Reset controls */}
+        <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-1">
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-card/90 backdrop-blur-sm border-border" onClick={() => { zoomRef.current = Math.min(5, zoomRef.current + 0.3); }}>
             <ZoomIn className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-card/80 backdrop-blur" onClick={() => { zoomRef.current = Math.max(0.5, zoomRef.current - 0.3); }}>
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-card/90 backdrop-blur-sm border-border" onClick={() => { zoomRef.current = Math.max(0.5, zoomRef.current - 0.3); }}>
             <ZoomOut className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-card/90 backdrop-blur-sm border-border" onClick={() => { zoomRef.current = 1; panRef.current = { x: 0, y: 0 }; }}>
+            <RotateCcw className="h-3.5 w-3.5" />
           </Button>
         </div>
 
@@ -390,10 +320,62 @@ export default function GlobalThreats() {
         )}
       </div>
 
-      {/* Right Panel — Threat Feed / Incidents */}
-      <div className="w-[320px] shrink-0 border-l border-border bg-card overflow-y-auto">
-        <Tabs defaultValue="feed" className="h-full flex flex-col">
-          <TabsList className="mx-3 mt-3 shrink-0 bg-secondary/50">
+      {/* RIGHT PANEL — Threat Feed / Incidents */}
+      <div className="w-[340px] shrink-0 border-l border-border bg-card flex flex-col">
+        {/* Panel Header with controls */}
+        <div className="px-3 pt-3 pb-2 border-b border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-foreground">Intelligence</h2>
+            <div className="flex items-center gap-1.5">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+              <div className="flex items-center gap-1">
+                <Switch id="live-global" checked={liveToggle} onCheckedChange={setLiveToggle} className="h-4 w-7" />
+                <Label htmlFor="live-global" className="text-[10px] text-muted-foreground cursor-pointer flex items-center gap-0.5">
+                  <Radio className="h-2.5 w-2.5" />Live
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          {/* Filters row */}
+          <div className="flex items-center gap-1.5">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="h-7 flex-1 text-[10px] bg-secondary/50 border-border">
+                <Clock className="h-2.5 w-2.5 mr-1" /><SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1h">1 hour</SelectItem>
+                <SelectItem value="6h">6 hours</SelectItem>
+                <SelectItem value="24h">24 hours</SelectItem>
+                <SelectItem value="7d">7 days</SelectItem>
+                <SelectItem value="30d">30 days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={severity} onValueChange={setSeverity}>
+              <SelectTrigger className="h-7 flex-1 text-[10px] bg-secondary/50 border-border">
+                <Layers className="h-2.5 w-2.5 mr-1" /><SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="rel-only" className="text-[10px] text-muted-foreground cursor-pointer">Asset Matched Only</Label>
+            <Switch id="rel-only" checked={relevantOnly} onCheckedChange={setRelevantOnly} className="h-4 w-7" />
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="feed" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="mx-3 mt-2 shrink-0 bg-secondary/50">
             <TabsTrigger value="feed" className="text-xs">
               <Rss className="h-3 w-3 mr-1" />Threat Feed
             </TabsTrigger>
@@ -402,7 +384,7 @@ export default function GlobalThreats() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="feed" className="flex-1 overflow-y-auto px-3 pb-3">
+          <TabsContent value="feed" className="flex-1 overflow-y-auto px-3 pb-3 scrollbar-thin">
             {incidents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Rss className="h-8 w-8 text-muted-foreground/20 mb-2" />
@@ -432,7 +414,7 @@ export default function GlobalThreats() {
             )}
           </TabsContent>
 
-          <TabsContent value="incidents" className="flex-1 overflow-y-auto px-3 pb-3">
+          <TabsContent value="incidents" className="flex-1 overflow-y-auto px-3 pb-3 scrollbar-thin">
             {clusters.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Target className="h-8 w-8 text-muted-foreground/20 mb-2" />
@@ -457,26 +439,24 @@ export default function GlobalThreats() {
         </Tabs>
       </div>
 
-      {/* AI Threat Analysis Panel */}
+      {/* AI Threat Analysis Drawer */}
       <Sheet open={analysisOpen} onOpenChange={setAnalysisOpen}>
         <SheetContent className="w-[480px] bg-card border-border overflow-y-auto">
           {selectedIncident && (
             <>
               <SheetHeader>
                 <SheetTitle className="text-foreground flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-primary" />Threat Analysis
+                  <Brain className="h-5 w-5 text-primary" />AI Threat Analysis
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-6 space-y-5">
-                {/* Title + severity */}
                 <div>
-                  <Badge variant="outline" className={`${SEV_BADGE[selectedIncident.severity]}`}>{selectedIncident.severity}</Badge>
+                  <Badge variant="outline" className={SEV_BADGE[selectedIncident.severity]}>{selectedIncident.severity}</Badge>
                   <h3 className="text-sm font-medium text-foreground mt-2">{selectedIncident.title}</h3>
                   <p className="text-xs text-muted-foreground mt-1">Source: {selectedIncident.source_name}</p>
                   {selectedIncident.country_name && <p className="text-xs text-muted-foreground">Location: {selectedIncident.country_name}{selectedIncident.city ? `, ${selectedIncident.city}` : ''}</p>}
                 </div>
 
-                {/* Risk score breakdown */}
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
                     <Crosshair className="h-3 w-3" />Risk Score Breakdown
@@ -497,7 +477,6 @@ export default function GlobalThreats() {
                   </div>
                 </div>
 
-                {/* Evidence */}
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
                     <Shield className="h-3 w-3" />Evidence
@@ -509,7 +488,6 @@ export default function GlobalThreats() {
                   </div>
                 </div>
 
-                {/* Reasoning */}
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
                     <Brain className="h-3 w-3" />Reasoning
@@ -524,7 +502,6 @@ export default function GlobalThreats() {
                   </div>
                 </div>
 
-                {/* Suggested Action */}
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
                     <CheckCircle className="h-3 w-3" />Suggested Action
@@ -541,13 +518,7 @@ export default function GlobalThreats() {
                   </div>
                 </div>
 
-                {/* Accept & Mobilize */}
-                <Button
-                  className="w-full"
-                  size="sm"
-                  onClick={handleAcceptMobilize}
-                  disabled={createCase.isPending}
-                >
+                <Button className="w-full" size="sm" onClick={handleAcceptMobilize} disabled={createCase.isPending}>
                   <CheckCircle className="mr-2 h-4 w-4" />
                   {createCase.isPending ? 'Creating...' : 'Accept & Mobilize'}
                 </Button>
