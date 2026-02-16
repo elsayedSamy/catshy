@@ -127,6 +127,8 @@ export default function Dashboard() {
               incidents={mapIncidents?.incidents ?? []}
               clusters={mapIncidents?.clusters ?? []}
               isLoading={mapIncidentsLoading}
+              timeRange={timeRange}
+              onTimeRangeChange={setTimeRange}
             />
           )}
 
