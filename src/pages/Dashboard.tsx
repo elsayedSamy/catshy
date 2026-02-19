@@ -1,39 +1,32 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Clock, Layers, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History, Globe } from 'lucide-react';
+import { Search, Clock, Layers, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { KpiCards } from '@/components/dashboard/KpiCards';
-import { ThreatMapWidget } from '@/components/dashboard/ThreatMapWidget';
 import { TriageQueue } from '@/components/dashboard/TriageQueue';
 import { ThreatPulse } from '@/components/dashboard/ThreatPulse';
 import { WhatChanged } from '@/components/dashboard/WhatChanged';
-import { MapPreview } from '@/components/dashboard/MapPreview';
 import { AssetHotlist } from '@/components/dashboard/AssetHotlist';
 import { TopThreats } from '@/components/dashboard/TopThreats';
 import { LiveFeedWidget } from '@/components/dashboard/LiveFeedWidget';
 import { TopCountries } from '@/components/dashboard/TopCountries';
 import { TopCves } from '@/components/dashboard/TopCves';
-import { useDashboardKpis, useDashboardFeed, useDashboardMapEvents, useDashboardPulse, useDashboardChanges, useMapIncidents } from '@/hooks/useApi';
+import { useDashboardKpis, useDashboardFeed, useDashboardMapEvents, useDashboardPulse, useDashboardChanges } from '@/hooks/useApi';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [timeRange, setTimeRange] = useState('24h');
-  const [myAssetsFirst, setMyAssetsFirst] = useState(false);
-  const [showGlobe, setShowGlobe] = useState(false);
 
   const { data: kpis, isLoading: kpisLoading, refetch: refetchKpis } = useDashboardKpis(timeRange);
   const { data: feedData, isLoading: feedLoading, refetch: refetchFeed } = useDashboardFeed(timeRange);
   const { data: mapData, isLoading: mapLoading, refetch: refetchMap } = useDashboardMapEvents(timeRange);
   const { data: pulseData, isLoading: pulseLoading } = useDashboardPulse(timeRange);
   const { data: changesData, isLoading: changesLoading } = useDashboardChanges(timeRange);
-  const { data: mapIncidents, isLoading: mapIncidentsLoading } = useMapIncidents({ range: timeRange, cluster: true });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,12 +80,6 @@ export default function Dashboard() {
               <SelectItem value="ips">IP Ranges</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-1.5 border-l border-border pl-2">
-            <Switch id="globe-toggle" checked={showGlobe} onCheckedChange={setShowGlobe} className="h-4 w-7" />
-            <Label htmlFor="globe-toggle" className="text-[10px] text-muted-foreground cursor-pointer flex items-center gap-1">
-              <Globe className="h-3 w-3" />Globe
-            </Label>
-          </div>
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleRefreshAll}>
             <RefreshCw className="h-3 w-3 mr-1" />Refresh
           </Button>
@@ -114,24 +101,6 @@ export default function Dashboard() {
       {/* Main Content: Triage + Map/Globe + Side Panels */}
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4 min-w-0">
-          {/* Map Preview or Globe */}
-          {showGlobe ? (
-            <ThreatMapWidget
-              events={mapData?.events ?? []}
-              isLoading={mapLoading}
-              myAssetsFirst={myAssetsFirst}
-              onToggleMyAssets={setMyAssetsFirst}
-            />
-          ) : (
-            <MapPreview
-              incidents={mapIncidents?.incidents ?? []}
-              clusters={mapIncidents?.clusters ?? []}
-              isLoading={mapIncidentsLoading}
-              timeRange={timeRange}
-              onTimeRangeChange={setTimeRange}
-            />
-          )}
-
           {/* Triage Queue */}
           <TriageQueue items={feedData?.items ?? []} isLoading={feedLoading} />
         </div>
