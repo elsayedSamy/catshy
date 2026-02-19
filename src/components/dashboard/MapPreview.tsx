@@ -324,7 +324,7 @@ export function MapPreview({ incidents = [], clusters = [], isLoading, timeRange
                 variant="outline"
                 size="icon"
                 className="absolute top-3 right-3 h-7 w-7 bg-card/90 backdrop-blur-sm border-border"
-                onClick={() => navigate('/3d-global-threats')}
+                onClick={() => navigate('/global-threat-monitoring')}
                 title="Expand to full map"
               >
                 <Maximize2 className="h-3.5 w-3.5" />

@@ -70,8 +70,9 @@ const App = () => (
               <Route path="cases" element={<Cases />} />
               <Route path="reports" element={<Reports />} />
               <Route path="leaks" element={<Leaks />} />
-              <Route path="3d-global-threats" element={<GlobalThreats />} />
-              <Route path="global-threats" element={<Navigate to="/3d-global-threats" replace />} />
+              <Route path="global-threat-monitoring" element={<GlobalThreats />} />
+              <Route path="3d-global-threats" element={<Navigate to="/global-threat-monitoring" replace />} />
+              <Route path="global-threats" element={<Navigate to="/global-threat-monitoring" replace />} />
               <Route path="playbooks" element={<Playbooks />} />
               <Route path="integrations" element={<Integrations />} />
               <Route path="connectors" element={<Connectors />} />
