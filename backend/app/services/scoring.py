@@ -1,7 +1,23 @@
-"""Scoring service — confidence and risk scoring with explainability"""
+"""Scoring service — confidence and risk scoring with explainability.
+
+CONFIDENCE SCORE (0–100):
+  Deterministic weighted sum of four factors:
+    source_reputation  × 30  — Source reliability (0-1 from SourceStats)
+    corroboration      × 25  — Number of independent sources reporting same IOC (capped at 5)
+    evidence_quality   × 25  — Has excerpt (0.5) + has URL (0.5)
+    recency            × 20  — Decays linearly to 0 over 30 days
+
+RISK SCORE (0–100):
+  Deterministic weighted sum of four factors:
+    asset_relevance    × 35  — 1.0 if matched to org asset, else 0.0
+    severity           × 25  — critical=1.0, high=0.8, medium=0.5, low=0.3, info=0.1
+    asset_criticality  × 25  — Highest criticality of matched asset (same scale as severity)
+    prevalence         × 15  — dedup_count / 10, capped at 1.0
+"""
+
 
 def calculate_confidence_score(item: dict, source_reputation: float = 0.5, corroboration_count: int = 1) -> dict:
-    """Calculate confidence score with explainability breakdown"""
+    """Calculate confidence score (0–100) with explainability breakdown."""
     factors = {}
     # Source reputation (0-1)
     factors["source_reputation"] = {"value": source_reputation, "weight": 0.3, "description": f"Source reputation: {source_reputation:.0%}"}
@@ -19,15 +35,18 @@ def calculate_confidence_score(item: dict, source_reputation: float = 0.5, corro
     if item.get("published_at"):
         try:
             age_hours = (datetime.utcnow() - datetime.fromisoformat(str(item["published_at"]))).total_seconds() / 3600
-        except: pass
+        except Exception:
+            pass
     age_score = max(0, 1 - (age_hours / 720))  # Decays over 30 days
     factors["recency"] = {"value": age_score, "weight": 0.2, "description": f"Age: {age_hours:.0f} hours"}
-    # Weighted sum
-    total = sum(f["value"] * f["weight"] for f in factors.values())
-    return {"score": round(total, 3), "factors": factors}
+    # Weighted sum → scale to 0–100
+    raw = sum(f["value"] * f["weight"] for f in factors.values())
+    score = round(raw * 100)
+    return {"score": score, "score_normalized": raw, "factors": factors}
+
 
 def calculate_risk_score(item: dict, asset_relevance: float = 0.0, criticality: str = "medium") -> dict:
-    """Calculate risk score with explainability breakdown"""
+    """Calculate risk score (0–100) with explainability breakdown."""
     crit_map = {"critical": 1.0, "high": 0.8, "medium": 0.5, "low": 0.3, "info": 0.1}
     sev_map = {"critical": 1.0, "high": 0.8, "medium": 0.5, "low": 0.3, "info": 0.1}
     factors = {}
@@ -38,5 +57,6 @@ def calculate_risk_score(item: dict, asset_relevance: float = 0.0, criticality: 
     factors["asset_criticality"] = {"value": crit_score, "weight": 0.25, "description": f"Asset criticality: {criticality}"}
     factors["prevalence"] = {"value": min(item.get("dedup_count", 1) / 10.0, 1.0), "weight": 0.15,
                              "description": f"Seen {item.get('dedup_count', 1)} time(s)"}
-    total = sum(f["value"] * f["weight"] for f in factors.values())
-    return {"score": round(total, 3), "factors": factors}
+    raw = sum(f["value"] * f["weight"] for f in factors.values())
+    score = round(raw * 100)
+    return {"score": score, "score_normalized": raw, "factors": factors}
