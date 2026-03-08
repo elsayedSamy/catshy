@@ -73,10 +73,25 @@ export default function Dashboard() {
 
   const hasNoSetup = !kpis && !kpisLoading;
 
+  const { user } = useAuth();
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  })();
+
   return (
     <div className="w-full max-w-full space-y-4">
-      {/* Top Bar */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+      {/* Welcome + Top Bar */}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-foreground">{greeting}, {user?.name || 'Analyst'}</h1>
+            <p className="text-xs text-muted-foreground">Here's your threat intelligence overview</p>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <form onSubmit={handleSearch} className="flex-1 w-full min-w-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
