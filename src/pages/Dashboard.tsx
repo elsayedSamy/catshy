@@ -129,6 +129,13 @@ export default function Dashboard() {
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/reports')}>
             <FileText className="h-3 w-3 mr-1" />Report
           </Button>
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => {
+            const snapshot = { kpis, severityData, riskData, timeRange, exportedAt: new Date().toISOString() };
+            downloadJSON(snapshot, `catshy-dashboard-${timeRange}`);
+            toast.success('Dashboard snapshot exported');
+          }}>
+            <Download className="h-3 w-3 mr-1" />Export
+          </Button>
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/history')}>
             <History className="h-3 w-3 mr-1" />History
           </Button>
