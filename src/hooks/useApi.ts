@@ -367,3 +367,41 @@ export const useWorkspaces = () => useQuery({
   queryFn: () => api.get<WorkspaceInfo[]>('/workspaces/'),
   enabled: enabled(), retry: 1,
 });
+
+// ── Source Health & Streaming Observability ──
+
+export const useSourceHealth = (range: string) => useQuery({
+  queryKey: ['source-health', range],
+  queryFn: () => api.get<{ items: SourceHealthItem[]; total: number }>(`/sources/health?range=${range}`),
+  enabled: enabled(), retry: 1,
+  refetchInterval: 30000,
+});
+
+export const useIngestionRate = (range: string) => useQuery({
+  queryKey: ['ingestion-rate', range],
+  queryFn: () => api.get<IngestionRateData>(`/sources/ingestion-rate?range=${range}`),
+  enabled: enabled(), retry: 1,
+  refetchInterval: 30000,
+});
+
+export const useFailedIngestions = (status = 'failed') => useQuery({
+  queryKey: ['failed-ingestions', status],
+  queryFn: () => api.get<{ items: FailedIngestionItem[]; total: number }>(`/sources/failures?status=${status}`),
+  enabled: enabled(), retry: 1,
+});
+
+export const useRetryFailure = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/sources/failures/${id}/retry`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['failed-ingestions'] }),
+  });
+};
+
+export const useResolveFailure = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/sources/failures/${id}/resolve`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['failed-ingestions'] }),
+  });
+};
