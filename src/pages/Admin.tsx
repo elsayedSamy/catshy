@@ -516,7 +516,7 @@ export default function Admin() {
   const { data: health } = useHealth();
   const [torWarning, setTorWarning] = useState(false);
 
-  const allLogs = auditLogs.length > 0 ? auditLogs : DEMO_AUDIT;
+  const allLogs = auditLogs;
 
   if (!hasRole(['system_owner', 'team_admin'])) {
     return (
