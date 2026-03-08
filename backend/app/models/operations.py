@@ -46,12 +46,35 @@ class Source(Base):
     enabled = Column(Boolean, default=False)
     health = Column(String(20), default="disabled")
     last_fetch_at = Column(DateTime(timezone=True))
+    last_success_at = Column(DateTime(timezone=True))
+    next_fetch_at = Column(DateTime(timezone=True))
     last_error = Column(Text)
     item_count = Column(Integer, default=0)
     consecutive_failures = Column(Integer, default=0)
     backoff_until = Column(DateTime(timezone=True))
+    backoff_seconds = Column(Integer, default=0)
+    last_fetched_count = Column(Integer, default=0)
+    last_new_count = Column(Integer, default=0)
+    last_dedup_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+
+class FailedIngestion(Base):
+    __tablename__ = "failed_ingestions"
+    id = Column(UUID(as_uuid=False), primary_key=True, default=gen_uuid)
+    workspace_id = Column(UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_id = Column(String(100), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_name = Column(String(255))
+    fetched_at = Column(DateTime(timezone=True), nullable=False)
+    error_type = Column(String(100), nullable=False)
+    error_message = Column(Text)
+    retry_count = Column(Integer, default=0)
+    max_retries = Column(Integer, default=3)
+    status = Column(String(30), default="failed")  # failed, retrying, resolved, abandoned
+    raw_response_excerpt = Column(Text, nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class AlertRule(Base):

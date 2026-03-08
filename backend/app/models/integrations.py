@@ -1,4 +1,5 @@
 """Workspace Integrations + Settings models — per-workspace BYOK API keys and configuration."""
+import sqlalchemy as sa
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey, Integer, Float, JSON

@@ -89,3 +89,4 @@ app.include_router(enrichment_router, prefix="/api/enrichment", tags=["enrichmen
 app.include_router(workspaces_router, prefix="/api/workspaces", tags=["workspaces"])
 app.include_router(integrations_router, prefix="/api/integrations", tags=["integrations"])
 app.include_router(settings_router, prefix="/api/settings", tags=["settings"])
+app.include_router(source_health_router, prefix="/api/sources", tags=["source-health"])

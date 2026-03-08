@@ -1,11 +1,15 @@
-"""WebSocket endpoint for real-time threat streaming — workspace-scoped."""
+"""WebSocket endpoint for real-time threat streaming — workspace-scoped.
+
+Supports cookie-based auth (preferred) and query-param token (fallback for dev/CLI).
+Pushes typed events: threat_batch, new_alert, new_leak, source_health.
+"""
 import asyncio
 import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Cookie
 from jose import jwt, JWTError
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,13 +25,16 @@ router = APIRouter()
 _clients: dict[str, set[WebSocket]] = {}
 
 
-async def _authenticate_ws(token: Optional[str]) -> Optional[dict]:
-    """Validate JWT token from WebSocket query param. Returns payload with 'sub' and 'wid'."""
-    if not token:
+async def _authenticate_ws(
+    token: Optional[str] = None,
+    access_token_cookie: Optional[str] = None,
+) -> Optional[dict]:
+    """Validate JWT from cookie (preferred) or query param. Returns payload with 'sub' and 'wid'."""
+    raw_token = access_token_cookie or token
+    if not raw_token:
         return None
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        # Require workspace_id in token
+        payload = jwt.decode(raw_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         if not payload.get("wid"):
             return None
         return payload
@@ -36,13 +43,17 @@ async def _authenticate_ws(token: Optional[str]) -> Optional[dict]:
 
 
 @router.websocket("/stream")
-async def threat_stream(websocket: WebSocket, token: Optional[str] = Query(None)):
-    """WebSocket endpoint for real-time threat events.
-    Connect: ws://host/api/threats/stream?token=<jwt>
-    Token MUST contain workspace_id (wid) claim.
-    Only streams events belonging to the authenticated user's workspace.
+async def threat_stream(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None),
+    access_token: Optional[str] = Cookie(None),
+):
+    """WebSocket endpoint for real-time workspace events.
+
+    Auth: cookie `access_token` (preferred) or query param `token` (dev fallback).
+    Pushes: threat_batch, new_alert, new_leak, source_health_change.
     """
-    payload = await _authenticate_ws(token)
+    payload = await _authenticate_ws(token=token, access_token_cookie=access_token)
     if not payload:
         await websocket.close(code=4001, reason="Authentication required (valid JWT with workspace)")
         return
@@ -50,7 +61,6 @@ async def threat_stream(websocket: WebSocket, token: Optional[str] = Query(None)
     workspace_id = payload["wid"]
     await websocket.accept()
 
-    # Register client under workspace
     if workspace_id not in _clients:
         _clients[workspace_id] = set()
     _clients[workspace_id].add(websocket)
@@ -78,8 +88,10 @@ async def threat_stream(websocket: WebSocket, token: Optional[str] = Query(None)
                     events = []
                     for item in new_items:
                         events.append({
-                            "id": str(item.id),
-                            "title": item.title,
+                            "type": "new_intel",
+                            "entity_id": str(item.id),
+                            "created_at": item.fetched_at.isoformat() if item.fetched_at else None,
+                            "summary": item.title[:200] if item.title else "",
                             "severity": item.severity,
                             "observable_type": item.observable_type,
                             "observable_value": item.observable_value,
@@ -93,7 +105,6 @@ async def threat_stream(websocket: WebSocket, token: Optional[str] = Query(None)
                             "geo_country_name": item.geo_country_name,
                             "geo_city": item.geo_city,
                             "campaign_name": item.campaign_name,
-                            "fetched_at": item.fetched_at.isoformat() if item.fetched_at else None,
                             "tags": item.tags or [],
                         })
                     await websocket.send_json({"type": "threat_batch", "events": events})
@@ -127,13 +138,21 @@ async def threat_stream(websocket: WebSocket, token: Optional[str] = Query(None)
                 del _clients[workspace_id]
 
 
-async def broadcast_threat_event(event: dict, workspace_id: str):
-    """Broadcast a threat event to all connected WebSocket clients in a specific workspace."""
+async def broadcast_event(event: dict, workspace_id: str):
+    """Broadcast any typed event to all connected WebSocket clients in a workspace.
+
+    Event schema: { type: str, entity_id: str, created_at: str, summary: str, severity: str, ... }
+    """
     clients = _clients.get(workspace_id, set())
     dead = set()
     for ws in clients:
         try:
-            await ws.send_json({"type": "threat_event", "event": event})
+            await ws.send_json(event)
         except Exception:
             dead.add(ws)
     clients -= dead
+
+
+async def broadcast_threat_event(event: dict, workspace_id: str):
+    """Legacy compat — broadcast a single threat event."""
+    await broadcast_event({"type": "threat_event", "event": event}, workspace_id)
