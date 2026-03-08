@@ -28,8 +28,8 @@ export default function SearchPage() {
     try { return JSON.parse(localStorage.getItem('catshy_recent_searches') || '[]'); }
     catch { return []; }
   });
-
-  const { data, isLoading, isFetching } = useSearch(submittedQuery);
+  const debouncedQuery = useDebouncedValue(submittedQuery, 350);
+  const { data, isLoading, isFetching } = useSearch(debouncedQuery);
 
   const handleSearch = useCallback((q?: string) => {
     const searchQuery = (q || query).trim();
