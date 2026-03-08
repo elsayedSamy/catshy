@@ -157,12 +157,8 @@ function PlaybooksContent() {
   const deletePlaybookMut = useDeletePlaybook();
   const runPlaybook = useRunPlaybook();
 
-  // Merge API data with templates for dev/fallback
   const playbooks: ExtendedPlaybook[] = useMemo(() => {
-    if (apiPlaybooks.length > 0) {
-      return apiPlaybooks.map(p => ({ ...p, status: p.enabled ? 'active' as const : 'draft' as const }));
-    }
-    return DEFAULT_TEMPLATES;
+    return (apiPlaybooks || []).map(p => ({ ...p, status: p.enabled ? 'active' as const : 'draft' as const }));
   }, [apiPlaybooks]);
 
   const [dialogOpen, setDialogOpen] = useState(false);

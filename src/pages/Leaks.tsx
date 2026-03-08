@@ -103,7 +103,7 @@ function LeaksContent() {
 
   const handleRefresh = async () => {
     try { await api.post('/leaks/refresh'); toast.success('Leak data refreshed'); }
-    catch { toast.success('Leak data refreshed (Dev Mode)'); }
+    catch (e: any) { toast.error(e.message || 'Failed to refresh leak data'); }
   };
 
   const handleExport = () => {

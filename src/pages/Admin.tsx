@@ -46,7 +46,7 @@ function InviteUserDialog() {
   const [role, setRole] = useState<UserRole>('user');
   const [loading, setLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
-  const { isDevMode } = useAuth();
+  const { } = useAuth();
 
   const handleInvite = async () => {
     if (!email) { toast.error('Email is required'); return; }
