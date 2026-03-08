@@ -172,7 +172,8 @@ export default function Dashboard() {
         <WhatChanged data={changesData} isLoading={changesLoading} />
       </div>
 
-      {/* Triage + Recent Alerts — full width row */}
+      {/* ── Intelligence ── */}
+      <SectionHeader icon={Activity} title="Intelligence" subtitle="Triage, alerts & assets" />
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-[1fr_1fr]">
         <TriageQueue items={feedData?.items ?? []} isLoading={feedLoading} />
         <RecentAlerts items={recentAlerts} isLoading={alertsLoading} />
