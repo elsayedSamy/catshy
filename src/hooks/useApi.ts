@@ -348,7 +348,7 @@ export const useDashboardFeedStatus = (range: string) => useQuery({
 export const useDashboardMitre = (range: string) => useQuery({
   queryKey: ['dashboard-mitre', range],
   queryFn: () => api.get<{ id: string; name: string; techniqueCount: number; severity: 'critical' | 'high' | 'medium' | 'low' | 'none' }[]>(`/dashboard/mitre?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 60000,
 });
 
 // Dashboard Attacked Assets
