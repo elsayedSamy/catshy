@@ -10,6 +10,7 @@ export interface User {
   created_at: string;
   is_active: boolean;
   mfa_enabled?: boolean;
+  workspace_id?: string;
 }
 
 export interface AuthState {
