@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useThreatFeed, useTriageIntel } from '@/hooks/useApi';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { IntelItem, SeverityLevel, ObservableType } from '@/types';
 
