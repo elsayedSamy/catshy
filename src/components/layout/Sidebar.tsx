@@ -18,6 +18,7 @@ const navSections = [
       { label: 'Dashboard', path: '/dashboard', icon: Home },
       { label: 'Intel Feed', path: '/feed', icon: Rss },
       { label: 'History', path: '/history', icon: History },
+      { label: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert },
       { label: 'Global Search', path: '/search', icon: Search },
       { label: 'Assets', path: '/assets', icon: Database },
       { label: 'Sources', path: '/sources', icon: Radio },
