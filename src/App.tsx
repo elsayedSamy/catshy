@@ -29,6 +29,7 @@ import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import Integrations from "./pages/Integrations";
 import Connectors from "./pages/Connectors";
+import Vulnerabilities from "./pages/Vulnerabilities";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
