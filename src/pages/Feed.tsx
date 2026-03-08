@@ -205,6 +205,23 @@ export default function Feed() {
     setGenerating(true);
     try {
       const now = Date.now();
+
+      // STIX export — always goes to backend
+      if (reportFormat === 'stix') {
+        const token = localStorage.getItem('catshy_token');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token && token !== 'dev-token') headers['Authorization'] = `Bearer ${token}`;
+        const params = new URLSearchParams({ preset: reportPreset });
+        const res = await fetch(`${API_BASE}/stix/export?${params.toString()}`, { method: 'POST', headers, body: JSON.stringify(null) });
+        if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'STIX export failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'catshy-stix-bundle.json'; a.click(); URL.revokeObjectURL(url);
+        toast.success('STIX 2.1 bundle downloaded');
+        setGenerating(false);
+        return;
+      }
+
       if (isDevMode) {
         const fullPool = [...DEMO_FEED, ...DEMO_HISTORY];
         let cutoffStart: number, cutoffEnd = now, periodLabel: string;
