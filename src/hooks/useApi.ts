@@ -51,6 +51,14 @@ export const useDeleteAsset = () => {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.del(`/assets/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }) });
 };
+export const useUpdateAsset = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; value?: string; label?: string; criticality?: string; tags?: string[] }) =>
+      api.put(`/assets/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+  });
+};
 
 // Sources
 export const useSources = () => useQuery({

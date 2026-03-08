@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Pencil, Trash2, Search, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Tag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -10,8 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/EmptyState';
 import { SeverityBadge } from '@/components/StatusBadge';
-import { useAssets, useCreateAsset, useDeleteAsset } from '@/hooks/useApi';
-import { api } from '@/lib/api';
+import { useAssets, useCreateAsset, useDeleteAsset, useUpdateAsset } from '@/hooks/useApi';
 import { toast } from 'sonner';
 import type { Asset, AssetType, CriticalityTier } from '@/types';
 
@@ -27,12 +26,10 @@ const criticalityMap: Record<CriticalityTier, string> = {
 };
 
 export default function Assets() {
-  const { data: apiAssets } = useAssets();
-  const [localAssets, setLocalAssets] = useState<Asset[]>([]);
-  const assets = apiAssets ?? localAssets;
-
+  const { data: assets = [], isLoading } = useAssets();
   const createMutation = useCreateAsset();
   const deleteMutation = useDeleteAsset();
+  const updateMutation = useUpdateAsset();
 
   const [activeTab, setActiveTab] = useState<AssetType>('domain');
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,36 +49,31 @@ export default function Assets() {
   const openEdit = (asset: Asset) => { setEditingAsset(asset); setFormValue(asset.value); setFormLabel(asset.label); setFormCriticality(asset.criticality); setFormTags(asset.tags.join(', ')); setDialogOpen(true); };
 
   const handleSave = () => {
-    const now = new Date().toISOString();
     const tags = formTags.split(',').map(t => t.trim()).filter(Boolean);
     if (editingAsset) {
-      setLocalAssets(prev => prev.map(a => a.id === editingAsset.id ? { ...a, value: formValue, label: formLabel, criticality: formCriticality, tags, updated_at: now } : a));
-      toast.success('Asset updated');
+      updateMutation.mutate(
+        { id: editingAsset.id, value: formValue, label: formLabel || formValue, criticality: formCriticality, tags },
+        {
+          onSuccess: () => { setDialogOpen(false); toast.success('Asset updated'); },
+          onError: (e: any) => toast.error(e.message || 'Failed to update'),
+        },
+      );
     } else {
-      const newAsset: Asset = { id: crypto.randomUUID(), type: activeTab, value: formValue, label: formLabel || formValue, criticality: formCriticality, tags, notes: '', created_at: now, updated_at: now };
-      if (api.getDevMode()) {
-        setLocalAssets(prev => [...prev, newAsset]);
-        toast.success('Asset added (local)');
-      } else {
-        createMutation.mutate({ type: activeTab, value: formValue, label: formLabel || formValue, criticality: formCriticality, tags }, {
-          onSuccess: () => toast.success('Asset added'),
-          onError: () => { setLocalAssets(prev => [...prev, newAsset]); toast.success('Asset added (local)'); },
-        });
-      }
+      createMutation.mutate(
+        { type: activeTab, value: formValue, label: formLabel || formValue, criticality: formCriticality, tags },
+        {
+          onSuccess: () => { setDialogOpen(false); toast.success('Asset added'); },
+          onError: (e: any) => toast.error(e.message || 'Failed to add'),
+        },
+      );
     }
-    setDialogOpen(false);
   };
 
   const handleDelete = (id: string) => {
-    if (api.getDevMode()) {
-      setLocalAssets(prev => prev.filter(a => a.id !== id));
-      toast.success('Asset deleted');
-    } else {
-      deleteMutation.mutate(id, {
-        onSuccess: () => toast.success('Asset deleted'),
-        onError: () => { setLocalAssets(prev => prev.filter(a => a.id !== id)); toast.success('Asset deleted (local)'); },
-      });
-    }
+    deleteMutation.mutate(id, {
+      onSuccess: () => toast.success('Asset deleted'),
+      onError: (e: any) => toast.error(e.message || 'Failed to delete'),
+    });
   };
 
   const totalByType = (type: AssetType) => assets.filter(a => a.type === type).length;
@@ -110,9 +102,14 @@ export default function Assets() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search assets..." className="pl-10 bg-secondary/30" />
           </div>
+
+          {isLoading && (
+            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          )}
+
           {assetTabs.map(tab => (
             <TabsContent key={tab.type} value={tab.type}>
-              {filtered.length === 0 ? (
+              {!isLoading && filtered.length === 0 ? (
                 <EmptyState icon="database" title={`No ${tab.label} Added`} description={`Add your organization's ${tab.label.toLowerCase()} to start monitoring for relevant threats.`} actionLabel={`Add ${tab.label.slice(0, -1)}`} onAction={openAdd} />
               ) : (
                 <div className="space-y-2">
@@ -161,7 +158,10 @@ export default function Assets() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!formValue.trim()} className="glow-cyan">{editingAsset ? 'Update' : 'Add'}</Button>
+            <Button onClick={handleSave} disabled={!formValue.trim() || updateMutation.isPending || createMutation.isPending} className="glow-cyan">
+              {(updateMutation.isPending || createMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingAsset ? 'Update' : 'Add'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
