@@ -28,7 +28,6 @@ const navSections = [
     title: 'Intelligence',
     items: [
       { label: 'AI Analysis', path: '/ai', icon: Brain },
-      { label: 'Correlations', path: '/correlations', icon: GitMerge },
       
       { label: 'Leak Hub', path: '/leaks', icon: AlertTriangle },
       { label: 'Graph Explorer', path: '/graph', icon: Globe },
