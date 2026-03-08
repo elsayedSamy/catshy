@@ -32,6 +32,7 @@ import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 import Vulnerabilities from "./pages/Vulnerabilities";
 import Outputs from "./pages/Outputs";
+import ExecutiveDashboard from "./pages/ExecutiveDashboard";
 import NotFound from "./pages/NotFound";
 
 // Lazy load heavy pages (Three.js bundle)
