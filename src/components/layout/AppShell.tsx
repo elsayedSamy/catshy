@@ -52,7 +52,6 @@ export function AppShell() {
             </PageTransition>
           </AnimatePresence>
         </main>
-        </main>
       </motion.div>
     </div>
   );
