@@ -304,11 +304,12 @@ export default function Feed() {
               <div>
                 <label className="text-xs text-muted-foreground block mb-1">Format</label>
                 <Select value={reportFormat} onValueChange={setReportFormat}>
-                  <SelectTrigger className="w-[100px] h-9 text-xs bg-secondary/50 border-border"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-[130px] h-9 text-xs bg-secondary/50 border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="csv">CSV</SelectItem>
                     <SelectItem value="html">HTML</SelectItem>
                     <SelectItem value="json">JSON</SelectItem>
+                    <SelectItem value="stix">STIX 2.1</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
