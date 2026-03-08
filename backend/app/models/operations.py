@@ -172,6 +172,14 @@ class LeakItem(Base):
     provenance = Column(Text)
     is_tor_source = Column(Boolean, default=False)
     search_vector = Column(TSVECTOR)
+    # ── Lifecycle fields (Phase 9) ──
+    status = Column(String(30), default="new", index=True)  # new, investigating, confirmed, false_positive, resolved
+    analyst_notes = Column(Text, nullable=True)
+    linked_case_id = Column(String(100), nullable=True)
+    attribution_notes = Column(Text, nullable=True)
+    dedup_hash = Column(String(128), nullable=True, index=True)
+    fetched_at = Column(DateTime(timezone=True), default=_utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class Playbook(Base):
