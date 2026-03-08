@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useReports, useGenerateReport } from '@/hooks/useApi';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { api } from '@/lib/api';
 import type { Report, ReportFormat } from '@/types';
 
