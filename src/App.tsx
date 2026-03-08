@@ -30,6 +30,7 @@ import Settings from "./pages/Settings";
 import Integrations from "./pages/Integrations";
 import Connectors from "./pages/Connectors";
 import Vulnerabilities from "./pages/Vulnerabilities";
+import Outputs from "./pages/Outputs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="playbooks" element={<Playbooks />} />
               <Route path="integrations" element={<Integrations />} />
               <Route path="connectors" element={<Connectors />} />
+              <Route path="outputs" element={<Outputs />} />
               <Route path="admin" element={<Admin />} />
               <Route path="settings" element={<Settings />} />
             </Route>

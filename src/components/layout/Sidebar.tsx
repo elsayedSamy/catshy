@@ -4,7 +4,7 @@ import {
   Home, Database, Radio, Rss, Search, Globe, Bell,
   FileSearch, Briefcase, FileText, AlertTriangle,
   Map as MapIcon, Workflow, Shield, Settings, ChevronLeft, Cat, History,
-  Plug, Link2, ShieldAlert
+  Plug, Link2, ShieldAlert, Webhook
 } from 'lucide-react';
 
 const navSections = [
@@ -43,6 +43,7 @@ const navSections = [
     items: [
       { label: 'Integrations', path: '/integrations', icon: Plug },
       { label: 'Connectors', path: '/connectors', icon: Link2 },
+      { label: 'Outputs', path: '/outputs', icon: Webhook },
       { label: 'Admin Panel', path: '/admin', icon: Shield },
       { label: 'Settings', path: '/settings', icon: Settings },
     ],

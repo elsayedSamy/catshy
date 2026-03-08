@@ -14,6 +14,7 @@ from app.models.operations import (
 )
 from app.models.integrations import WorkspaceIntegration, WorkspaceSettings
 from app.models.vulnerability import Vulnerability, Advisory
+from app.models.outputs import WebhookOutput, ExportJob, SyslogOutput
 
 __all__ = [
     "User", "UserRole", "RefreshToken", "AuthToken",
@@ -26,4 +27,5 @@ __all__ = [
     "Report", "LeakItem", "Playbook", "PlaybookRun", "FailedIngestion",
     "WorkspaceIntegration", "WorkspaceSettings",
     "Vulnerability", "Advisory",
+    "WebhookOutput", "ExportJob", "SyslogOutput",
 ]
