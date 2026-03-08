@@ -18,6 +18,7 @@ from app.routers.map_incidents import router as map_incidents_router
 from app.routers.feedback import router as feedback_router
 from app.routers.dashboard_extended import router as dashboard_extended_router
 from app.routers.ws_threats import router as ws_threats_router
+from app.routers.enrichment import router as enrichment_router
 from app.middleware.audit import AuditMiddleware
 from app.services.admin_seed import seed_admin
 from app.services.mail import validate_smtp_config
