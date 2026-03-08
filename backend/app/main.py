@@ -21,6 +21,7 @@ from app.routers.ws_threats import router as ws_threats_router
 from app.routers.enrichment import router as enrichment_router
 from app.routers.workspaces import router as workspaces_router
 from app.middleware.audit import AuditMiddleware
+from app.middleware.csrf import CSRFMiddleware
 from app.services.admin_seed import seed_admin
 from app.services.mail import validate_smtp_config
 
@@ -28,16 +29,12 @@ logger = logging.getLogger("catshy")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables if not using alembic
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    # Seed admin user
     async with async_session() as db:
         await seed_admin(db)
-    # Validate SMTP
     validate_smtp_config()
     yield
-    # Shutdown
     await engine.dispose()
 
 app = FastAPI(
@@ -47,19 +44,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — uses merged origins from config
+# CORS — must allow credentials for cookies
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.all_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-CSRF-Token"],
+    expose_headers=["X-Request-ID"],
 )
+
+# CSRF protection (must be AFTER CORS so preflight OPTIONS pass through)
+app.add_middleware(CSRFMiddleware)
 
 # Audit logging middleware
 app.add_middleware(AuditMiddleware)
 
-# Register routers (Bug #2 fix: single health router, no duplicates)
+# Register routers
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(system_router, prefix="/api/system", tags=["system"])
