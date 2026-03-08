@@ -54,7 +54,12 @@ function Breadcrumb() {
   );
 }
 
-export function TopBar() {
+interface TopBarProps {
+  onMenuClick?: () => void;
+  isMobile?: boolean;
+}
+
+export function TopBar({ onMenuClick, isMobile }: TopBarProps) {
   const { user, logout, workspaceId, switchWorkspace, isDevMode } = useAuth();
   const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(true);
