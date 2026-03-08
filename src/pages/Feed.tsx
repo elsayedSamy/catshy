@@ -436,7 +436,7 @@ export default function Feed() {
                         <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
                           triageMutation.mutate({ itemId: selectedItem.id, status: 'investigating', analyst_verdict: 'suspicious' }, {
                             onSuccess: () => toast.success('Marked as investigating'),
-                            onError: () => toast.success('Marked as investigating (dev mode)'),
+                            onError: (e: any) => toast.error(e.message || 'Failed to update'),
                           });
                         }}>
                           <Eye className="mr-1 h-3 w-3" />Investigate
@@ -447,7 +447,7 @@ export default function Feed() {
                         <Button variant="outline" size="sm" className="text-xs h-7 text-accent border-accent/30" onClick={() => {
                           triageMutation.mutate({ itemId: selectedItem.id, status: 'resolved', analyst_verdict: 'true_positive' }, {
                             onSuccess: () => toast.success('Resolved as true positive'),
-                            onError: () => toast.success('Resolved (dev mode)'),
+                            onError: (e: any) => toast.error(e.message || 'Failed to update'),
                           });
                         }}>
                           <CheckCircle2 className="mr-1 h-3 w-3" />Resolve
@@ -458,7 +458,7 @@ export default function Feed() {
                         <Button variant="outline" size="sm" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => {
                           triageMutation.mutate({ itemId: selectedItem.id, status: 'false_positive', analyst_verdict: 'false_positive', verdict_reason: 'Analyst marked as false positive' }, {
                             onSuccess: () => toast.success('Marked as false positive — risk score reduced'),
-                            onError: () => toast.success('False positive (dev mode)'),
+                            onError: (e: any) => toast.error(e.message || 'Failed to update'),
                           });
                         }}>
                           <XCircle className="mr-1 h-3 w-3" />False Positive
@@ -569,7 +569,7 @@ export default function Feed() {
                       if (note?.trim()) {
                         triageMutation.mutate({ itemId: selectedItem.id, status: (selectedItem as any).status || 'active', analyst_notes: note.trim() }, {
                           onSuccess: () => toast.success('Note saved'),
-                          onError: () => toast.success('Note saved (dev mode)'),
+                          onError: (e: any) => toast.error(e.message || 'Failed to save note'),
                         });
                       }
                     }}>Add note</Button>

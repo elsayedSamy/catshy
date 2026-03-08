@@ -68,8 +68,8 @@ export default function Outputs() {
       setWebhooks(wh);
       setSyslogs(sl);
       setJobs(jb.items);
-    } catch {
-      // Dev mode fallback
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to load outputs');
       setWebhooks([]);
       setSyslogs([]);
       setJobs([]);

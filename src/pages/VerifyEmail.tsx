@@ -27,15 +27,7 @@ export default function VerifyEmail() {
         setSuccess(true);
         setTimeout(() => navigate('/login'), 4000);
       } catch (err: any) {
-        // In dev mode (no backend), simulate success
-        const healthRes = await fetch(`${API_BASE}/health`).catch(() => null);
-        const hData = await healthRes?.json().catch(() => ({}));
-        if (hData?.service !== 'catshy-api') {
-          setSuccess(true);
-          setTimeout(() => navigate('/login'), 4000);
-        } else {
-          setError(err.message);
-        }
+        setError(err.message || 'Verification failed');
       } finally {
         setLoading(false);
       }
