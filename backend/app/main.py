@@ -80,3 +80,4 @@ app.include_router(map_incidents_router, prefix="/api/map", tags=["map-incidents
 app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
 app.include_router(dashboard_extended_router, prefix="/api/dashboard", tags=["dashboard-extended"])
 app.include_router(ws_threats_router, prefix="/api/threats", tags=["threats-ws"])
+app.include_router(enrichment_router, prefix="/api/enrichment", tags=["enrichment"])
