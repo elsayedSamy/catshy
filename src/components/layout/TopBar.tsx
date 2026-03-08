@@ -40,27 +40,18 @@ export function TopBar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Backend notifications with dev fallback
+  // Backend notifications
   const { data: notifData } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const clearAll = useClearNotifications();
 
-  // Dev mode: use local state fallback
-  const [devNotifications, setDevNotifications] = useState<AppNotification[]>(DEMO_NOTIFICATIONS);
-
-  const notifications = isDevMode ? devNotifications : (notifData?.items ?? []);
-  const unreadCount = isDevMode
-    ? devNotifications.filter(n => !n.read).length
-    : (notifData?.unread_count ?? 0);
+  const notifications = notifData?.items ?? [];
+  const unreadCount = notifData?.unread_count ?? 0;
 
   const { data: workspaces } = useWorkspaces();
   const currentWorkspace = workspaces?.find(w => w.id === workspaceId);
-
-  const devWorkspaces: WorkspaceInfo[] = isDevMode ? [
-    { id: 'dev-workspace', name: "Dev Admin's Workspace", slug: 'ws-dev', description: '', role: 'team_admin', created_at: new Date().toISOString() },
-  ] : [];
-  const allWorkspaces = workspaces || devWorkspaces;
+  const allWorkspaces = workspaces || [];
 
   const toggleTheme = () => {
     setDarkMode(!darkMode);
