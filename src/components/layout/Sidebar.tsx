@@ -86,6 +86,7 @@ export function Sidebar({ collapsed, onToggle, isMobile, onNavigate }: SidebarPr
             user={user}
             isMobile
             onNavigate={onNavigate}
+            badges={badges}
           />
         </div>
       ) : (
