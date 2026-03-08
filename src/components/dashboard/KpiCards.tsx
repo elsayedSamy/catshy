@@ -30,13 +30,21 @@ function AnimatedValue({ value }: { value: number }) {
 }
 
 const kpiConfig = [
-  { key: 'criticalAlerts' as const, label: 'Critical Alerts (24h)', icon: AlertTriangle, gradient: 'from-destructive/10 to-destructive/5', iconBg: 'bg-destructive/10 border-destructive/20', iconColor: 'text-destructive', deltaKey: 'criticalAlertsDelta' as const },
-  { key: 'newIocs' as const, label: 'New High-Conf IOCs (24h)', icon: Crosshair, gradient: 'from-orange-500/10 to-orange-500/5', iconBg: 'bg-orange-500/10 border-orange-500/20', iconColor: 'text-orange-400', deltaKey: 'newIocsDelta' as const },
-  { key: 'assetsAffected' as const, label: 'Assets Affected', icon: Shield, gradient: 'from-primary/10 to-primary/5', iconBg: 'bg-primary/10 border-primary/20', iconColor: 'text-primary', deltaKey: null },
-  { key: 'activeCampaigns' as const, label: 'Active Campaigns', icon: Zap, gradient: 'from-accent/10 to-accent/5', iconBg: 'bg-accent/10 border-accent/20', iconColor: 'text-accent', deltaKey: null },
+  { key: 'criticalAlerts' as const, label: 'Critical Alerts', timed: true, icon: AlertTriangle, gradient: 'from-destructive/10 to-destructive/5', iconBg: 'bg-destructive/10 border-destructive/20', iconColor: 'text-destructive', deltaKey: 'criticalAlertsDelta' as const },
+  { key: 'newIocs' as const, label: 'New High-Conf IOCs', timed: true, icon: Crosshair, gradient: 'from-orange-500/10 to-orange-500/5', iconBg: 'bg-orange-500/10 border-orange-500/20', iconColor: 'text-orange-400', deltaKey: 'newIocsDelta' as const },
+  { key: 'assetsAffected' as const, label: 'Assets Affected', timed: false, icon: Shield, gradient: 'from-primary/10 to-primary/5', iconBg: 'bg-primary/10 border-primary/20', iconColor: 'text-primary', deltaKey: null },
+  { key: 'activeCampaigns' as const, label: 'Active Campaigns', timed: false, icon: Zap, gradient: 'from-accent/10 to-accent/5', iconBg: 'bg-accent/10 border-accent/20', iconColor: 'text-accent', deltaKey: null },
 ];
 
-export function KpiCards({ data, isLoading }: { data?: KpiData; isLoading: boolean }) {
+const timeRangeLabels: Record<string, string> = {
+  '1h': '1h',
+  '6h': '6h',
+  '24h': '24h',
+  '7d': '7d',
+  '30d': '30d',
+};
+
+export function KpiCards({ data, isLoading, timeRange = '24h' }: { data?: KpiData; isLoading: boolean; timeRange?: string }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {kpiConfig.map((kpi, i) => {
@@ -53,7 +61,7 @@ export function KpiCards({ data, isLoading }: { data?: KpiData; isLoading: boole
               <div className={`absolute inset-0 bg-gradient-to-br ${kpi.gradient} pointer-events-none`} />
               <div className="relative flex items-start justify-between">
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">{kpi.label}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">{kpi.label}{kpi.timed ? ` (${timeRangeLabels[timeRange] || timeRange})` : ''}</p>
                   {isLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
