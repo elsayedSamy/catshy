@@ -80,4 +80,4 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
       </CardContent>
     </Card>
   );
-});
+}

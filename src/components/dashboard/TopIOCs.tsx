@@ -46,4 +46,4 @@ export function TopIOCs({ items = [], isLoading }: { items?: IOCItem[]; isLoadin
       </CardContent>
     </Card>
   );
-});
+}
