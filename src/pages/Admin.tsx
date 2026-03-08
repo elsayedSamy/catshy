@@ -38,12 +38,6 @@ const featureFlagLabels: Record<keyof FeatureFlags, { label: string; description
 };
 
 
-const DEMO_USERS_LIST = [
-  { id: 'dev-admin', email: 'admin@catshy.local', name: 'Dev Admin', role: 'admin', is_active: true, created_at: new Date(Date.now() - 30*86400000).toISOString(), last_login: new Date(Date.now() - 1800000).toISOString(), mfa: true },
-  { id: 'u-2', email: 'analyst1@catshy.local', name: 'Analyst One', role: 'analyst', is_active: true, created_at: new Date(Date.now() - 20*86400000).toISOString(), last_login: new Date(Date.now() - 7200000).toISOString(), mfa: false },
-  { id: 'u-3', email: 'hunter@catshy.local', name: 'Threat Hunter', role: 'hunter', is_active: true, created_at: new Date(Date.now() - 15*86400000).toISOString(), last_login: new Date(Date.now() - 86400000).toISOString(), mfa: false },
-  { id: 'u-4', email: 'viewer@catshy.local', name: 'Read Only Viewer', role: 'readonly', is_active: false, created_at: new Date(Date.now() - 10*86400000).toISOString(), last_login: null, mfa: false },
-];
 
 function InviteUserDialog() {
   const [open, setOpen] = useState(false);
