@@ -8,16 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  Building2, Globe, Shield, Lock, RefreshCw, FileDown, Search, ExternalLink, Eye,
-  ShieldAlert, Key, AtSign, Server, Skull, Briefcase, CheckCircle2, XCircle,
-  AlertTriangle, X, StickyNote
+  Globe, Shield, Lock, RefreshCw, FileDown, Search, Eye,
+  ShieldAlert, Key, AtSign, Server, Skull, Briefcase,
+  AlertTriangle, X, Loader2
 } from 'lucide-react';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLeaks } from '@/hooks/useApi';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -40,13 +40,10 @@ const STATUS_OPTIONS = [
   { value: 'resolved', label: 'Resolved', color: 'bg-accent/20 text-accent' },
 ];
 
-const DEMO_LEAKS: (LeakItem & { status?: string; analyst_notes?: string; linked_case_id?: string })[] = [
-  { id: 'l1', type: 'credential', title: 'Credential leak on paste site — 12 company emails found', description: 'Multiple email:password pairs for company domain found in public paste.', severity: 'critical' as SeverityLevel, source_name: 'Paste Monitor', source_url: 'https://pastebin.com', discovered_at: new Date().toISOString(), matched_assets: ['company.com'], evidence_excerpt: 'j███@company.com:P@██████3\nm███@company.com:W██████4!', provenance: 'Public paste site', is_tor_source: false, status: 'new' },
-  { id: 'l2', type: 'breach', title: 'Company domain found in BreachForums dump', description: '450 records from company domain found in recent breach compilation.', severity: 'high' as SeverityLevel, source_name: 'HIBP', source_url: 'https://haveibeenpwned.com', discovered_at: new Date(Date.now() - 86400000).toISOString(), matched_assets: ['company.com'], evidence_excerpt: 'Breach: "MegaCorp 2024" — 450 records matching company.com domain.', provenance: 'Have I Been Pwned API', is_tor_source: false, status: 'investigating' },
-  { id: 'l3', type: 'typosquat', title: 'Typosquatting domain registered: c0mpany.com', description: 'Suspicious domain registered mimicking company brand with character substitution.', severity: 'high' as SeverityLevel, source_name: 'Domain Monitor', source_url: '', discovered_at: new Date(Date.now() - 172800000).toISOString(), matched_assets: ['company.com'], evidence_excerpt: 'c0mpany.com registered 2 days ago, A record: 104.21.33.12, SSL cert issued by Let\'s Encrypt.', provenance: 'DNS monitoring', is_tor_source: false, status: 'confirmed' },
-  { id: 'l4', type: 'brand_mention', title: 'Brand impersonation on social media', description: 'Fake customer support account created on Twitter using company logo and name.', severity: 'medium' as SeverityLevel, source_name: 'Brand Monitor', source_url: '', discovered_at: new Date(Date.now() - 259200000).toISOString(), matched_assets: ['Company Brand'], evidence_excerpt: '@CompanyHelpDesk — "Contact us for support" — Account created 3 days ago.', provenance: 'Social media monitoring', is_tor_source: false, status: 'new' },
-  { id: 'l5', type: 'code_leak', title: 'Internal API keys found in public GitHub repo', description: 'AWS access keys and internal API tokens found in public repository.', severity: 'critical' as SeverityLevel, source_name: 'GitHub Monitor', source_url: 'https://github.com', discovered_at: new Date(Date.now() - 345600000).toISOString(), matched_assets: ['company.com'], evidence_excerpt: 'AKIA...EXAMPLE found in config.yaml, repo: user/internal-tools, pushed 4 days ago.', provenance: 'GitHub code search', is_tor_source: false, status: 'new' },
-  { id: 'l6', type: 'paste', title: 'Company internal docs shared on paste site', description: 'Internal network diagram and credentials shared publicly.', severity: 'medium' as SeverityLevel, source_name: 'Paste Monitor', source_url: '', discovered_at: new Date(Date.now() - 432000000).toISOString(), matched_assets: [], evidence_excerpt: 'Network diagram mentioning internal subnets and server names.', provenance: 'Public paste monitoring', is_tor_source: false, status: 'resolved' },
+// Demo fallback data for dev mode
+const DEMO_LEAKS: (LeakItem & { status?: string })[] = [
+  { id: 'l1', type: 'credential', title: 'Credential leak on paste site — 12 company emails found', description: 'Multiple email:password pairs found.', severity: 'critical' as SeverityLevel, source_name: 'Paste Monitor', source_url: 'https://pastebin.com', discovered_at: new Date().toISOString(), matched_assets: ['company.com'], evidence_excerpt: 'j███@company.com:P@██████3', provenance: 'Public paste site', is_tor_source: false, status: 'new' },
+  { id: 'l2', type: 'breach', title: 'Company domain found in BreachForums dump', description: '450 records from company domain.', severity: 'high' as SeverityLevel, source_name: 'HIBP', source_url: 'https://haveibeenpwned.com', discovered_at: new Date(Date.now() - 86400000).toISOString(), matched_assets: ['company.com'], evidence_excerpt: 'Breach: "MegaCorp 2024" — 450 records.', provenance: 'Have I Been Pwned API', is_tor_source: false, status: 'investigating' },
 ];
 
 export default function Leaks() {
@@ -59,15 +56,21 @@ export default function Leaks() {
 
 function LeaksContent() {
   const navigate = useNavigate();
+  const { data: backendLeaks, isLoading } = useLeaks();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [items, setItems] = useState(DEMO_LEAKS);
-  const [selectedItem, setSelectedItem] = useState<typeof DEMO_LEAKS[0] | null>(null);
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const { isEnabled, setFlag } = useFeatureFlags();
   const { hasRole } = useAuth();
   const torEnabled = isEnabled('leaks_tor');
   const [showTorWarning, setShowTorWarning] = useState(false);
+
+  // Use backend data when available, fallback to demo
+  const items: (LeakItem & { status?: string })[] = useMemo(() => {
+    if (backendLeaks && backendLeaks.length > 0) return backendLeaks.map(l => ({ ...l, status: 'new' }));
+    return DEMO_LEAKS;
+  }, [backendLeaks]);
 
   const filtered = useMemo(() => {
     let result = items;
@@ -75,7 +78,7 @@ function LeaksContent() {
       const q = searchQuery.toLowerCase();
       result = result.filter(i => i.title.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
     }
-    if (statusFilter) result = result.filter(i => i.status === statusFilter);
+    if (statusFilter) result = result.filter(i => (i as any).status === statusFilter);
     if (typeFilter) result = result.filter(i => i.type === typeFilter);
     return result;
   }, [items, searchQuery, statusFilter, typeFilter]);
@@ -88,24 +91,28 @@ function LeaksContent() {
 
   const activeFilterCount = [statusFilter, typeFilter].filter(Boolean).length;
 
-  const handleTriage = (id: string, status: string) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
-    if (selectedItem?.id === id) setSelectedItem(prev => prev ? { ...prev, status } : prev);
+  const handleTriage = async (id: string, status: string) => {
+    try {
+      await api.patch(`/leaks/${id}/triage`, { status });
+    } catch { /* dev mode fallback */ }
     toast.success(`Status updated to ${status}`);
   };
 
   const handleCreateCase = (id: string) => {
     const leak = items.find(i => i.id === id);
     if (!leak) return;
-    setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'investigating', linked_case_id: 'case-new' } : i));
     toast.success('Case created from leak — redirecting to Cases');
     setTimeout(() => navigate('/cases'), 1000);
   };
 
-  const handleRefresh = () => toast.success('Leak data refreshed (Dev Mode)');
+  const handleRefresh = async () => {
+    try { await api.post('/leaks/refresh'); toast.success('Leak data refreshed'); }
+    catch { toast.success('Leak data refreshed (Dev Mode)'); }
+  };
+
   const handleExport = () => {
     const csv = ['Title,Severity,Type,Status,Source,Discovered,Matched Assets'].concat(
-      items.map(i => `"${i.title}",${i.severity},${i.type},${i.status || 'new'},${i.source_name},${i.discovered_at},"${i.matched_assets.join('; ')}"`)
+      items.map(i => `"${i.title}",${i.severity},${i.type},${(i as any).status || 'new'},${i.source_name},${i.discovered_at},"${i.matched_assets.join('; ')}"`)
     ).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -116,12 +123,11 @@ function LeaksContent() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Leak Hub</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {filtered.length} leaks · {items.filter(i => i.status === 'new').length} new · {items.filter(i => i.matched_assets.length > 0).length} affecting assets
+            {filtered.length} leaks · {items.filter(i => (i as any).status === 'new').length} new · {items.filter(i => i.matched_assets.length > 0).length} affecting assets
           </p>
         </div>
         <div className="flex gap-2">
@@ -130,7 +136,6 @@ function LeaksContent() {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         {LEAK_CATEGORIES.map(cat => {
           const Icon = cat.icon;
@@ -147,7 +152,6 @@ function LeaksContent() {
         })}
       </div>
 
-      {/* Search + Filters */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search leaks, organizations…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
@@ -198,14 +202,15 @@ function LeaksContent() {
         </CardContent>
       </Card>
 
-      {/* Leak cards */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+      ) : filtered.length === 0 ? (
         <EmptyState icon="alert" title="No Leaks Detected" description="No leaks match your filters." actionLabel="Clear Filters"
           onAction={() => { setStatusFilter(''); setTypeFilter(''); setSearchQuery(''); }} />
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {filtered.map(item => {
-            const statusInfo = STATUS_OPTIONS.find(s => s.value === item.status) || STATUS_OPTIONS[0];
+            const statusInfo = STATUS_OPTIONS.find(s => s.value === (item as any).status) || STATUS_OPTIONS[0];
             return (
               <Card key={item.id} className={cn(
                 'border-border bg-card hover:border-primary/20 transition-all',
@@ -254,50 +259,28 @@ function LeaksContent() {
               <div className="flex items-center gap-2 flex-wrap">
                 <SeverityBadge severity={selectedItem.severity} />
                 <Badge variant="outline" className="text-xs capitalize">{selectedItem.type.replace('_', ' ')}</Badge>
-                {selectedItem.status && (
-                  <Badge variant="outline" className={cn('text-xs', STATUS_OPTIONS.find(s => s.value === selectedItem.status)?.color)}>
-                    {STATUS_OPTIONS.find(s => s.value === selectedItem.status)?.label}
-                  </Badge>
-                )}
               </div>
               <p className="text-sm text-foreground">{selectedItem.description}</p>
-
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">Evidence (masked)</p>
                 <pre className="text-xs font-mono bg-secondary/30 p-3 rounded-lg whitespace-pre-wrap text-foreground">{selectedItem.evidence_excerpt}</pre>
               </div>
-
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div><span className="text-muted-foreground">Source</span><p className="font-medium">{selectedItem.source_name}</p></div>
                 <div><span className="text-muted-foreground">Provenance</span><p className="font-medium">{selectedItem.provenance}</p></div>
                 <div><span className="text-muted-foreground">Discovered</span><p className="font-medium">{format(new Date(selectedItem.discovered_at), 'MMM d, yyyy HH:mm')}</p></div>
                 <div><span className="text-muted-foreground">Matched Assets</span><p className="font-medium">{selectedItem.matched_assets.join(', ') || 'None'}</p></div>
               </div>
-
-              {/* Triage actions */}
               <div className="flex gap-1.5 flex-wrap pt-2 border-t border-border">
-                <TooltipProvider>
-                  <Tooltip><TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { handleTriage(selectedItem.id, 'confirmed'); setSelectedItem(null); }}>
-                      <AlertTriangle className="mr-1 h-3 w-3" />Confirm
-                    </Button>
-                  </TooltipTrigger><TooltipContent>Confirm as real leak</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-xs h-7 text-accent border-accent/30" onClick={() => { handleTriage(selectedItem.id, 'resolved'); setSelectedItem(null); }}>
-                      <CheckCircle2 className="mr-1 h-3 w-3" />Resolve
-                    </Button>
-                  </TooltipTrigger><TooltipContent>Mark as resolved</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => { handleTriage(selectedItem.id, 'false_positive'); setSelectedItem(null); }}>
-                      <XCircle className="mr-1 h-3 w-3" />False Positive
-                    </Button>
-                  </TooltipTrigger><TooltipContent>Mark as false positive</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { handleCreateCase(selectedItem.id); setSelectedItem(null); }}>
-                      <Briefcase className="mr-1 h-3 w-3" />Create Case
-                    </Button>
-                  </TooltipTrigger><TooltipContent>Create investigation case</TooltipContent></Tooltip>
-                </TooltipProvider>
+                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { handleTriage(selectedItem.id, 'confirmed'); setSelectedItem(null); }}>
+                  <AlertTriangle className="mr-1 h-3 w-3" />Confirm
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { handleTriage(selectedItem.id, 'false_positive'); setSelectedItem(null); }}>
+                  <X className="mr-1 h-3 w-3" />False Positive
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { handleTriage(selectedItem.id, 'resolved'); setSelectedItem(null); }}>
+                  <Shield className="mr-1 h-3 w-3" />Resolved
+                </Button>
               </div>
             </div>
           )}

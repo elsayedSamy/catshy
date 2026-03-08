@@ -8,8 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Briefcase, CheckCircle2, Clock } from 'lucide-react';
+import { Plus, Briefcase, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { SeverityBadge } from '@/components/StatusBadge';
+import { useCases, useCreateCase } from '@/hooks/useApi';
+import { toast } from 'sonner';
 import type { Case, CaseStatus, CasePriority } from '@/types';
 
 export default function Cases() {
@@ -21,17 +23,28 @@ export default function Cases() {
 }
 
 function CasesContent() {
-  const [cases, setCases] = useState<Case[]>([]);
+  const { data: cases = [], isLoading } = useCases();
+  const createCase = useCreateCase();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<CasePriority>('medium');
 
   const handleCreate = () => {
-    const c: Case = { id: crypto.randomUUID(), title, description, status: 'open', priority, investigation_ids: [], evidence_ids: [], tasks: [], created_by: 'current_user', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    setCases(prev => [...prev, c]);
-    setDialogOpen(false);
-    setTitle(''); setDescription('');
+    if (!title.trim()) return;
+    createCase.mutate(
+      { title, description, priority },
+      {
+        onSuccess: () => {
+          setDialogOpen(false);
+          setTitle('');
+          setDescription('');
+          toast.success('Case created');
+        },
+        onError: (e: any) => toast.error(e.message || 'Failed to create case'),
+      },
+    );
   };
 
   const statusIcon = (s: CaseStatus) => s === 'closed' ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Clock className="h-4 w-4 text-warning" />;
@@ -42,7 +55,10 @@ function CasesContent() {
         <div><h1 className="text-2xl font-bold">Cases</h1><p className="text-sm text-muted-foreground mt-1">{cases.length} cases</p></div>
         <Button onClick={() => setDialogOpen(true)} className="glow-cyan"><Plus className="mr-2 h-4 w-4" />New Case</Button>
       </div>
-      {cases.length === 0 ? (
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+      ) : cases.length === 0 ? (
         <EmptyState icon="file" title="No Cases Created" description="Cases track incidents from discovery through resolution. Create a case from an investigation or start one directly." actionLabel="Create Case" onAction={() => setDialogOpen(true)} />
       ) : (
         <div className="space-y-2">{cases.map(c => (
@@ -60,6 +76,7 @@ function CasesContent() {
           </Card>
         ))}</div>
       )}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle>New Case</DialogTitle></DialogHeader>
@@ -70,7 +87,12 @@ function CasesContent() {
               <Select value={priority} onValueChange={v => setPriority(v as CasePriority)}><SelectTrigger className="bg-secondary/30"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="critical">Critical</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent></Select>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button onClick={handleCreate} disabled={!title.trim()} className="glow-cyan">Create</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={!title.trim() || createCase.isPending} className="glow-cyan">
+              {createCase.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

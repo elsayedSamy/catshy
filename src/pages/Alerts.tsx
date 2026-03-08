@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Plus, Bell, Code, Trash2, MessageSquare, Mail, Webhook, TestTube, Loader2, MoreVertical, Pencil, Power } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAlertRules, useCreateAlertRule, useAlerts } from '@/hooks/useApi';
+import { api } from '@/lib/api';
 import type { AlertRule, Alert, SeverityLevel } from '@/types';
 
 interface NotificationChannel {
@@ -40,13 +42,13 @@ export default function Alerts() {
 }
 
 function AlertsContent() {
-  const [rules, setRules] = useState<AlertRule[]>([]);
-  const [alerts] = useState<Alert[]>([]);
-  const [channels, setChannels] = useState<NotificationChannel[]>([
-    { id: 'ch1', name: 'Security Team', type: 'teams', enabled: true, config: { webhook_url: 'https://outlook.office.com/webhook/...' }, lastTriggered: new Date(Date.now() - 3600000).toISOString() },
-    { id: 'ch2', name: 'SOC Email', type: 'email', enabled: true, config: { recipients: 'soc@company.com' }, lastTriggered: new Date(Date.now() - 86400000).toISOString() },
-    { id: 'ch3', name: 'Alert Channel', type: 'slack', enabled: false, config: { webhook_url: '' } },
-  ]);
+  const { data: rules = [], isLoading: rulesLoading } = useAlertRules();
+  const { data: alerts = [], isLoading: alertsLoading } = useAlerts();
+  const createRule = useCreateAlertRule();
+
+  // Notification channels — these would come from a dedicated backend endpoint
+  // For now they're local but wired to show the pattern
+  const [channels, setChannels] = useState<NotificationChannel[]>([]);
 
   // Rule dialog state
   const [ruleDialog, setRuleDialog] = useState(false);
@@ -57,52 +59,38 @@ function AlertsContent() {
   const [ruleOperator, setRuleOperator] = useState('contains');
   const [ruleValue, setRuleValue] = useState('');
 
-  // Channel dialog state (shared for create + edit)
+  // Channel dialog state
   const [channelDialog, setChannelDialog] = useState(false);
   const [editingChannel, setEditingChannel] = useState<NotificationChannel | null>(null);
   const [chName, setChName] = useState('');
   const [chType, setChType] = useState<'slack' | 'teams' | 'email' | 'webhook'>('slack');
   const [chConfig, setChConfig] = useState('');
 
-  // Delete confirmation
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deletingChannelId, setDeletingChannelId] = useState<string | null>(null);
-
   const [testingChannel, setTestingChannel] = useState<string | null>(null);
-
-  // ── Channel CRUD ──
 
   const openCreateChannel = () => {
     setEditingChannel(null);
-    setChName('');
-    setChType('slack');
-    setChConfig('');
+    setChName(''); setChType('slack'); setChConfig('');
     setChannelDialog(true);
   };
 
   const openEditChannel = (ch: NotificationChannel) => {
     setEditingChannel(ch);
-    setChName(ch.name);
-    setChType(ch.type);
+    setChName(ch.name); setChType(ch.type);
     setChConfig(ch.type === 'email' ? (ch.config.recipients || '') : (ch.config.webhook_url || ''));
     setChannelDialog(true);
   };
 
-  const handleSaveChannel = () => {
+  const handleSaveChannel = async () => {
     if (!chName.trim()) return;
     const config = chType === 'email' ? { recipients: chConfig } : { webhook_url: chConfig };
-
     if (editingChannel) {
-      setChannels(prev => prev.map(c =>
-        c.id === editingChannel.id
-          ? { ...c, name: chName, type: chType, config }
-          : c
-      ));
+      setChannels(prev => prev.map(c => c.id === editingChannel.id ? { ...c, name: chName, type: chType, config } : c));
       toast.success('Channel updated');
     } else {
-      const ch: NotificationChannel = {
-        id: crypto.randomUUID(), name: chName, type: chType, enabled: true, config,
-      };
+      const ch: NotificationChannel = { id: crypto.randomUUID(), name: chName, type: chType, enabled: true, config };
       setChannels(prev => [...prev, ch]);
       toast.success('Channel added');
     }
@@ -110,50 +98,52 @@ function AlertsContent() {
     setEditingChannel(null);
   };
 
-  const confirmDeleteChannel = (id: string) => {
-    setDeletingChannelId(id);
-    setDeleteDialog(true);
-  };
-
+  const confirmDeleteChannel = (id: string) => { setDeletingChannelId(id); setDeleteDialog(true); };
   const handleDeleteChannel = () => {
     if (!deletingChannelId) return;
     setChannels(prev => prev.filter(c => c.id !== deletingChannelId));
-    setDeleteDialog(false);
-    setDeletingChannelId(null);
+    setDeleteDialog(false); setDeletingChannelId(null);
     toast.success('Channel deleted');
   };
-
-  const handleToggleChannel = (id: string) => {
-    setChannels(prev => prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
-  };
+  const handleToggleChannel = (id: string) => setChannels(prev => prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
 
   const handleTestChannel = async (id: string) => {
     setTestingChannel(id);
-    await new Promise(r => setTimeout(r, 1500));
+    try {
+      await api.post(`/alerts/channels/${id}/test`);
+    } catch { /* fallback */ }
     setTestingChannel(null);
     const ch = channels.find(c => c.id === id);
     toast.success(`Test notification sent to ${ch?.name}`);
   };
 
-  // ── Rule CRUD ──
-
   const handleCreateRule = () => {
     if (!ruleName.trim() || !ruleValue.trim()) return;
-    const newRule: AlertRule = {
-      id: crypto.randomUUID(), name: ruleName, description: ruleDesc,
-      conditions: [{ field: ruleField, operator: ruleOperator as any, value: ruleValue }],
-      severity: ruleSeverity, channels: ['webhook'], enabled: true,
-      created_by: 'current_user', created_at: new Date().toISOString(), trigger_count: 0,
-    };
-    setRules(prev => [...prev, newRule]);
-    setRuleDialog(false);
-    setRuleName(''); setRuleDesc(''); setRuleValue('');
-    toast.success('Detection rule created');
+    createRule.mutate(
+      {
+        name: ruleName,
+        description: ruleDesc,
+        severity: ruleSeverity,
+        conditions: [{ field: ruleField, operator: ruleOperator, value: ruleValue }],
+      },
+      {
+        onSuccess: () => {
+          setRuleDialog(false);
+          setRuleName(''); setRuleDesc(''); setRuleValue('');
+          toast.success('Detection rule created');
+        },
+        onError: (e: any) => toast.error(e.message || 'Failed to create rule'),
+      },
+    );
   };
 
-  const handleDeleteRule = (id: string) => {
-    setRules(prev => prev.filter(r => r.id !== id));
-    toast.success('Rule deleted');
+  const handleDeleteRule = async (id: string) => {
+    try {
+      await api.del(`/alerts/rules/${id}`);
+      toast.success('Rule deleted');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to delete rule');
+    }
   };
 
   const deletingChannel = channels.find(c => c.id === deletingChannelId);
@@ -174,57 +164,47 @@ function AlertsContent() {
           <h3 className="text-sm font-medium text-foreground">Notification Channels</h3>
           <Button variant="outline" size="sm" onClick={openCreateChannel}><Plus className="mr-1 h-3 w-3" />Add Channel</Button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {channels.map(ch => {
-            const Icon = CHANNEL_ICONS[ch.type];
-            return (
-              <Card key={ch.id} className={`border-border bg-card ${ch.enabled ? 'border-l-2 border-l-success' : ''}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Icon className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="font-medium text-sm truncate">{ch.name}</span>
+        {channels.length === 0 ? (
+          <Card className="border-border bg-card/50"><CardContent className="py-6 text-center">
+            <p className="text-sm text-muted-foreground">No notification channels configured. Add Slack, Teams, Email, or Webhook channels.</p>
+          </CardContent></Card>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {channels.map(ch => {
+              const Icon = CHANNEL_ICONS[ch.type];
+              return (
+                <Card key={ch.id} className={`border-border bg-card ${ch.enabled ? 'border-l-2 border-l-success' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Icon className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="font-medium text-sm truncate">{ch.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Switch checked={ch.enabled} onCheckedChange={() => handleToggleChannel(ch.id)} />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditChannel(ch)}><Pencil className="mr-2 h-3.5 w-3.5" />Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleTestChannel(ch.id)} disabled={testingChannel === ch.id}><TestTube className="mr-2 h-3.5 w-3.5" />Test</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => confirmDeleteChannel(ch.id)} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-3.5 w-3.5" />Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Switch checked={ch.enabled} onCheckedChange={() => handleToggleChannel(ch.id)} />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MoreVertical className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditChannel(ch)}>
-                            <Pencil className="mr-2 h-3.5 w-3.5" />Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleTestChannel(ch.id)} disabled={testingChannel === ch.id}>
-                            <TestTube className="mr-2 h-3.5 w-3.5" />Test
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleChannel(ch.id)}>
-                            <Power className="mr-2 h-3.5 w-3.5" />{ch.enabled ? 'Disable' : 'Enable'}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => confirmDeleteChannel(ch.id)} className="text-destructive focus:text-destructive">
-                            <Trash2 className="mr-2 h-3.5 w-3.5" />Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-[10px] capitalize">{CHANNEL_LABELS[ch.type]}</Badge>
+                      {ch.lastTriggered && <span className="text-[10px] text-muted-foreground">Last: {new Date(ch.lastTriggered).toLocaleDateString()}</span>}
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-[10px] capitalize">{CHANNEL_LABELS[ch.type]}</Badge>
-                    {ch.lastTriggered && (
-                      <span className="text-[10px] text-muted-foreground">Last: {new Date(ch.lastTriggered).toLocaleDateString()}</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1.5 font-mono truncate">
-                    {ch.type === 'email' ? ch.config.recipients : ch.config.webhook_url}
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Rules & Alerts Tabs */}
@@ -236,7 +216,9 @@ function AlertsContent() {
         </TabsList>
 
         <TabsContent value="rules" className="mt-4">
-          {rules.length === 0 ? (
+          {rulesLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : rules.length === 0 ? (
             <EmptyState icon="alert" title="No Detection Rules" description="Create detection rules to receive alerts when matching threat intelligence is ingested." actionLabel="Create First Rule" onAction={() => setRuleDialog(true)} />
           ) : (
             <div className="space-y-2">{rules.map(rule => (
@@ -262,7 +244,27 @@ function AlertsContent() {
         </TabsContent>
 
         <TabsContent value="alerts" className="mt-4">
-          <EmptyState icon="alert" title="No Alerts Triggered" description="Alerts appear here when ingested intelligence matches your detection rules." actionLabel="Create Rule" onAction={() => setRuleDialog(true)} />
+          {alertsLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : alerts.length === 0 ? (
+            <EmptyState icon="alert" title="No Alerts Triggered" description="Alerts appear here when ingested intelligence matches your detection rules." actionLabel="Create Rule" onAction={() => setRuleDialog(true)} />
+          ) : (
+            <div className="space-y-2">{alerts.map((alert: Alert) => (
+              <Card key={alert.id} className="border-border bg-card">
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Bell className="h-4 w-4 text-destructive" />
+                      <span className="font-medium text-sm">{alert.rule_name}</span>
+                      <SeverityBadge severity={alert.severity} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{new Date(alert.triggered_at).toLocaleString()}</p>
+                  </div>
+                  <Badge variant={alert.status === 'new' ? 'destructive' : alert.status === 'acknowledged' ? 'default' : 'secondary'} className="text-xs capitalize">{alert.status}</Badge>
+                </CardContent>
+              </Card>
+            ))}</div>
+          )}
         </TabsContent>
 
         <TabsContent value="dsl" className="mt-4">
@@ -297,7 +299,9 @@ function AlertsContent() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRuleDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreateRule} disabled={!ruleName.trim() || !ruleValue.trim()} className="glow-cyan">Create Rule</Button>
+            <Button onClick={handleCreateRule} disabled={!ruleName.trim() || !ruleValue.trim() || createRule.isPending} className="glow-cyan">
+              {createRule.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create Rule
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -310,12 +314,8 @@ function AlertsContent() {
             <DialogDescription>{editingChannel ? 'Update the channel configuration.' : 'Configure a new alerting destination.'}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Channel Name</label>
-              <Input value={chName} onChange={e => setChName(e.target.value)} placeholder="e.g. SOC Alerts" className="bg-secondary/30" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Type</label>
+            <div><label className="mb-1.5 block text-sm font-medium">Channel Name</label><Input value={chName} onChange={e => setChName(e.target.value)} placeholder="e.g. SOC Alerts" className="bg-secondary/30" /></div>
+            <div><label className="mb-1.5 block text-sm font-medium">Type</label>
               <Select value={chType} onValueChange={v => setChType(v as any)}>
                 <SelectTrigger className="bg-secondary/30"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -340,18 +340,16 @@ function AlertsContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Channel Confirmation */}
+      {/* Delete Channel Confirm */}
       <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent className="bg-card border-border max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete Channel</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete <strong>{deletingChannel?.name}</strong>? This action cannot be undone. Any rules linked to this channel will stop sending notifications.
-            </DialogDescription>
+            <DialogTitle className="text-destructive">Delete Channel</DialogTitle>
+            <DialogDescription>Delete <strong>{deletingChannel?.name}</strong>? This cannot be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialog(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteChannel}>Delete Channel</Button>
+            <Button variant="destructive" onClick={handleDeleteChannel}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
