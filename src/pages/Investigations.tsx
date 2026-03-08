@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, FileSearch, Pin, Clock, ArrowLeft } from 'lucide-react';
+import { Plus, FileSearch, Pin, Clock, ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useInvestigations, useCreateInvestigation, useUpdateInvestigation } from '@/hooks/useApi';
 import type { Investigation } from '@/types';
 
 export default function Investigations() {
@@ -20,7 +21,10 @@ export default function Investigations() {
 }
 
 function InvestigationsContent() {
-  const [investigations, setInvestigations] = useState<Investigation[]>([]);
+  const { data: investigations = [], isLoading } = useInvestigations();
+  const createMutation = useCreateInvestigation();
+  const updateMutation = useUpdateInvestigation();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -28,23 +32,29 @@ function InvestigationsContent() {
   const [notebookContent, setNotebookContent] = useState('');
 
   const handleCreate = () => {
-    const inv: Investigation = {
-      id: crypto.randomUUID(), title, description, notebook_content: '',
-      pinned_evidence: [], linked_entities: [], linked_intel: [],
-      created_by: 'current_user', created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(), status: 'active',
-    };
-    setInvestigations(prev => [...prev, inv]);
-    setSelected(inv);
-    setDialogOpen(false);
-    setTitle(''); setDescription('');
-    toast.success('Investigation created');
+    if (!title.trim()) return;
+    createMutation.mutate(
+      { title, description },
+      {
+        onSuccess: () => {
+          setDialogOpen(false);
+          setTitle(''); setDescription('');
+          toast.success('Investigation created');
+        },
+        onError: (e: any) => toast.error(e.message || 'Failed to create investigation'),
+      },
+    );
   };
 
   const saveNotebook = () => {
     if (!selected) return;
-    setInvestigations(prev => prev.map(i => i.id === selected.id ? { ...i, notebook_content: notebookContent, updated_at: new Date().toISOString() } : i));
-    toast.success('Notes saved');
+    updateMutation.mutate(
+      { id: selected.id, notebook_content: notebookContent },
+      {
+        onSuccess: () => toast.success('Notes saved'),
+        onError: (e: any) => toast.error(e.message || 'Failed to save notes'),
+      },
+    );
   };
 
   if (selected) {
@@ -57,7 +67,9 @@ function InvestigationsContent() {
             <Badge variant="outline">{selected.status}</Badge>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={saveNotebook}>Save Notes</Button>
+            <Button variant="outline" size="sm" onClick={saveNotebook} disabled={updateMutation.isPending}>
+              {updateMutation.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Save Notes
+            </Button>
             <Button size="sm" className="glow-cyan" onClick={() => { toast.info('Navigate to Cases to create a case from this investigation.'); }}>Create Case</Button>
           </div>
         </div>
@@ -90,7 +102,9 @@ function InvestigationsContent() {
         <div><h1 className="text-2xl font-bold">Investigations</h1><p className="text-sm text-muted-foreground mt-1">{investigations.length} investigations</p></div>
         <Button onClick={() => setDialogOpen(true)} className="glow-cyan"><Plus className="mr-2 h-4 w-4" />New Investigation</Button>
       </div>
-      {investigations.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+      ) : investigations.length === 0 ? (
         <EmptyState icon="search" title="No Investigations Started" description="Start an investigation to document your analysis with a notebook workspace, pinned evidence, and linked entities." actionLabel="Start Investigation" onAction={() => setDialogOpen(true)} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{investigations.map(inv => (
@@ -110,7 +124,12 @@ function InvestigationsContent() {
             <div><label className="mb-1.5 block text-sm font-medium">Title</label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Investigation title" className="bg-secondary/30" /></div>
             <div><label className="mb-1.5 block text-sm font-medium">Description</label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief description" className="bg-secondary/30" /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button onClick={handleCreate} disabled={!title.trim()} className="glow-cyan">Create</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={!title.trim() || createMutation.isPending} className="glow-cyan">
+              {createMutation.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Create
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
