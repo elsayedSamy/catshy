@@ -88,8 +88,10 @@ function LeaksContent() {
   const handleTriage = async (id: string, status: string) => {
     try {
       await api.patch(`/leaks/${id}/triage`, { status });
-    } catch { /* dev mode fallback */ }
-    toast.success(`Status updated to ${status}`);
+      toast.success(`Status updated to ${status}`);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update status');
+    }
   };
 
   const handleCreateCase = (id: string) => {
