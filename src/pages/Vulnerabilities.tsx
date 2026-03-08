@@ -87,7 +87,6 @@ function CvssBadge({ score }: { score: number | null }) {
 }
 
 export default function Vulnerabilities() {
-  const { isDevMode } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [kevOnly, setKevOnly] = useState(false);
@@ -102,8 +101,7 @@ export default function Vulnerabilities() {
   const triageMutation = useTriageVulnerability();
   const correlateMutation = useCorrelateAssets();
 
-  // Use API data when available, fallback to demo
-  const items = isDevMode ? DEMO_VULNS : (apiData?.items ?? DEMO_VULNS);
+  const items = apiData?.items ?? [];
 
   const filtered = useMemo(() => {
     let result = items;
