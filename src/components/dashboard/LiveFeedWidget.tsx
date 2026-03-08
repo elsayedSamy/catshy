@@ -46,7 +46,7 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="px-3 pb-3">
+      <CardContent className="px-3 pb-3 flex-1">
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
         ) : filtered.length === 0 ? (

@@ -43,7 +43,7 @@ export function TriageQueue({ items = [], isLoading }: { items?: IntelItem[]; is
   };
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <ListChecks className="h-4 w-4 text-primary" />Triage Queue

@@ -33,7 +33,7 @@ export function FeedStatus({ items = [], isLoading }: { items?: FeedStatusItem[]
   const errorCount = items.filter(i => i.health === 'error').length;
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <Radio className="h-4 w-4 text-primary" />Feed Status

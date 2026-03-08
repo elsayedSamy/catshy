@@ -20,7 +20,7 @@ const typeColors: Record<string, string> = {
 
 export function TopIOCs({ items = [], isLoading }: { items?: IOCItem[]; isLoading: boolean }) {
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <Crosshair className="h-4 w-4 text-destructive" />Top 10 IOCs

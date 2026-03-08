@@ -18,7 +18,7 @@ const sevColors: Record<string, string> = {
 
 export function AttackedAssets({ items = [], isLoading }: { items?: AttackedAssetItem[]; isLoading: boolean }) {
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <Target className="h-4 w-4 text-destructive" />Top Attacked Assets
