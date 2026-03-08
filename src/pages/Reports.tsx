@@ -63,7 +63,7 @@ function downloadBlob(content: string, filename: string, mimeType: string) {
 }
 
 export default function Reports() {
-  const { isDevMode } = useAuth();
+  
   const { data: apiReports = [], isLoading } = useReports();
   const generateReport = useGenerateReport();
 
