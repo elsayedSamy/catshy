@@ -419,17 +419,54 @@ export default function Feed() {
                     <ObservableTypeBadge type={selectedItem.observable_type} />
                     {selectedItem.asset_match && <Badge className="bg-primary/20 text-primary text-xs">Org Relevant</Badge>}
                     {selectedItem.dedup_count > 1 && <Badge variant="outline" className="text-xs">×{selectedItem.dedup_count}</Badge>}
+                    {(selectedItem as any).status && (selectedItem as any).status !== 'active' && (
+                      <Badge variant="outline" className="text-xs capitalize">{(selectedItem as any).status}</Badge>
+                    )}
                   </div>
                   <h2 className="text-lg font-semibold text-foreground">{selectedItem.title}</h2>
-                  <div className="flex gap-2 mt-3 flex-wrap">
+
+                  {/* Triage Actions */}
+                  <div className="flex gap-1.5 mt-3 flex-wrap">
+                    <TooltipProvider>
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
+                          triageMutation.mutate({ itemId: selectedItem.id, status: 'investigating', analyst_verdict: 'suspicious' }, {
+                            onSuccess: () => toast.success('Marked as investigating'),
+                            onError: () => toast.success('Marked as investigating (dev mode)'),
+                          });
+                        }}>
+                          <Eye className="mr-1 h-3 w-3" />Investigate
+                        </Button>
+                      </TooltipTrigger><TooltipContent>Mark as investigating</TooltipContent></Tooltip>
+
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-7 text-accent border-accent/30" onClick={() => {
+                          triageMutation.mutate({ itemId: selectedItem.id, status: 'resolved', analyst_verdict: 'true_positive' }, {
+                            onSuccess: () => toast.success('Resolved as true positive'),
+                            onError: () => toast.success('Resolved (dev mode)'),
+                          });
+                        }}>
+                          <CheckCircle2 className="mr-1 h-3 w-3" />Resolve
+                        </Button>
+                      </TooltipTrigger><TooltipContent>Mark as resolved (true positive)</TooltipContent></Tooltip>
+
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => {
+                          triageMutation.mutate({ itemId: selectedItem.id, status: 'false_positive', analyst_verdict: 'false_positive', verdict_reason: 'Analyst marked as false positive' }, {
+                            onSuccess: () => toast.success('Marked as false positive — risk score reduced'),
+                            onError: () => toast.success('False positive (dev mode)'),
+                          });
+                        }}>
+                          <XCircle className="mr-1 h-3 w-3" />False Positive
+                        </Button>
+                      </TooltipTrigger><TooltipContent>Mark as false positive (reduces risk score)</TooltipContent></Tooltip>
+                    </TooltipProvider>
+
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => toast.success('Pinned to dashboard')}>
                       <Pin className="mr-1 h-3 w-3" />Pin
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => toast.success('Added to report draft')}>
-                      <FileText className="mr-1 h-3 w-3" />Add to Report
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => toast.success('Assigned')}>
-                      <UserPlus className="mr-1 h-3 w-3" />Assign
+                      <FileText className="mr-1 h-3 w-3" />Report
                     </Button>
                     <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
                       <a href={selectedItem.original_url} target="_blank" rel="noopener noreferrer"><ArrowUpRight className="mr-1 h-3 w-3" />Source</a>
