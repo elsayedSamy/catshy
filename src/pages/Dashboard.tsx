@@ -160,7 +160,7 @@ export default function Dashboard() {
         <IngestionRateWidget data={ingestionRate} isLoading={ingestionLoading} />
       </div>
 
-      {/* Failed Ingestions + Feed Status + What Changed */}
+      {/* Failures + Feed + Changes */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <FailedIngestions
           items={failedData?.items}
