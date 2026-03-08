@@ -93,3 +93,4 @@ app.include_router(integrations_router, prefix="/api/integrations", tags=["integ
 app.include_router(settings_router, prefix="/api/settings", tags=["settings"])
 app.include_router(source_health_router, prefix="/api/sources", tags=["source-health"])
 app.include_router(lifecycle_router, prefix="/api/intel", tags=["lifecycle"])
+app.include_router(stix_export_router, prefix="/api/stix", tags=["stix-export"])
