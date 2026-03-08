@@ -162,7 +162,7 @@ export default function History() {
       </div>
 
       {/* Items */}
-      {isLoading && !isDevMode ? (
+      {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-20 w-full rounded-lg bg-secondary/20 animate-pulse" />
