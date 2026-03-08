@@ -83,7 +83,7 @@ function generateJsonFromItems(items: IntelItem[], title: string, period: string
 
 export default function Feed() {
   const navigate = useNavigate();
-  const { isDevMode: _ } = useAuth();
+  
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
