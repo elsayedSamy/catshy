@@ -13,6 +13,7 @@ from app.models.operations import (
     Report, LeakItem, Playbook, PlaybookRun, FailedIngestion,
 )
 from app.models.integrations import WorkspaceIntegration, WorkspaceSettings
+from app.models.vulnerability import Vulnerability, Advisory
 
 __all__ = [
     "User", "UserRole", "RefreshToken", "AuthToken",
@@ -24,4 +25,5 @@ __all__ = [
     "Asset", "Source", "AlertRule", "Alert", "Investigation", "Case",
     "Report", "LeakItem", "Playbook", "PlaybookRun", "FailedIngestion",
     "WorkspaceIntegration", "WorkspaceSettings",
+    "Vulnerability", "Advisory",
 ]
