@@ -27,30 +27,15 @@ export default function SignUp() {
     setLoading(true);
     try {
       // Check if backend is available
-      let backendAvailable = false;
-      try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 3000);
-        const healthRes = await fetch(`${API_BASE}/health`, { signal: ctrl.signal });
-        clearTimeout(timer);
-        if (healthRes.ok) {
-          const hData = await healthRes.json().catch(() => ({}));
-          backendAvailable = hData?.service === 'catshy-api';
-        }
-      } catch {}
-
-      if (backendAvailable) {
-        const res = await fetch(`${API_BASE}/auth/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, name }),
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.detail || 'Registration failed');
-        }
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Registration failed');
       }
-      // In both dev mode and real mode, show success
       setSuccess(true);
     } catch (err: any) {
       setError(err.message);
