@@ -31,12 +31,12 @@ export default function Graph() {
 }
 
 function GraphContent() {
-  const { isDevMode } = useAuth();
   const { data: apiEntities, isLoading } = useEntities();
+  const { data: apiRelationships } = useEntityRelationships();
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [nodes, setNodes] = useState<GNode[]>([]);
-  const [edges, setEdges] = useState<GEdge[]>(DEMO_EDGES);
+  const [edges, setEdges] = useState<GEdge[]>([]);
   const [zoom, setZoom] = useState(1);
   const [dragging, setDragging] = useState<string | null>(null);
   const [selected, setSelected] = useState<GNode | null>(null);
@@ -45,10 +45,10 @@ function GraphContent() {
   const W = 900, H = 600;
 
   // Use API entities when available
-  const entityList = isDevMode ? DEMO_ENTITIES : (
+  const entityList = (
     apiEntities && apiEntities.length > 0
       ? apiEntities.map(e => ({ id: e.id, label: e.name, type: e.type }))
-      : DEMO_ENTITIES
+      : []
   );
 
   useEffect(() => {
