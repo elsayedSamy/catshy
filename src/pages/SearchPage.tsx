@@ -67,8 +67,8 @@ export default function SearchPage() {
       value: i.observable_value, source: i.source_name, category: 'intel',
     }));
     (data.entities || []).forEach((e: Entity) => items.push({
-      id: e.id, title: e.value, severity: 'medium' as SeverityLevel, type: e.type,
-      value: e.value, source: e.source || 'Entity DB', category: 'entity',
+      id: e.id, title: e.name, severity: 'medium' as SeverityLevel, type: 'actor' as ObservableType,
+      value: e.name, source: 'Entity DB', category: 'entity',
     }));
     return items;
   })();

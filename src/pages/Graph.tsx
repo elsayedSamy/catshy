@@ -76,7 +76,7 @@ function GraphContent() {
   // Use API entities when available
   const entityList = isDevMode ? DEMO_ENTITIES : (
     apiEntities && apiEntities.length > 0
-      ? apiEntities.map(e => ({ id: e.id, label: e.value, type: e.type }))
+      ? apiEntities.map(e => ({ id: e.id, label: e.name, type: e.type }))
       : DEMO_ENTITIES
   );
 
