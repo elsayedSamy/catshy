@@ -148,11 +148,8 @@ async def dashboard_timeline(range: str = "24h", db: AsyncSession = Depends(get_
     return timeline
 
 
-def range_iter(n):
-    return __builtins__["range"](n) if isinstance(__builtins__, dict) else builtins_range(n)
 
-import builtins
-range_iter = builtins.range
+
 
 
 @dashboard_router.get("/top-iocs")
