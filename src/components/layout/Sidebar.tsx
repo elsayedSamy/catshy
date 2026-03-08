@@ -16,7 +16,7 @@ const navSections = [
     title: 'Core',
     items: [
       { label: 'Dashboard', path: '/dashboard', icon: Home },
-      { label: 'Executive', path: '/executive', icon: BarChart3 },
+      
       { label: 'Intel Feed', path: '/feed', icon: Rss },
       { label: 'History', path: '/history', icon: History },
       { label: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert },

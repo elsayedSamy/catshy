@@ -32,7 +32,7 @@ import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 import Vulnerabilities from "./pages/Vulnerabilities";
 import Outputs from "./pages/Outputs";
-import ExecutiveDashboard from "./pages/ExecutiveDashboard";
+
 import NotFound from "./pages/NotFound";
 
 // Lazy load heavy pages (Three.js bundle)
@@ -75,7 +75,7 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="executive" element={<ExecutiveDashboard />} />
+                
                 <Route path="assets" element={<Assets />} />
                 <Route path="sources" element={<Sources />} />
                 <Route path="feed" element={<Feed />} />
