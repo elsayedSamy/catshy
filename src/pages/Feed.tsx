@@ -88,7 +88,6 @@ export default function Feed() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [moreFilters, setMoreFilters] = useState(false);
-  const [containsCve, setContainsCve] = useState(false);
   const [containsIoc, setContainsIoc] = useState(false);
   const [govSourcesOnly, setGovSourcesOnly] = useState(false);
   const [highConfOnly, setHighConfOnly] = useState(false);
