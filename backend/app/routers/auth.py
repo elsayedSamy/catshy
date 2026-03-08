@@ -1,9 +1,10 @@
-"""Auth router — login, invite, password reset, token refresh"""
+"""Auth router — login, invite, password reset, token refresh.
+Roles: system_owner | team_admin | team_member | user"""
 import logging
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -12,24 +13,25 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from app.database import get_db
 from app.config import settings
-from app.models import User, RefreshToken, AuthToken, AuditLog
+from app.models import User, UserRole, RefreshToken, AuthToken, AuditLog
 from app.services.mail import send_invite_email, send_reset_email
+from app.core.security import get_rate_limiter
 
 logger = logging.getLogger("catshy.auth")
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# ── Rate-limit state (basic in-memory per-process) ──
-_rate_limits: dict[str, list[float]] = {}
+# Unified role constants
+VALID_ROLES = {"system_owner", "team_admin", "team_member", "user"}
+DEFAULT_ROLE = "user"
+ADMIN_ROLES = {"system_owner", "team_admin"}
+
 
 def _check_rate_limit(key: str, max_per_minute: int = 5):
-    import time
-    now = time.time()
-    window = _rate_limits.setdefault(key, [])
-    window[:] = [t for t in window if now - t < 60]
-    if len(window) >= max_per_minute:
+    try:
+        get_rate_limiter().check(key, max_per_minute)
+    except ValueError:
         raise HTTPException(status_code=429, detail="Too many requests. Try again later.")
-    window.append(now)
 
 # ── Schemas ──
 class LoginRequest(BaseModel):
@@ -44,7 +46,7 @@ class TokenResponse(BaseModel):
 class InviteRequest(BaseModel):
     email: str
     name: str = ""
-    role: str = "analyst"
+    role: str = DEFAULT_ROLE
 
 class AcceptInviteRequest(BaseModel):
     token: str
@@ -66,7 +68,7 @@ class RegisterRequest(BaseModel):
 
 # ── Helpers ──
 def create_access_token(user_id: str, role: str) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode({"sub": user_id, "role": role, "exp": expire}, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 def create_refresh_token_value() -> str:
@@ -79,7 +81,7 @@ def _generate_token() -> tuple[str, str]:
     return raw, h
 
 def _get_current_admin_user_id(request: Request) -> str:
-    """Extract user_id from JWT in Authorization header. Raises 401/403."""
+    """Extract user_id from JWT. Requires system_owner or team_admin role."""
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -88,9 +90,18 @@ def _get_current_admin_user_id(request: Request) -> str:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    if payload.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if payload.get("role") not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Admin access required (system_owner or team_admin)")
     return payload["sub"]
+
+
+async def _assign_role(db: AsyncSession, user_id: str, role: str):
+    """Assign a role in the user_roles table if not already present."""
+    existing = await db.execute(
+        select(UserRole).where(UserRole.user_id == user_id, UserRole.role == role)
+    )
+    if not existing.scalar_one_or_none():
+        db.add(UserRole(user_id=user_id, role=role))
 
 
 # ── Login ──
@@ -105,7 +116,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     access = create_access_token(user.id, user.role)
     refresh = create_refresh_token_value()
     rt = RefreshToken(user_id=user.id, token_hash=hashlib.sha256(refresh.encode()).hexdigest(),
-                      expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
+                      expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
     db.add(rt)
     db.add(AuditLog(action="login", entity_type="user", entity_id=user.id, user_id=user.id, user_email=user.email))
     await db.commit()
@@ -113,7 +124,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
                          user={"id": user.id, "email": user.email, "name": user.name, "role": user.role})
 
 
-# ── Register (public sign-up with email verification) ──
+# ── Register (public sign-up) ──
 @router.post("/register")
 async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     _check_rate_limit(f"register-ip:{request.client.host}", max_per_minute=5)
@@ -126,29 +137,41 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    # Create user as inactive until email verified
+    # First user auto-promoted to system_owner
+    user_count = (await db.execute(select(User))).scalars().all()
+    is_first_user = len(user_count) == 0
+    assigned_role = "system_owner" if is_first_user else DEFAULT_ROLE
+
     user = User(
         email=req.email,
         name=req.name or req.email.split("@")[0],
         hashed_password=pwd_context.hash(req.password),
-        role="analyst",
-        is_active=False,  # Requires email verification
+        role=assigned_role,
+        is_active=False if not is_first_user else True,  # First user auto-active
     )
     db.add(user)
     await db.flush()
 
-    # Generate verification token
-    raw_token, token_hash = _generate_token()
-    auth_token = AuthToken(
-        token_hash=token_hash,
-        token_type="verify_email",
-        email=req.email,
-        user_id=user.id,
-        expires_at=datetime.utcnow() + timedelta(hours=24),
-    )
-    db.add(auth_token)
+    # Assign role in user_roles table
+    await _assign_role(db, user.id, assigned_role)
+
+    if not is_first_user:
+        # Generate verification token
+        raw_token, token_hash = _generate_token()
+        auth_token = AuthToken(
+            token_hash=token_hash,
+            token_type="verify_email",
+            email=req.email,
+            user_id=user.id,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        )
+        db.add(auth_token)
+
     db.add(AuditLog(action="user_registered", entity_type="user", entity_id=user.id, user_email=req.email))
     await db.commit()
+
+    if is_first_user:
+        return {"message": "System owner account created. You can log in now.", "role": assigned_role}
 
     # Send verification email
     try:
@@ -173,7 +196,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid verification token")
     if at.used_at is not None:
         raise HTTPException(status_code=400, detail="Token already used")
-    if at.expires_at < datetime.utcnow():
+    if at.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token expired")
 
     user_result = await db.execute(select(User).where(User.id == at.user_id))
@@ -182,7 +205,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="User not found")
 
     user.is_active = True
-    at.used_at = datetime.utcnow()
+    at.used_at = datetime.now(timezone.utc)
     db.add(AuditLog(action="email_verified", entity_type="user", entity_id=user.id, user_email=user.email))
     await db.commit()
     return {"message": "Email verified. You can now log in."}
@@ -194,7 +217,10 @@ async def create_invite(req: InviteRequest, request: Request, db: AsyncSession =
     admin_id = _get_current_admin_user_id(request)
     _check_rate_limit(f"invite:{request.client.host}", max_per_minute=10)
 
-    # Check email not already registered
+    # Validate role
+    if req.role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}")
+
     existing = await db.execute(select(User).where(User.email == req.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -206,14 +232,13 @@ async def create_invite(req: InviteRequest, request: Request, db: AsyncSession =
         email=req.email,
         name=req.name or None,
         role=req.role,
-        expires_at=datetime.utcnow() + timedelta(minutes=settings.INVITE_TOKEN_TTL_MIN),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=settings.INVITE_TOKEN_TTL_MIN),
     )
     db.add(auth_token)
     db.add(AuditLog(action="invite_created", entity_type="user", user_id=admin_id,
                     details={"invited_email": req.email, "role": req.role}))
     await db.commit()
 
-    # Send email
     try:
         admin_result = await db.execute(select(User).where(User.id == admin_id))
         admin_user = admin_result.scalar_one_or_none()
@@ -237,23 +262,25 @@ async def accept_invite(req: AcceptInviteRequest, db: AsyncSession = Depends(get
         raise HTTPException(status_code=400, detail="Invalid invite token")
     if at.used_at is not None:
         raise HTTPException(status_code=400, detail="Invite already used")
-    if at.expires_at < datetime.utcnow():
+    if at.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Invite expired")
 
-    # Check email not taken (race condition guard)
     existing = await db.execute(select(User).where(User.email == at.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
 
+    assigned_role = at.role if at.role in VALID_ROLES else DEFAULT_ROLE
     user = User(
         email=at.email,
         name=req.name or at.name or at.email.split("@")[0],
         hashed_password=pwd_context.hash(req.password),
-        role=at.role or "analyst",
+        role=assigned_role,
         is_active=True,
     )
     db.add(user)
-    at.used_at = datetime.utcnow()
+    await db.flush()
+    await _assign_role(db, user.id, assigned_role)
+    at.used_at = datetime.now(timezone.utc)
     at.user_id = user.id
     db.add(AuditLog(action="invite_accepted", entity_type="user", entity_id=user.id, user_email=at.email))
     await db.commit()
@@ -266,7 +293,6 @@ async def request_password_reset(req: RequestResetRequest, request: Request, db:
     _check_rate_limit(f"reset-ip:{request.client.host}", max_per_minute=5)
     _check_rate_limit(f"reset-email:{req.email}", max_per_minute=3)
 
-    # Always return 200 to not reveal if email exists
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
     if user and user.is_active:
@@ -276,7 +302,7 @@ async def request_password_reset(req: RequestResetRequest, request: Request, db:
             token_type="reset",
             email=req.email,
             user_id=user.id,
-            expires_at=datetime.utcnow() + timedelta(minutes=settings.RESET_TOKEN_TTL_MIN),
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_TTL_MIN),
         )
         db.add(auth_token)
         db.add(AuditLog(action="password_reset_requested", entity_type="user",
@@ -303,7 +329,7 @@ async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(g
         raise HTTPException(status_code=400, detail="Invalid reset token")
     if at.used_at is not None:
         raise HTTPException(status_code=400, detail="Token already used")
-    if at.expires_at < datetime.utcnow():
+    if at.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token expired")
 
     user_result = await db.execute(select(User).where(User.id == at.user_id))
@@ -312,7 +338,7 @@ async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(g
         raise HTTPException(status_code=400, detail="User not found")
 
     user.hashed_password = pwd_context.hash(req.new_password)
-    at.used_at = datetime.utcnow()
+    at.used_at = datetime.now(timezone.utc)
     db.add(AuditLog(action="password_reset", entity_type="user", entity_id=user.id, user_email=user.email))
     await db.commit()
     return {"message": "Password has been reset. You can now log in."}
@@ -324,7 +350,7 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
     token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
     result = await db.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
     rt = result.scalar_one_or_none()
-    if not rt or rt.expires_at < datetime.utcnow():
+    if not rt or rt.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
     user_result = await db.execute(select(User).where(User.id == rt.user_id))
     user = user_result.scalar_one_or_none()

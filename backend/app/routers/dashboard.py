@@ -3,9 +3,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.models import Alert, IntelItem, Asset, Entity
+from app.core.deps import get_current_user
 
 dashboard_router = APIRouter()
 map_router = APIRouter()
@@ -13,16 +14,18 @@ map_router = APIRouter()
 
 def _parse_range(range_str: str) -> datetime:
     """Convert range string (1h, 6h, 24h, 7d, 30d) to a datetime cutoff."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     mapping = {'1h': 1, '6h': 6, '24h': 24, '7d': 168, '30d': 720}
     hours = mapping.get(range_str, 24)
     return now - timedelta(hours=hours)
 
 
 @dashboard_router.get("/kpis")
-async def dashboard_kpis(range: str = "24h", db: AsyncSession = Depends(get_db)):
+async def dashboard_kpis(range: str = "24h", db: AsyncSession = Depends(get_db),
+                         user=Depends(get_current_user)):
     cutoff = _parse_range(range)
-    prev_cutoff = cutoff - (datetime.utcnow() - cutoff)
+    now = datetime.now(timezone.utc)
+    prev_cutoff = cutoff - (now - cutoff)
 
     # Critical alerts in period
     crit_q = select(func.count()).select_from(Alert).where(
@@ -54,7 +57,7 @@ async def dashboard_kpis(range: str = "24h", db: AsyncSession = Depends(get_db))
     )
     assets_affected = (await db.execute(asset_q)).scalar() or 0
 
-    # Active campaigns (entities of type 'campaign')
+    # Active campaigns
     campaign_q = select(func.count()).select_from(Entity).where(Entity.type == "campaign")
     campaigns = (await db.execute(campaign_q)).scalar() or 0
 
@@ -71,7 +74,8 @@ async def dashboard_kpis(range: str = "24h", db: AsyncSession = Depends(get_db))
 
 @dashboard_router.get("/live-feed")
 async def dashboard_live_feed(range: str = "24h", severity: Optional[str] = None,
-                              limit: int = 50, db: AsyncSession = Depends(get_db)):
+                              limit: int = 50, db: AsyncSession = Depends(get_db),
+                              user=Depends(get_current_user)):
     cutoff = _parse_range(range)
     q = select(IntelItem).where(IntelItem.fetched_at >= cutoff)
     if severity:
@@ -79,23 +83,25 @@ async def dashboard_live_feed(range: str = "24h", severity: Optional[str] = None
     q = q.order_by(IntelItem.fetched_at.desc()).limit(limit)
     result = await db.execute(q)
     items = [
-        {"id": i.id, "title": i.title, "severity": i.severity, "observable_type": i.observable_type,
-         "observable_value": i.observable_value, "source_name": i.source_name, "asset_match": i.asset_match,
+        {"id": i.id, "title": i.title, "severity": i.severity,
+         "observable_type": i.observable_type or "other",
+         "observable_value": i.observable_value or "",
+         "source_name": i.source_name, "asset_match": i.asset_match,
          "confidence_score": i.confidence_score, "risk_score": i.risk_score,
          "published_at": str(i.published_at) if i.published_at else None,
          "original_url": i.original_url, "excerpt": i.excerpt, "source_id": i.source_id,
-         "fetched_at": str(i.fetched_at), "description": "", "dedup_count": i.dedup_count,
-         "matched_assets": [], "tags": []}
+         "fetched_at": str(i.fetched_at), "description": i.description or "",
+         "dedup_count": i.dedup_count or 1,
+         "matched_assets": i.matched_asset_ids or [], "tags": i.tags or []}
         for i in result.scalars().all()
     ]
     return {"items": items}
 
 
 @map_router.get("/summary")
-async def map_summary(range: str = "24h", db: AsyncSession = Depends(get_db)):
-    """Aggregated map data: events, hotlist, top threats, countries, CVEs."""
-    # In production, this would aggregate from geo-tagged intel data + redis cache.
-    # Return empty structure when no data exists.
+async def map_summary(range: str = "24h", db: AsyncSession = Depends(get_db),
+                      user=Depends(get_current_user)):
+    """Aggregated map data."""
     return {
         "events": [],
         "hotlist": [],
@@ -106,21 +112,17 @@ async def map_summary(range: str = "24h", db: AsyncSession = Depends(get_db)):
 
 
 @map_router.get("/country/{code}")
-async def map_country_detail(code: str, range: str = "24h", db: AsyncSession = Depends(get_db)):
-    """Country-specific threat detail."""
+async def map_country_detail(code: str, range: str = "24h", db: AsyncSession = Depends(get_db),
+                             user=Depends(get_current_user)):
     return {
-        "code": code,
-        "name": code,
+        "code": code, "name": code,
         "threats": {"critical": 0, "high": 0, "medium": 0, "low": 0},
-        "topIocs": [],
-        "topEventTypes": [],
-        "assetsAffected": 0,
+        "topIocs": [], "topEventTypes": [], "assetsAffected": 0,
     }
 
 
 @map_router.get("/events")
 async def map_events(range: str = "24h", country: Optional[str] = None,
                      severity: Optional[str] = None, limit: int = 100,
-                     db: AsyncSession = Depends(get_db)):
-    """Filtered map events for drill-down."""
+                     db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     return []

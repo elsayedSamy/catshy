@@ -4,7 +4,7 @@ import logging
 import secrets
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import jwt, JWTError
@@ -18,7 +18,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # ── JWT ──
 
 def create_access_token(user_id: str, role: str, workspace_id: Optional[str] = None) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"sub": user_id, "role": role, "exp": expire}
     if workspace_id:
         payload["wid"] = workspace_id
@@ -27,7 +27,7 @@ def create_access_token(user_id: str, role: str, workspace_id: Optional[str] = N
 
 def create_system_owner_token(user_id: str) -> str:
     """Separate token for system_owner with shorter TTL and explicit scope."""
-    expire = datetime.utcnow() + timedelta(minutes=15)  # Short-lived
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     payload = {
         "sub": user_id,
         "role": "system_owner",
@@ -61,7 +61,8 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-# ── Rate Limiting (in-memory, per-process) ──
+# ── Rate Limiting ──
+# In-memory for single-worker; for multi-worker use Redis via RateLimiter class below.
 
 _rate_windows: dict[str, list[float]] = {}
 
@@ -76,6 +77,48 @@ def check_rate_limit(key: str, max_per_minute: int = 5):
     window.append(now)
 
 
+class RedisRateLimiter:
+    """Redis-backed rate limiter for multi-worker deployments.
+    Falls back to in-memory if Redis is unavailable."""
+
+    def __init__(self, redis_url: Optional[str] = None):
+        self._redis = None
+        if redis_url:
+            try:
+                import redis
+                self._redis = redis.from_url(redis_url, decode_responses=True)
+                self._redis.ping()
+            except Exception:
+                logger.warning("Redis unavailable for rate limiting, using in-memory fallback")
+                self._redis = None
+
+    def check(self, key: str, max_per_minute: int = 5):
+        if not self._redis:
+            return check_rate_limit(key, max_per_minute)
+        rkey = f"ratelimit:{key}"
+        pipe = self._redis.pipeline()
+        now = time.time()
+        pipe.zremrangebyscore(rkey, 0, now - 60)
+        pipe.zadd(rkey, {str(now): now})
+        pipe.zcard(rkey)
+        pipe.expire(rkey, 120)
+        results = pipe.execute()
+        count = results[2]
+        if count > max_per_minute:
+            raise ValueError("Rate limit exceeded")
+
+
+# Singleton — initialized lazily
+_redis_limiter: Optional[RedisRateLimiter] = None
+
+
+def get_rate_limiter() -> RedisRateLimiter:
+    global _redis_limiter
+    if _redis_limiter is None:
+        _redis_limiter = RedisRateLimiter(settings.REDIS_URL)
+    return _redis_limiter
+
+
 # ── Brute-Force Detection ──
 
 _failed_attempts: dict[str, list[float]] = {}
@@ -86,11 +129,10 @@ _lockouts: dict[str, float] = {}
 
 
 def record_failed_login(key: str):
-    """Track a failed login attempt. Key can be IP or email."""
+    """Track a failed login attempt."""
     now = time.time()
     attempts = _failed_attempts.setdefault(key, [])
     attempts.append(now)
-    # Trim old entries
     attempts[:] = [t for t in attempts if now - t < BRUTE_FORCE_WINDOW]
     if len(attempts) >= BRUTE_FORCE_THRESHOLD:
         _lockouts[key] = now + LOCKOUT_DURATION
