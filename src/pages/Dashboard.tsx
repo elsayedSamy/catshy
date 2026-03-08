@@ -141,7 +141,8 @@ export default function Dashboard() {
       <SectionHeader icon={Zap} title="Threat Pulse" subtitle="Real-time threat signals" />
       <ThreatPulse data={pulseData} isLoading={pulseLoading} />
 
-      {/* Charts Row: Severity + Timeline + Risk — responsive grid */}
+      {/* ── Analytics ── */}
+      <SectionHeader icon={BarChart3} title="Analytics" subtitle="Severity, timeline & risk" />
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <SeverityDistribution data={severityData} isLoading={severityLoading} />
         <ThreatTimeline data={timelineData} isLoading={timelineLoading} />
