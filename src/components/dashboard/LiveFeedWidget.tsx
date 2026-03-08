@@ -25,7 +25,7 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
   const filtered = filter === 'all' ? items : items.filter(i => i.severity === filter);
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card h-full flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <Rss className="h-4 w-4 text-primary" />Live Threat Feed
@@ -46,7 +46,7 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="px-3 pb-3">
+      <CardContent className="px-3 pb-3 flex-1">
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
         ) : filtered.length === 0 ? (

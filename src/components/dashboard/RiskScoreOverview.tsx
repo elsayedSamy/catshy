@@ -29,7 +29,7 @@ export function RiskScoreOverview({ data, isLoading }: { data?: RiskOverviewData
   const progress = (score / 100) * circumference;
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <Gauge className="h-4 w-4 text-primary" />Risk Score
