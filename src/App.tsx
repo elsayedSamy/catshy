@@ -28,7 +28,7 @@ import Playbooks from "./pages/Playbooks";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import Integrations from "./pages/Integrations";
-import Connectors from "./pages/Connectors";
+
 import Vulnerabilities from "./pages/Vulnerabilities";
 import Outputs from "./pages/Outputs";
 import NotFound from "./pages/NotFound";
@@ -78,7 +78,7 @@ const App = () => (
               <Route path="global-threats" element={<Navigate to="/global-threat-monitoring" replace />} />
               <Route path="playbooks" element={<Playbooks />} />
               <Route path="integrations" element={<Integrations />} />
-              <Route path="connectors" element={<Connectors />} />
+              <Route path="connectors" element={<Navigate to="/integrations" replace />} />
               <Route path="outputs" element={<Outputs />} />
               <Route path="admin" element={<Admin />} />
               <Route path="settings" element={<Settings />} />
