@@ -47,4 +47,4 @@ export const TopIOCs = forwardRef<HTMLDivElement, { items?: IOCItem[]; isLoading
       </CardContent>
     </Card>
   );
-}
+});
