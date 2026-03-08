@@ -125,23 +125,27 @@ export default function Dashboard() {
       {/* MITRE ATT&CK Heatmap */}
       <MitreHeatmap data={mitreData} isLoading={mitreLoading} />
 
-      {/* Main Content: Triage + Side Panels — responsive */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-[1fr_minmax(280px,320px)]">
-        <div className="space-y-4 min-w-0">
-          <TriageQueue items={feedData?.items ?? []} isLoading={feedLoading} />
-          <AttackedAssets items={attackedAssets} isLoading={attackedLoading} />
-        </div>
-        <div className="space-y-4 min-w-0">
-          <WhatChanged data={changesData} isLoading={changesLoading} />
-          <RecentAlerts items={recentAlerts} isLoading={alertsLoading} />
-          <FeedStatus items={feedStatus} isLoading={feedStatusLoading} />
-          <AssetHotlist items={mapData?.hotlist ?? []} isLoading={mapLoading} />
-          <TopThreats items={mapData?.topThreats ?? []} isLoading={mapLoading} />
-        </div>
+      {/* Feed Status + What Changed — full width row */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <FeedStatus items={feedStatus} isLoading={feedStatusLoading} />
+        <WhatChanged data={changesData} isLoading={changesLoading} />
       </div>
 
-      {/* Feed + IOCs + Countries + CVEs — responsive 2-col on md, 4-col on xl */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+      {/* Triage + Recent Alerts — full width row */}
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-[1fr_1fr]">
+        <TriageQueue items={feedData?.items ?? []} isLoading={feedLoading} />
+        <RecentAlerts items={recentAlerts} isLoading={alertsLoading} />
+      </div>
+
+      {/* Attacked Assets + Asset Hotlist + Top Threats — 3 cols */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <AttackedAssets items={attackedAssets} isLoading={attackedLoading} />
+        <AssetHotlist items={mapData?.hotlist ?? []} isLoading={mapLoading} />
+        <TopThreats items={mapData?.topThreats ?? []} isLoading={mapLoading} />
+      </div>
+
+      {/* Feed + IOCs + Countries + CVEs — 4 equal cols */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <LiveFeedWidget items={feedData?.items ?? []} isLoading={feedLoading} onRefresh={() => refetchFeed()} />
         <TopIOCs items={topIOCs} isLoading={iocsLoading} />
         <TopCountries items={mapData?.topCountries ?? []} isLoading={mapLoading} />
