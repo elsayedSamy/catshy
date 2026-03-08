@@ -12,6 +12,7 @@ from app.models.operations import (
     Asset, Source, AlertRule, Alert, Investigation, Case,
     Report, LeakItem, Playbook, PlaybookRun,
 )
+from app.models.integrations import WorkspaceIntegration, WorkspaceSettings
 
 __all__ = [
     "User", "UserRole", "RefreshToken", "AuthToken",
@@ -22,4 +23,5 @@ __all__ = [
     "Entity", "EntityRelationship",
     "Asset", "Source", "AlertRule", "Alert", "Investigation", "Case",
     "Report", "LeakItem", "Playbook", "PlaybookRun",
+    "WorkspaceIntegration", "WorkspaceSettings",
 ]
