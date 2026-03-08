@@ -180,6 +180,62 @@ export const useDashboardChanges = (range: string) => useQuery({
   enabled: enabled(), retry: 1,
 });
 
+// Dashboard Severity Distribution
+export const useDashboardSeverity = (range: string) => useQuery({
+  queryKey: ['dashboard-severity', range],
+  queryFn: () => api.get<{ critical: number; high: number; medium: number; low: number; info: number }>(`/dashboard/severity?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Threat Timeline
+export const useDashboardTimeline = (range: string) => useQuery({
+  queryKey: ['dashboard-timeline', range],
+  queryFn: () => api.get<{ time: string; critical: number; high: number; medium: number; low: number }[]>(`/dashboard/timeline?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Top IOCs
+export const useDashboardTopIOCs = (range: string) => useQuery({
+  queryKey: ['dashboard-top-iocs', range],
+  queryFn: () => api.get<{ value: string; type: string; hitCount: number; severity: 'critical' | 'high' | 'medium' | 'low' }[]>(`/dashboard/top-iocs?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Risk Score
+export const useDashboardRiskScore = (range: string) => useQuery({
+  queryKey: ['dashboard-risk', range],
+  queryFn: () => api.get<{ overallScore: number; trend: 'up' | 'down' | 'stable'; factors: { label: string; score: number }[] }>(`/dashboard/risk-score?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Recent Alerts
+export const useDashboardRecentAlerts = (range: string) => useQuery({
+  queryKey: ['dashboard-recent-alerts', range],
+  queryFn: () => api.get<{ id: string; title: string; severity: 'critical' | 'high' | 'medium' | 'low'; triggered_at: string; status: 'new' | 'acknowledged' | 'resolved' }[]>(`/dashboard/recent-alerts?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Feed Status
+export const useDashboardFeedStatus = (range: string) => useQuery({
+  queryKey: ['dashboard-feed-status', range],
+  queryFn: () => api.get<{ id: string; name: string; health: 'healthy' | 'degraded' | 'error' | 'disabled'; lastFetch?: string; itemsToday: number }[]>(`/dashboard/feed-status?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard MITRE ATT&CK
+export const useDashboardMitre = (range: string) => useQuery({
+  queryKey: ['dashboard-mitre', range],
+  queryFn: () => api.get<{ id: string; name: string; techniqueCount: number; severity: 'critical' | 'high' | 'medium' | 'low' | 'none' }[]>(`/dashboard/mitre?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
+// Dashboard Attacked Assets
+export const useDashboardAttackedAssets = (range: string) => useQuery({
+  queryKey: ['dashboard-attacked-assets', range],
+  queryFn: () => api.get<{ asset: string; count: number; severity: 'critical' | 'high' | 'medium' | 'low' }[]>(`/dashboard/attacked-assets?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
+
 // Map Incidents (real geo data)
 export const useMapIncidents = (params: {
   range?: string; severity?: string; relevant_only?: boolean; cluster?: boolean;
