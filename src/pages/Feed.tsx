@@ -11,14 +11,16 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Rss, ExternalLink, Building2, RefreshCw, FileDown, CalendarIcon, Clock, Filter, X,
-  Search, Pin, FileText, UserPlus, ChevronDown, Tag, StickyNote, ArrowUpRight
+  Search, Pin, FileText, UserPlus, ChevronDown, Tag, StickyNote, ArrowUpRight,
+  Shield, CheckCircle2, XCircle, Eye, AlertTriangle
 } from 'lucide-react';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useThreatFeed } from '@/hooks/useApi';
+import { useThreatFeed, useTriageIntel } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { IntelItem, SeverityLevel, ObservableType } from '@/types';
 
 // Dev mode demo data — only items < 24h old
