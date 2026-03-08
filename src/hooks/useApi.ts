@@ -661,3 +661,101 @@ export const useClearNotifications = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 };
+
+// ── Correlation Engine ──
+export interface CorrelationCluster {
+  id: string;
+  name: string;
+  description?: string;
+  cluster_type: string;
+  severity: string;
+  confidence: number;
+  status: string;
+  tags: string[];
+  pivot_indicators: { type: string; value: string }[];
+  item_count: number;
+  first_seen?: string;
+  last_seen?: string;
+  created_at?: string;
+}
+
+export interface CorrelationClusterDetail extends CorrelationCluster {
+  summary?: string;
+  linked_items: {
+    link_id: string;
+    link_reason: string;
+    shared_value: string;
+    link_confidence: number;
+    item: {
+      id: string;
+      title: string;
+      severity: string;
+      observable_type: string;
+      observable_value: string;
+      source_name: string;
+      risk_score: number;
+      confidence_score: number;
+      asset_match: boolean;
+      published_at?: string;
+      status: string;
+    };
+  }[];
+}
+
+export interface CorrelationStats {
+  total_active_clusters: number;
+  total_linked_items: number;
+  by_type: Record<string, number>;
+  by_severity: Record<string, number>;
+}
+
+export const useCorrelationClusters = (type?: string, severity?: string) => useQuery({
+  queryKey: ['correlation-clusters', type, severity],
+  queryFn: async () => {
+    const params = new URLSearchParams();
+    if (type) params.set('cluster_type', type);
+    if (severity) params.set('severity', severity);
+    const qs = params.toString();
+    const res = await api.get<PaginatedResponse<CorrelationCluster>>(`/correlation/clusters${qs ? `?${qs}` : ''}`);
+    return res;
+  },
+  enabled: enabled(), retry: 1,
+});
+
+export const useCorrelationClusterDetail = (clusterId?: string) => useQuery({
+  queryKey: ['correlation-cluster', clusterId],
+  queryFn: () => api.get<CorrelationClusterDetail>(`/correlation/clusters/${clusterId}`),
+  enabled: enabled() && !!clusterId, retry: 1,
+});
+
+export const useCorrelationStats = () => useQuery({
+  queryKey: ['correlation-stats'],
+  queryFn: () => api.get<CorrelationStats>('/correlation/stats'),
+  enabled: enabled(), retry: 1,
+});
+
+export const useRunCorrelation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lookbackHours?: number) =>
+      api.post<{ message: string; new_clusters: number; updated_clusters: number }>(
+        `/correlation/run?lookback_hours=${lookbackHours || 48}`
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['correlation-clusters'] });
+      qc.invalidateQueries({ queryKey: ['correlation-stats'] });
+    },
+  });
+};
+
+export const useUpdateClusterStatus = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ clusterId, status }: { clusterId: string; status: string }) =>
+      api.patch<{ message: string }>(`/correlation/clusters/${clusterId}/status`, { status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['correlation-clusters'] });
+      qc.invalidateQueries({ queryKey: ['correlation-stats'] });
+    },
+  });
+};

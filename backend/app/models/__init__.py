@@ -15,6 +15,7 @@ from app.models.operations import (
 from app.models.integrations import WorkspaceIntegration, WorkspaceSettings
 from app.models.vulnerability import Vulnerability, Advisory
 from app.models.outputs import WebhookOutput, ExportJob, SyslogOutput
+from app.models.correlation import CorrelationCluster, CorrelationLink
 
 __all__ = [
     "User", "UserRole", "RefreshToken", "AuthToken",
@@ -28,4 +29,5 @@ __all__ = [
     "WorkspaceIntegration", "WorkspaceSettings",
     "Vulnerability", "Advisory",
     "WebhookOutput", "ExportJob", "SyslogOutput",
+    "CorrelationCluster", "CorrelationLink",
 ]
