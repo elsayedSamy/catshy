@@ -288,7 +288,7 @@ export const useDashboardPulse = (range: string) => useQuery({
     newIntel: number; criticalCves: number; leakItems: number;
     phishingSpikes: number; malwareSpikes: number;
   }>(`/dashboard/pulse?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 15000,
 });
 
 // Dashboard Changes
