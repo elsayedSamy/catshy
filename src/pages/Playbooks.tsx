@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { FeatureGate } from '@/components/FeatureGate';
 import { EmptyState } from '@/components/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,9 +12,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import {
   Plus, Workflow, Play, ArrowUp, ArrowDown, Trash2, Search, Briefcase, Download, Bell, Globe, GitBranch, Layers,
-  Zap, Clock, Shield, AlertTriangle, FileText, Copy, Eye, HistoryIcon, ChevronRight
+  Zap, Clock, Shield, AlertTriangle, FileText, Copy, Eye, HistoryIcon, ChevronRight, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePlaybooks, useCreatePlaybook, useUpdatePlaybook, useDeletePlaybook, useRunPlaybook } from '@/hooks/useApi';
 import type { Playbook, PlaybookStep, PlaybookStepType } from '@/types';
 
 type TriggerType = 'high_conf_ioc' | 'asset_match' | 'leak_detected' | 'critical_cve' | 'scheduled' | 'manual';
