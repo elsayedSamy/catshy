@@ -105,3 +105,4 @@ app.include_router(leak_monitor_router, prefix="/api/leaks", tags=["leak-monitor
 app.include_router(outputs_router, prefix="/api/outputs", tags=["outputs"])
 app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
 app.include_router(correlation_router, prefix="/api/correlation", tags=["correlation"])
+app.include_router(noise_reduction_router, prefix="/api/noise", tags=["noise-reduction"])
