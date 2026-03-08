@@ -500,3 +500,124 @@ export const useLifecycleStats = (range: string) => useQuery({
   queryFn: () => api.get<Record<string, number>>(`/intel/stats/lifecycle?range=${range}`),
   enabled: enabled(), retry: 1,
 });
+
+// ── Investigations ──
+export const useInvestigations = () => useQuery({
+  queryKey: ['investigations'],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<Investigation>>('/investigations/');
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
+
+export const useCreateInvestigation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { title: string; description: string }) =>
+      api.post<{ id: string }>('/investigations/', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['investigations'] }),
+  });
+};
+
+export const useUpdateInvestigation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; notebook_content?: string; status?: string }) =>
+      api.patch(`/investigations/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['investigations'] }),
+  });
+};
+
+// ── Playbooks ──
+export const usePlaybooks = () => useQuery({
+  queryKey: ['playbooks'],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<Playbook>>('/playbooks/');
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
+
+export const useCreatePlaybook = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; description: string; steps: PlaybookStep[]; trigger?: unknown }) =>
+      api.post<{ id: string }>('/playbooks/', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['playbooks'] }),
+  });
+};
+
+export const useUpdatePlaybook = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; description?: string; steps?: PlaybookStep[]; enabled?: boolean; trigger?: unknown }) =>
+      api.patch(`/playbooks/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['playbooks'] }),
+  });
+};
+
+export const useDeletePlaybook = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.del(`/playbooks/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['playbooks'] }),
+  });
+};
+
+export const useRunPlaybook = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/playbooks/${id}/run`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['playbooks'] }),
+  });
+};
+
+// ── Notification Channels ──
+export interface NotificationChannel {
+  id: string;
+  name: string;
+  type: 'slack' | 'teams' | 'email' | 'webhook';
+  enabled: boolean;
+  config: Record<string, string>;
+  lastTriggered?: string;
+}
+
+export const useNotificationChannels = () => useQuery({
+  queryKey: ['notification-channels'],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<NotificationChannel>>('/alerts/channels');
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
+
+export const useCreateNotificationChannel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; type: string; config: Record<string, string> }) =>
+      api.post('/alerts/channels', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-channels'] }),
+  });
+};
+
+export const useUpdateNotificationChannel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; enabled?: boolean; config?: Record<string, string> }) =>
+      api.patch(`/alerts/channels/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-channels'] }),
+  });
+};
+
+export const useDeleteNotificationChannel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.del(`/alerts/channels/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-channels'] }),
+  });
+};
+
+export const useTestNotificationChannel = () => useMutation({
+  mutationFn: (id: string) => api.post<{ success: boolean; message?: string }>(`/alerts/channels/${id}/test`),
+});
