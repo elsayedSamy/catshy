@@ -4,9 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Search, Settings, Zap, TestTube, Loader2, Check, Shield, Plus, Globe, ArrowRightLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Search, Settings, TestTube, Loader2, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 
@@ -40,11 +39,6 @@ const EXTRA_CATALOG = [
   { provider: 'jira', info: { name: 'Jira', description: 'Issue tracking & case management', category: 'Ticketing / SIEM' } },
 ];
 
-type WebhookDirection = 'outbound' | 'inbound';
-type WebhookAuth = 'none' | 'bearer' | 'hmac' | 'basic';
-
-const EVENT_TYPES = ['new_threat', 'critical_alert', 'asset_match', 'leak_detected', 'report_generated', 'source_failure'];
-
 export default function Integrations() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,19 +48,9 @@ export default function Integrations() {
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Webhook dialog state
-  const [webhookDialog, setWebhookDialog] = useState(false);
-  const [webhookName, setWebhookName] = useState('');
-  const [webhookDirection, setWebhookDirection] = useState<WebhookDirection>('outbound');
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [webhookAuthType, setWebhookAuthType] = useState<WebhookAuth>('none');
-  const [webhookAuthValue, setWebhookAuthValue] = useState('');
-  const [webhookEventTypes, setWebhookEventTypes] = useState<string[]>([]);
-
   const fetchIntegrations = async () => {
     try {
       const data = await api.get<Integration[]>('/integrations/');
-      // Merge with extra catalog items
       const backendProviders = new Set(data.map(d => d.provider));
       const extras: Integration[] = EXTRA_CATALOG
         .filter(e => !backendProviders.has(e.provider))
@@ -77,7 +61,6 @@ export default function Integrations() {
         }));
       setIntegrations([...data, ...extras]);
     } catch {
-      // Dev mode — show static catalog
       const static_: Integration[] = [
         ...EXTRA_CATALOG.map(e => ({
           id: null, provider: e.provider, enabled: false, status: 'not_configured',
@@ -136,11 +119,7 @@ export default function Integrations() {
     setTesting(true);
     try {
       const result = await api.post<{ success: boolean; message: string }>(`/integrations/${configDialog.provider}/test`);
-      if (result.success) {
-        toast.success(result.message);
-      } else {
-        toast.error(result.message);
-      }
+      result.success ? toast.success(result.message) : toast.error(result.message);
       fetchIntegrations();
     } catch (e: any) {
       toast.error(e.message || 'Test failed');
@@ -188,9 +167,10 @@ export default function Integrations() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Integrations</h1>
-          <p className="text-sm text-muted-foreground mt-1">{integrations.filter(i => i.enabled).length} of {integrations.length} enabled</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            API-key based enrichment & notification providers • {integrations.filter(i => i.enabled).length} of {integrations.length} enabled
+          </p>
         </div>
-        <Button size="sm" className="glow-cyan" onClick={() => setWebhookDialog(true)}><Plus className="mr-2 h-4 w-4" />Custom Webhook</Button>
       </div>
 
       <div className="relative max-w-md">
@@ -284,84 +264,6 @@ export default function Integrations() {
                 {configDialog?.id ? 'Update Key' : 'Save & Enable'}
               </Button>
             </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Custom Webhook Dialog */}
-      <Dialog open={webhookDialog} onOpenChange={setWebhookDialog}>
-        <DialogContent className="bg-card border-border max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-primary" />Custom Webhook</DialogTitle>
-            <DialogDescription>Configure an inbound or outbound webhook integration.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Name</label>
-              <Input value={webhookName} onChange={e => setWebhookName(e.target.value)} placeholder="e.g. SIEM Forwarder" className="bg-secondary/30" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Direction</label>
-              <div className="flex gap-2">
-                {(['outbound', 'inbound'] as const).map(d => (
-                  <Button key={d} variant={webhookDirection === d ? 'default' : 'outline'} size="sm" className="flex-1 capitalize" onClick={() => setWebhookDirection(d)}>
-                    <ArrowRightLeft className="mr-1 h-3 w-3" />{d}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">URL</label>
-              <Input value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://your-endpoint.com/webhook" className="bg-secondary/30 font-mono text-sm" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Authentication</label>
-              <Select value={webhookAuthType} onValueChange={v => setWebhookAuthType(v as WebhookAuth)}>
-                <SelectTrigger className="bg-secondary/30"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="bearer">Bearer Token</SelectItem>
-                  <SelectItem value="hmac">HMAC Signature</SelectItem>
-                  <SelectItem value="basic">Basic Auth</SelectItem>
-                </SelectContent>
-              </Select>
-              {webhookAuthType !== 'none' && (
-                <Input type="password" value={webhookAuthValue} onChange={e => setWebhookAuthValue(e.target.value)}
-                  placeholder={webhookAuthType === 'basic' ? 'user:password' : 'Secret / Token'}
-                  className="bg-secondary/30 font-mono text-sm mt-2" />
-              )}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Event Types</label>
-              <div className="flex flex-wrap gap-1.5">
-                {EVENT_TYPES.map(et => (
-                  <Badge key={et}
-                    variant={webhookEventTypes.includes(et) ? 'default' : 'outline'}
-                    className="text-xs cursor-pointer capitalize"
-                    onClick={() => setWebhookEventTypes(prev => prev.includes(et) ? prev.filter(e => e !== et) : [...prev, et])}>
-                    {et.replace(/_/g, ' ')}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">Secrets encrypted at rest.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setWebhookDialog(false)}>Cancel</Button>
-            <Button onClick={async () => {
-              if (!webhookName.trim() || !webhookUrl.trim()) return;
-              try {
-                await api.post('/outputs/webhooks', {
-                  name: webhookName, url: webhookUrl, auth_type: webhookAuthType,
-                  secret: webhookAuthValue || undefined, event_types: webhookEventTypes,
-                });
-                toast.success('Webhook saved');
-                setWebhookDialog(false);
-                setWebhookName(''); setWebhookUrl(''); setWebhookAuthType('none'); setWebhookAuthValue(''); setWebhookEventTypes([]);
-              } catch (e: any) {
-                toast.error(e.message || 'Failed to save webhook');
-              }
-            }} disabled={!webhookName.trim() || !webhookUrl.trim()} className="glow-cyan">Save & Enable</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
