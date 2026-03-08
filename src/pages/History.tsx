@@ -19,7 +19,6 @@ type RangeFilter = '24h' | '7d' | '30d';
 
 export default function History() {
   const navigate = useNavigate();
-  const { isDevMode } = useAuth();
   const [range, setRange] = useState<RangeFilter>('30d');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,27 +30,7 @@ export default function History() {
 
   const { data, isLoading, refetch, isFetching } = useThreatHistory(range, searchQuery);
 
-  // Dev mode: filter demo data by range, search, and filters
-  const getDevItems = useCallback(() => {
-    const now = Date.now();
-    const cutoffs: Record<RangeFilter, number> = {
-      '24h': 86400000,
-      '7d': 86400000 * 7,
-      '30d': 86400000 * 30,
-    };
-    const cutoff = cutoffs[range];
-    let items = DEMO_HISTORY.filter(i => {
-      const age = now - new Date(i.published_at).getTime();
-      return age <= cutoff;
-    });
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter(i => i.title.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
-    }
-    return items;
-  }, [range, searchQuery]);
-
-  const rawItems = isDevMode ? getDevItems() : (data?.items ?? []);
+  const rawItems = data?.items ?? [];
 
   // Apply client-side filters
   const filteredItems = useMemo(() => {
@@ -64,7 +43,7 @@ export default function History() {
 
   const total = filteredItems.length;
   const activeFilterCount = [severityFilter, typeFilter, assetMatchOnly].filter(Boolean).length;
-  const queriedAt = isDevMode ? new Date().toISOString() : data?.queried_at;
+  const queriedAt = data?.queried_at;
 
   const setFilter = useCallback((key: string, value: string) => {
     setSearchParams(prev => {
