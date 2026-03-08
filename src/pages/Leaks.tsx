@@ -61,10 +61,9 @@ function LeaksContent() {
   const torEnabled = isEnabled('leaks_tor');
   const [showTorWarning, setShowTorWarning] = useState(false);
 
-  // Use backend data when available, fallback to demo
   const items: (LeakItem & { status?: string })[] = useMemo(() => {
     if (backendLeaks && backendLeaks.length > 0) return backendLeaks.map(l => ({ ...l, status: 'new' }));
-    return DEMO_LEAKS;
+    return [];
   }, [backendLeaks]);
 
   const filtered = useMemo(() => {
