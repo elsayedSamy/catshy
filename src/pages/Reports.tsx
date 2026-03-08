@@ -193,7 +193,7 @@ export default function Reports() {
 
       <div>
         <h3 className="text-sm font-medium text-muted-foreground mb-3">Recent Reports</h3>
-        {isLoading && !isDevMode ? (
+        {isLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : reports.length === 0 ? (
           <EmptyState icon="file" title="No Reports Yet" description="Generate reports from templates or create custom reports with specific date ranges." actionLabel="Generate Report" onAction={() => setDialogOpen(true)} />
