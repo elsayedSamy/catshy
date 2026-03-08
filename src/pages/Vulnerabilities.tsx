@@ -105,21 +105,12 @@ export default function Vulnerabilities() {
 
   const filtered = useMemo(() => {
     let result = items;
-    // In dev mode, apply client-side filters (API handles them server-side)
-    if (isDevMode) {
-      if (severityFilter) result = result.filter(v => v.severity === severityFilter);
-      if (kevOnly) result = result.filter(v => v.is_kev);
-      if (assetsOnly) result = result.filter(v => v.affects_assets);
-    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(v =>
-        v.cve_id.toLowerCase().includes(q) || v.title.toLowerCase().includes(q) ||
-        (v.vendor || '').toLowerCase().includes(q) || (v.product || '').toLowerCase().includes(q)
-      );
+      result = result.filter(v => v.cve_id.toLowerCase().includes(q) || v.title.toLowerCase().includes(q) || v.description.toLowerCase().includes(q));
     }
     return result;
-  }, [items, severityFilter, kevOnly, assetsOnly, searchQuery, isDevMode]);
+  }, [items, searchQuery]);
 
   const selected = filtered.find(v => v.id === selectedId) || null;
   const kevCount = items.filter(v => v.is_kev).length;
