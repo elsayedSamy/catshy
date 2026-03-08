@@ -22,12 +22,17 @@ import { RecentAlerts } from '@/components/dashboard/RecentAlerts';
 import { FeedStatus } from '@/components/dashboard/FeedStatus';
 import { MitreHeatmap } from '@/components/dashboard/MitreHeatmap';
 import { AttackedAssets } from '@/components/dashboard/AttackedAssets';
+import { SourceHealthWidget } from '@/components/dashboard/SourceHealth';
+import { IngestionRateWidget } from '@/components/dashboard/IngestionRate';
+import { FailedIngestions } from '@/components/dashboard/FailedIngestions';
 import {
   useDashboardKpis, useDashboardFeed, useDashboardMapEvents,
   useDashboardPulse, useDashboardChanges,
   useDashboardSeverity, useDashboardTimeline, useDashboardTopIOCs,
   useDashboardRiskScore, useDashboardRecentAlerts, useDashboardFeedStatus,
   useDashboardMitre, useDashboardAttackedAssets,
+  useSourceHealth, useIngestionRate, useFailedIngestions,
+  useRetryFailure, useResolveFailure,
 } from '@/hooks/useApi';
 import { Card, CardContent } from '@/components/ui/card';
 
