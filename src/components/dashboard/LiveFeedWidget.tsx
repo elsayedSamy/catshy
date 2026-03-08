@@ -22,7 +22,8 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
 }) {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<SeverityLevel | 'all'>('all');
-  const filtered = filter === 'all' ? items : items.filter(i => i.severity === filter);
+  const nonCveItems = filter === 'all' ? items.filter(i => i.observable_type !== 'cve') : items.filter(i => i.severity === filter && i.observable_type !== 'cve');
+  const filtered = nonCveItems;
 
   return (
     <Card className="border-border bg-card h-full flex flex-col">
