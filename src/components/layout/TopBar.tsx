@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bell, Moon, Sun, User, LogOut, Command, Check, Trash2, AlertTriangle, CheckCircle2, Info, RefreshCw, Building2 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Bell, Moon, Sun, User, LogOut, Command, Check, Trash2, AlertTriangle, CheckCircle2, Info, RefreshCw, Building2, ChevronRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,7 +20,6 @@ import {
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
-
 const typeIcon = (type: AppNotification['type']) => {
   if (type === 'alert') return <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />;
   if (type === 'system') return <RefreshCw className="h-4 w-4 text-warning shrink-0" />;
@@ -34,13 +34,33 @@ function timeAgo(ts: string) {
   return `${Math.floor(diff / 86400000)}d ago`;
 }
 
+// Simple breadcrumb from current path
+function Breadcrumb() {
+  const location = useLocation();
+  const segments = location.pathname.split('/').filter(Boolean);
+  if (segments.length === 0) return null;
+
+  return (
+    <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
+      {segments.map((seg, i) => (
+        <span key={i} className="flex items-center gap-1">
+          {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/40" />}
+          <span className={i === segments.length - 1 ? 'text-foreground font-medium capitalize' : 'capitalize'}>
+            {seg.replace(/-/g, ' ')}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function TopBar() {
   const { user, logout, workspaceId, switchWorkspace, isDevMode } = useAuth();
+  const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Backend notifications
   const { data: notifData } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
@@ -58,17 +78,9 @@ export function TopBar() {
     document.documentElement.classList.toggle('light', darkMode);
   };
 
-  const handleMarkAsRead = (id: string) => {
-    markRead.mutate(id);
-  };
-
-  const handleMarkAllRead = () => {
-    markAllRead.mutate(undefined);
-  };
-
-  const handleClearAll = () => {
-    clearAll.mutate(undefined);
-  };
+  const handleMarkAsRead = (id: string) => markRead.mutate(id);
+  const handleMarkAllRead = () => markAllRead.mutate(undefined);
+  const handleClearAll = () => clearAll.mutate(undefined);
 
   const handleSwitchWorkspace = async (wsId: string) => {
     if (wsId === workspaceId) return;
@@ -83,14 +95,14 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-md">
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-border/50 bg-background/60 px-4 backdrop-blur-xl">
+      <div className="flex items-center gap-3">
         {allWorkspaces.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 text-xs h-8 border-border bg-secondary/30 hover:bg-secondary/60">
+              <Button variant="ghost" size="sm" className="gap-2 text-xs h-8 hover:bg-secondary/50">
                 <Building2 className="h-3.5 w-3.5 text-primary" />
-                <span className="max-w-[140px] truncate">{currentWorkspace?.name || allWorkspaces[0]?.name || 'Workspace'}</span>
+                <span className="max-w-[120px] truncate font-medium">{currentWorkspace?.name || allWorkspaces[0]?.name || 'Workspace'}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
@@ -109,46 +121,60 @@ export function TopBar() {
           </DropdownMenu>
         )}
 
-        <button
-          onClick={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })); }}
-          className="flex items-center gap-2 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-        >
-          <Command className="h-3.5 w-3.5" />
-          <span className="hidden md:inline">Search or jump to...</span>
-          <kbd className="hidden rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs sm:inline">⌘K</kbd>
-        </button>
+        <div className="h-4 w-px bg-border/50 hidden md:block" />
+        <Breadcrumb />
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => setDrawerOpen(true)}>
+      <div className="flex items-center gap-1">
+        {/* Command search */}
+        <button
+          onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
+          className="hidden sm:flex items-center gap-2 rounded-lg border border-border/50 bg-secondary/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground mr-1"
+        >
+          <Command className="h-3 w-3" />
+          <span>Search...</span>
+          <kbd className="rounded border border-border/50 bg-background/50 px-1 py-0.5 font-mono text-[10px]">⌘K</kbd>
+        </button>
+
+        {/* Notifications */}
+        <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setDrawerOpen(true)}>
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground animate-pulse">
               {unreadCount}
             </span>
           )}
         </Button>
 
-        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={toggleTheme}>
+        {/* Theme */}
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={toggleTheme}>
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
+        {/* User */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-2 text-sm text-muted-foreground hover:text-foreground">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
-                <User className="h-3.5 w-3.5 text-primary" />
+            <Button variant="ghost" className="gap-2 text-sm text-muted-foreground hover:text-foreground h-8 px-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
+                <span className="text-xs font-bold text-primary">
+                  {(user?.name || user?.email || 'U').charAt(0).toUpperCase()}
+                </span>
               </div>
-              <span className="hidden md:inline">{user?.name || user?.email || 'User'}</span>
+              <span className="hidden md:inline text-xs font-medium">{user?.name || user?.email || 'User'}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <div className="px-2 py-1.5 text-xs text-muted-foreground">
-              Role: <span className="capitalize text-foreground">{user?.role || 'N/A'}</span>
+          <DropdownMenuContent align="end" className="w-52">
+            <div className="px-3 py-2">
+              <p className="text-sm font-medium text-foreground">{user?.name || 'User'}</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />Sign Out
+            <DropdownMenuItem onClick={() => navigate('/settings')} className="text-xs">
+              <Settings className="mr-2 h-3.5 w-3.5" />Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive text-xs">
+              <LogOut className="mr-2 h-3.5 w-3.5" />Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -180,9 +206,9 @@ export function TopBar() {
           <ScrollArea className="h-[calc(100vh-100px)]">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <Bell className="h-10 w-10 mb-3 opacity-30" />
+                <Bell className="h-10 w-10 mb-3 opacity-20" />
                 <p className="text-sm font-medium">No notifications</p>
-                <p className="text-xs mt-1">Alerts and system events will appear here.</p>
+                <p className="text-xs mt-1 text-muted-foreground/60">Alerts and system events will appear here.</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -200,7 +226,7 @@ export function TopBar() {
                           {!n.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">{timeAgo(n.timestamp)}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(n.timestamp)}</p>
                       </div>
                     </div>
                   </button>
