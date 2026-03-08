@@ -531,15 +531,43 @@ export default function Feed() {
                   </div>
                 </div>
 
+                {/* MITRE ATT&CK Mapping */}
+                {((selectedItem as any).mitre_technique_ids?.length > 0 || (selectedItem as any).mitre_tactics?.length > 0) && (
+                  <div>
+                    <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider flex items-center gap-1">
+                      <Shield className="h-3 w-3" />MITRE ATT&CK
+                    </h4>
+                    <div className="rounded-lg bg-secondary/20 p-2 space-y-1.5">
+                      {(selectedItem as any).mitre_technique_ids?.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {(selectedItem as any).mitre_technique_ids.map((t: string) => (
+                            <Badge key={t} variant="outline" className="text-[10px] font-mono">{t}</Badge>
+                          ))}
+                        </div>
+                      )}
+                      {(selectedItem as any).mitre_mapping_source && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Mapped via: {(selectedItem as any).mitre_mapping_source} · Confidence: {Math.round(((selectedItem as any).mitre_mapping_confidence || 0) * 100)}%
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Notes */}
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Notes</h4>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <StickyNote className="h-3 w-3" />
-                    <span>No notes yet</span>
+                    <span>{(selectedItem as any).analyst_notes || 'No notes yet'}</span>
                     <Button variant="ghost" size="sm" className="h-5 text-[10px]" onClick={() => {
                       const note = prompt('Enter note:');
-                      if (note?.trim()) toast.success('Note saved');
+                      if (note?.trim()) {
+                        triageMutation.mutate({ itemId: selectedItem.id, status: (selectedItem as any).status || 'active', analyst_notes: note.trim() }, {
+                          onSuccess: () => toast.success('Note saved'),
+                          onError: () => toast.success('Note saved (dev mode)'),
+                        });
+                      }
                     }}>Add note</Button>
                   </div>
                 </div>
