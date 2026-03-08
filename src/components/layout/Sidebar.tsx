@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/hooks/useApi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navSections = [
