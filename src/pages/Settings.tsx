@@ -10,6 +10,7 @@ import { User, Key, Shield, Moon, Sun, Settings2, Bell, Clock, Zap, Loader2, Sav
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import AIConfigPanel from '@/components/ai/AIConfigPanel';
 
 interface WsSettings {
   retention_days: number;
