@@ -424,3 +424,55 @@ export const useResolveFailure = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['failed-ingestions'] }),
   });
 };
+
+// ── Intel Lifecycle + MITRE ──
+
+export const useIntelDetail = (itemId: string) => useQuery({
+  queryKey: ['intel-detail', itemId],
+  queryFn: () => api.get<IntelDetail>(`/intel/${itemId}`),
+  enabled: enabled() && !!itemId, retry: 1,
+});
+
+export const useTriageIntel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, ...body }: { itemId: string; status: string; analyst_verdict?: string; verdict_reason?: string; analyst_notes?: string }) =>
+      api.patch(`/intel/${itemId}/triage`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['intel-detail'] });
+      qc.invalidateQueries({ queryKey: ['threat-feed'] });
+      qc.invalidateQueries({ queryKey: ['feed'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+    },
+  });
+};
+
+export const useBulkTriage = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { item_ids: string[]; status: string; analyst_verdict?: string; verdict_reason?: string }) =>
+      api.post('/intel/bulk-triage', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['threat-feed'] });
+      qc.invalidateQueries({ queryKey: ['feed'] });
+    },
+  });
+};
+
+export const useUpdateMitre = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, ...body }: { itemId: string; technique_ids: string[]; tactics?: string[]; confidence?: number }) =>
+      api.patch(`/intel/${itemId}/mitre`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['intel-detail'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-mitre'] });
+    },
+  });
+};
+
+export const useLifecycleStats = (range: string) => useQuery({
+  queryKey: ['lifecycle-stats', range],
+  queryFn: () => api.get<Record<string, number>>(`/intel/stats/lifecycle?range=${range}`),
+  enabled: enabled(), retry: 1,
+});
