@@ -195,11 +195,15 @@ export default function Dashboard() {
         <TopThreats items={mapData?.topThreats ?? []} isLoading={mapLoading} />
       </div>
 
-      {/* Feed + IOCs + Countries + CVEs — 4 equal cols */}
+      {/* Feed + IOCs + Countries + CVEs */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        <LiveFeedWidget items={feedData?.items ?? []} isLoading={feedLoading} onRefresh={() => refetchFeed()} />
+        <div className="sm:col-span-2">
+          <LiveFeedWidget items={feedData?.items ?? []} isLoading={feedLoading} onRefresh={() => refetchFeed()} />
+        </div>
         <TopIOCs items={topIOCs} isLoading={iocsLoading} />
         <TopCountries items={mapData?.topCountries ?? []} isLoading={mapLoading} />
+      </div>
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <TopCves items={mapData?.topCves ?? []} isLoading={mapLoading} />
       </div>
 
