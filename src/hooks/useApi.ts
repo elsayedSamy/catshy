@@ -334,7 +334,7 @@ export const useDashboardRiskScore = (range: string) => useQuery({
 export const useDashboardRecentAlerts = (range: string) => useQuery({
   queryKey: ['dashboard-recent-alerts', range],
   queryFn: () => api.get<{ id: string; title: string; severity: 'critical' | 'high' | 'medium' | 'low'; triggered_at: string; status: 'new' | 'acknowledged' | 'resolved' }[]>(`/dashboard/recent-alerts?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 15000,
 });
 
 // Dashboard Feed Status
