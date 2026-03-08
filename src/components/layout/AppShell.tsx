@@ -46,7 +46,12 @@ export function AppShell() {
       >
         <TopBar onMenuClick={() => setMobileSidebarOpen(true)} isMobile={isMobile} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 lg:p-5">
-          <Outlet />
+          <AnimatePresence mode="wait">
+            <PageTransition key={location.pathname}>
+              <Outlet />
+            </PageTransition>
+          </AnimatePresence>
+        </main>
         </main>
       </motion.div>
     </div>
