@@ -78,7 +78,7 @@ export default function Reports() {
   const [useCustomRange, setUseCustomRange] = useState(false);
 
   const template = REPORT_TEMPLATES.find(t => t.id === selectedTemplate);
-  const reports = isDevMode ? localReports : (apiReports.length > 0 ? apiReports : localReports);
+  const reports = apiReports;
 
   const handleGenerate = async () => {
     setGenerating(true);
