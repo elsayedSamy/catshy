@@ -39,7 +39,6 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
     if not user or not user.is_active:
         raise AuthenticationError("User not found or inactive")
 
-    # Attach workspace_id from token to request state
     request.state.user = user
     request.state.workspace_id = payload.get("wid")
     request.state.token_role = payload.get("role", "user")
@@ -54,13 +53,37 @@ async def get_current_user_optional(request: Request, db: AsyncSession = Depends
         return None
 
 
-# ── Workspace ID Extraction ──
+# ── Workspace ID Extraction (with membership verification) ──
 
-async def get_workspace_id(request: Request, user=Depends(get_current_user)) -> str:
-    """Extract workspace_id from JWT. Every tenant-scoped endpoint must depend on this."""
+async def get_workspace_id(request: Request, db: AsyncSession = Depends(get_db),
+                           user=Depends(get_current_user)) -> str:
+    """Extract workspace_id from JWT and VERIFY the user is a member.
+    Does NOT blindly trust the wid claim — always checks workspace_members table.
+    System owners bypass membership check."""
+    from app.models.workspace import WorkspaceMember
+
     wid = getattr(request.state, "workspace_id", None)
     if not wid:
         raise AuthorizationError("No workspace context. Re-login or select a workspace.")
+
+    # System owners bypass workspace membership check
+    token_role = getattr(request.state, "token_role", "user")
+    if token_role == "system_owner":
+        return wid
+
+    # Verify the user is an active member of this workspace
+    result = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == wid,
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.is_active == True,
+        )
+    )
+    membership = result.scalar_one_or_none()
+    if not membership:
+        raise TenantIsolationError("You are not a member of this workspace")
+
+    request.state.workspace_role = membership.role
     return wid
 
 
@@ -75,7 +98,6 @@ class RequireRole:
         from app.models.user import User, UserRole
 
         user = await get_current_user(request, db)
-        # Fetch user's roles from the user_roles table
         result = await db.execute(
             select(UserRole.role).where(UserRole.user_id == user.id)
         )
@@ -118,7 +140,6 @@ async def get_system_owner(request: Request, db: AsyncSession = Depends(get_db))
     if not user or not user.is_active:
         raise AuthenticationError("System owner account not found or inactive")
 
-    # Verify the user actually has system_owner role
     role_result = await db.execute(
         select(UserRole).where(UserRole.user_id == user_id, UserRole.role == "system_owner")
     )
@@ -130,7 +151,7 @@ async def get_system_owner(request: Request, db: AsyncSession = Depends(get_db))
     return user
 
 
-# ── Workspace Scoping ──
+# ── Workspace Scoping (legacy — kept for backward compat) ──
 
 class WorkspaceScope:
     """Dependency that ensures the user has access to the specified workspace."""
@@ -144,13 +165,11 @@ class WorkspaceScope:
         if not workspace_id:
             raise AuthorizationError("No workspace context. Include workspace in token.")
 
-        # System owners bypass workspace check
         token_role = getattr(request.state, "token_role", "user")
         if token_role == "system_owner":
             request.state.workspace_scoped = True
             return user
 
-        # Verify membership
         result = await db.execute(
             select(WorkspaceMember).where(
                 WorkspaceMember.workspace_id == workspace_id,
