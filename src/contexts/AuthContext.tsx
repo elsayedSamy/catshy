@@ -8,12 +8,13 @@ interface AuthContextType extends AuthState {
   hasRole: (roles: UserRole[]) => boolean;
   canAccess: (requiredRoles?: UserRole[]) => boolean;
   isDevMode: boolean;
+  workspaceId: string | null;
+  switchWorkspace: (workspaceId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
-// In preview (no backend), default to dev mode. In production, require VITE_DEV_AUTO_ADMIN=true
 const DEV_AUTO_ADMIN = import.meta.env.VITE_DEV_AUTO_ADMIN !== 'false';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -21,18 +22,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null, token: null, isAuthenticated: false, isLoading: true,
   });
   const [isDevMode, setIsDevMode] = useState(false);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('catshy_token');
     const userData = localStorage.getItem('catshy_user');
+    const wsId = localStorage.getItem('catshy_workspace_id');
     if (token && userData) {
       try {
         const user = JSON.parse(userData) as User;
         api.setToken(token);
         setState({ user, token, isAuthenticated: true, isLoading: false });
+        setWorkspaceId(wsId || null);
       } catch {
         localStorage.removeItem('catshy_token');
         localStorage.removeItem('catshy_user');
+        localStorage.removeItem('catshy_workspace_id');
         tryDevMode();
       }
     } else {
@@ -54,19 +59,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
 
     if (isRealBackend) {
-      // Real backend detected — user must login via /login
       setState(s => ({ ...s, isLoading: false }));
     } else if (DEV_AUTO_ADMIN) {
-      // Dev mode only when explicitly enabled
       const devUser: User = {
         id: 'dev-admin', email: 'admin@catshy.local', name: 'Dev Admin',
         role: 'system_owner', roles: ['system_owner', 'user'], created_at: new Date().toISOString(), is_active: true,
       };
       api.setDevMode(true);
       setIsDevMode(true);
+      setWorkspaceId('dev-workspace');
       setState({ user: devUser, token: 'dev-token', isAuthenticated: true, isLoading: false });
     } else {
-      // No backend + no dev mode = show login
       setState(s => ({ ...s, isLoading: false }));
     }
   };
@@ -74,7 +77,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     setState(s => ({ ...s, isLoading: true }));
 
-    // Check if real backend is available
     let backendAvailable = false;
     try {
       const ctrl = new AbortController();
@@ -88,7 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
 
     if (backendAvailable) {
-      // Real backend login
       try {
         const res = await fetch(`${API_BASE}/auth/login`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -99,18 +100,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error(err.detail || 'Login failed');
         }
         const data = await res.json();
+        const wsId = data.user?.workspace_id || null;
         localStorage.setItem('catshy_token', data.access_token);
         localStorage.setItem('catshy_user', JSON.stringify(data.user));
+        if (wsId) localStorage.setItem('catshy_workspace_id', wsId);
         api.setToken(data.access_token);
         api.setDevMode(false);
         setIsDevMode(false);
+        setWorkspaceId(wsId);
         setState({ user: data.user, token: data.access_token, isAuthenticated: true, isLoading: false });
       } catch (e) {
         setState(s => ({ ...s, isLoading: false }));
         throw e;
       }
     } else {
-      // Dev mode fallback — accept any credentials
       const devUser: User = {
         id: 'dev-admin', email, name: email.split('@')[0] || 'Dev User',
         role: 'system_owner', roles: ['system_owner', 'user'], created_at: new Date().toISOString(), is_active: true,
@@ -118,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.setDevMode(true);
       api.setToken('dev-token');
       setIsDevMode(true);
+      setWorkspaceId('dev-workspace');
       localStorage.setItem('catshy_token', 'dev-token');
       localStorage.setItem('catshy_user', JSON.stringify(devUser));
       setState({ user: devUser, token: 'dev-token', isAuthenticated: true, isLoading: false });
@@ -127,9 +131,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem('catshy_token');
     localStorage.removeItem('catshy_user');
+    localStorage.removeItem('catshy_workspace_id');
     api.setToken(null);
+    setWorkspaceId(null);
     setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
   }, []);
+
+  const switchWorkspace = useCallback(async (newWorkspaceId: string) => {
+    if (isDevMode) {
+      setWorkspaceId(newWorkspaceId);
+      localStorage.setItem('catshy_workspace_id', newWorkspaceId);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('catshy_token');
+      const res = await fetch(`${API_BASE}/auth/switch-workspace`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ workspace_id: newWorkspaceId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to switch workspace' }));
+        throw new Error(err.detail);
+      }
+      const data = await res.json();
+      localStorage.setItem('catshy_token', data.access_token);
+      localStorage.setItem('catshy_workspace_id', newWorkspaceId);
+      api.setToken(data.access_token);
+      setWorkspaceId(newWorkspaceId);
+      setState(s => ({ ...s, token: data.access_token }));
+    } catch (e) {
+      throw e;
+    }
+  }, [isDevMode]);
 
   const hasRole = useCallback((roles: UserRole[]) => {
     if (!state.user) return false;
@@ -143,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [state.isAuthenticated, state.user]);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, hasRole, canAccess, isDevMode }}>
+    <AuthContext.Provider value={{ ...state, login, logout, hasRole, canAccess, isDevMode, workspaceId, switchWorkspace }}>
       {children}
     </AuthContext.Provider>
   );
