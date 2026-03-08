@@ -242,7 +242,7 @@ export const useDashboardKpis = (range: string) => useQuery({
 export const useDashboardFeed = (range: string) => useQuery({
   queryKey: ['dashboard-feed', range],
   queryFn: () => api.get<{ items: IntelItem[] }>(`/dashboard/live-feed?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 10000,
 });
 
 // Threat Feed (fresh < 24h)
