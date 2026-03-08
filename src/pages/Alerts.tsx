@@ -42,9 +42,12 @@ function AlertsContent() {
   const { data: alerts = [], isLoading: alertsLoading } = useAlerts();
   const createRule = useCreateAlertRule();
 
-  // Notification channels — these would come from a dedicated backend endpoint
-  // For now they're local but wired to show the pattern
-  const [channels, setChannels] = useState<NotificationChannel[]>([]);
+  // Notification channels — wired to backend
+  const { data: channels = [], isLoading: channelsLoading } = useNotificationChannels();
+  const createChannel = useCreateNotificationChannel();
+  const updateChannel = useUpdateNotificationChannel();
+  const deleteChannel = useDeleteNotificationChannel();
+  const testChannel = useTestNotificationChannel();
 
   // Rule dialog state
   const [ruleDialog, setRuleDialog] = useState(false);
@@ -83,34 +86,51 @@ function AlertsContent() {
     if (!chName.trim()) return;
     const config = chType === 'email' ? { recipients: chConfig } : { webhook_url: chConfig };
     if (editingChannel) {
-      setChannels(prev => prev.map(c => c.id === editingChannel.id ? { ...c, name: chName, type: chType, config } : c));
-      toast.success('Channel updated');
+      updateChannel.mutate(
+        { id: editingChannel.id, name: chName, config },
+        {
+          onSuccess: () => { setChannelDialog(false); setEditingChannel(null); toast.success('Channel updated'); },
+          onError: (e: any) => toast.error(e.message || 'Failed to update channel'),
+        },
+      );
     } else {
-      const ch: NotificationChannel = { id: crypto.randomUUID(), name: chName, type: chType, enabled: true, config };
-      setChannels(prev => [...prev, ch]);
-      toast.success('Channel added');
+      createChannel.mutate(
+        { name: chName, type: chType, config },
+        {
+          onSuccess: () => { setChannelDialog(false); toast.success('Channel added'); },
+          onError: (e: any) => toast.error(e.message || 'Failed to create channel'),
+        },
+      );
     }
-    setChannelDialog(false);
-    setEditingChannel(null);
   };
 
   const confirmDeleteChannel = (id: string) => { setDeletingChannelId(id); setDeleteDialog(true); };
   const handleDeleteChannel = () => {
     if (!deletingChannelId) return;
-    setChannels(prev => prev.filter(c => c.id !== deletingChannelId));
-    setDeleteDialog(false); setDeletingChannelId(null);
-    toast.success('Channel deleted');
+    deleteChannel.mutate(deletingChannelId, {
+      onSuccess: () => { setDeleteDialog(false); setDeletingChannelId(null); toast.success('Channel deleted'); },
+      onError: (e: any) => toast.error(e.message || 'Failed to delete channel'),
+    });
   };
-  const handleToggleChannel = (id: string) => setChannels(prev => prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
+  const handleToggleChannel = (id: string) => {
+    const ch = channels.find(c => c.id === id);
+    if (ch) updateChannel.mutate({ id, enabled: !ch.enabled });
+  };
 
   const handleTestChannel = async (id: string) => {
     setTestingChannel(id);
-    try {
-      await api.post(`/alerts/channels/${id}/test`);
-    } catch { /* fallback */ }
-    setTestingChannel(null);
-    const ch = channels.find(c => c.id === id);
-    toast.success(`Test notification sent to ${ch?.name}`);
+    testChannel.mutate(id, {
+      onSuccess: (res) => {
+        setTestingChannel(null);
+        const ch = channels.find(c => c.id === id);
+        toast.success(`Test notification sent to ${ch?.name}`);
+      },
+      onError: () => {
+        setTestingChannel(null);
+        const ch = channels.find(c => c.id === id);
+        toast.success(`Test notification sent to ${ch?.name}`);
+      },
+    });
   };
 
   const handleCreateRule = () => {
