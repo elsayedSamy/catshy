@@ -40,7 +40,6 @@ const STATUS_OPTIONS = [
   { value: 'resolved', label: 'Resolved', color: 'bg-accent/20 text-accent' },
 ];
 
-];
 
 export default function Leaks() {
   return (
