@@ -412,8 +412,8 @@ function SessionsTab() {
 // ── Users Tab (Enhanced) ──
 function UsersTab() {
   const { data: apiUsers = [] } = useUsers();
-  const users = apiUsers.length > 0 ? apiUsers : DEMO_USERS_LIST;
-  const [userDetail, setUserDetail] = useState<typeof DEMO_USERS_LIST[0] | null>(null);
+  const users = apiUsers;
+  const [userDetail, setUserDetail] = useState<any | null>(null);
 
   return (
     <div className="space-y-4">
