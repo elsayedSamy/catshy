@@ -224,7 +224,7 @@ export default function Feed() {
     finally { setGenerating(false); }
   }, [reportPreset, reportFormat, reportStartDate, reportEndDate, customRangeValid, customRangeError]);
 
-  const activeFilterCount = [severityFilter, assetMatchOnly, containsCve, containsIoc, govSourcesOnly, highConfOnly].filter(Boolean).length;
+  const activeFilterCount = [severityFilter, assetMatchOnly, containsIoc, govSourcesOnly, highConfOnly].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
