@@ -119,10 +119,6 @@ export default function Vulnerabilities() {
   const activeFilterCount = [severityFilter, kevOnly, assetsOnly].filter(Boolean).length;
 
   const handleTriage = (id: string, status: string) => {
-    if (isDevMode) {
-      toast.success(`Marked as ${status}`);
-      return;
-    }
     triageMutation.mutate({ id, status }, {
       onSuccess: () => toast.success(`Marked as ${status}`),
       onError: (e: any) => toast.error(e.message || 'Failed to triage'),
@@ -130,10 +126,6 @@ export default function Vulnerabilities() {
   };
 
   const handleCorrelate = () => {
-    if (isDevMode) {
-      toast.success('Correlation triggered (dev mode)');
-      return;
-    }
     correlateMutation.mutate(undefined, {
       onSuccess: () => toast.success('Asset correlation completed'),
       onError: (e: any) => toast.error(e.message || 'Correlation failed'),
