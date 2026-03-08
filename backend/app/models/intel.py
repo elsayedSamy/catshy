@@ -92,6 +92,10 @@ class Observable(Base):
     # Enrichment metadata
     enrichment_data = Column(JSONB, default=dict)
     tags = Column(ARRAY(String), default=list)
+    # ── Lifecycle fields ──
+    status = Column(String(30), default="active", index=True)  # active, expired, false_positive, whitelisted
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     __table_args__ = (
