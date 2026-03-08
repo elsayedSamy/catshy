@@ -153,7 +153,8 @@ export default function Dashboard() {
       <SectionHeader icon={Shield} title="MITRE ATT&CK" subtitle="Technique coverage heatmap" />
       <MitreHeatmap data={mitreData} isLoading={mitreLoading} />
 
-      {/* Source Health + Ingestion Rate — operational streaming section */}
+      {/* ── Operational Health ── */}
+      <SectionHeader icon={Cpu} title="Operational Health" subtitle="Sources, ingestion & failures" />
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
         <SourceHealthWidget items={sourceHealth?.items} isLoading={sourceHealthLoading} />
         <IngestionRateWidget data={ingestionRate} isLoading={ingestionLoading} />
