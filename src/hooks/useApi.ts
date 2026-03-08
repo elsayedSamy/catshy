@@ -313,7 +313,7 @@ export const useDashboardSeverity = (range: string) => useQuery({
 export const useDashboardTimeline = (range: string) => useQuery({
   queryKey: ['dashboard-timeline', range],
   queryFn: () => api.get<{ time: string; critical: number; high: number; medium: number; low: number }[]>(`/dashboard/timeline?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
 
 // Dashboard Top IOCs
