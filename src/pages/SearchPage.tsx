@@ -22,7 +22,6 @@ const exampleQueries = [
 ];
 
 export default function SearchPage() {
-  const { isDevMode } = useAuth();
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -45,13 +44,6 @@ export default function SearchPage() {
 
   // Map API response to unified results
   const results: SearchResult[] = (() => {
-    if (isDevMode && submittedQuery) {
-      const lower = submittedQuery.toLowerCase();
-      return DEMO_DATA.filter(d =>
-        d.title.toLowerCase().includes(lower) || d.value.toLowerCase().includes(lower) ||
-        d.source.toLowerCase().includes(lower) || d.type.toLowerCase().includes(lower)
-      );
-    }
     if (!data) return [];
     const items: SearchResult[] = [];
     (data.intel_items || []).forEach((i: IntelItem) => items.push({
@@ -67,7 +59,7 @@ export default function SearchPage() {
 
   const hasSearched = !!submittedQuery;
   const searching = isLoading || isFetching;
-  const total = isDevMode ? results.length : (data?.total ?? results.length);
+  const total = data?.total ?? results.length;
 
   return (
     <div className="space-y-6">
