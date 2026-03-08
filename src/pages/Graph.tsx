@@ -32,7 +32,7 @@ export default function Graph() {
 
 function GraphContent() {
   const { data: apiEntities, isLoading } = useEntities();
-  const { data: apiRelationships } = useEntityRelationships(selected?.id || '');
+  // Relationships will be loaded per-entity from the API when needed
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [nodes, setNodes] = useState<GNode[]>([]);
