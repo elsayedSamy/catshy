@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Asset, SourceTemplate, IntelItem, Entity, Relationship, AlertRule, Alert, Case, Report, LeakItem, AuditEntry, User } from '@/types';
+import type { SourceHealthItem } from '@/components/dashboard/SourceHealth';
+import type { IngestionRateData } from '@/components/dashboard/IngestionRate';
+import type { FailedIngestionItem } from '@/components/dashboard/FailedIngestions';
 
 const enabled = () => !api.getDevMode();
 
