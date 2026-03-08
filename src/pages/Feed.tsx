@@ -436,7 +436,7 @@ export default function Feed() {
                         <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
                           triageMutation.mutate({ itemId: selectedItem.id, status: 'investigating', analyst_verdict: 'suspicious' }, {
                             onSuccess: () => toast.success('Marked as investigating'),
-                            onError: () => toast.success('Marked as investigating (dev mode)'),
+                            onError: (e: any) => toast.error(e.message || 'Failed to update'),
                           });
                         }}>
                           <Eye className="mr-1 h-3 w-3" />Investigate
