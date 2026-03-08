@@ -143,10 +143,10 @@ export default function Settings() {
               <p className="text-xs text-muted-foreground">Play sound on critical threat events</p>
             </div>
             <div className="flex items-center gap-2">
-              {isSoundEnabled() ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+              {soundOn ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
               <Switch
-                checked={isSoundEnabled()}
-                onCheckedChange={(v) => { setSoundEnabled(v); if (v) { const { playCritical } = useSoundAlert(); playCritical(); } }}
+                checked={soundOn}
+                onCheckedChange={(v) => { setSoundEnabled(v); setSoundOn(v); if (v) playCritical(); }}
               />
             </div>
           </div>
