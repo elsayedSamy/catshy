@@ -36,7 +36,15 @@ const kpiConfig = [
   { key: 'activeCampaigns' as const, label: 'Active Campaigns', timed: false, icon: Zap, gradient: 'from-accent/10 to-accent/5', iconBg: 'bg-accent/10 border-accent/20', iconColor: 'text-accent', deltaKey: null },
 ];
 
-export function KpiCards({ data, isLoading }: { data?: KpiData; isLoading: boolean }) {
+const timeRangeLabels: Record<string, string> = {
+  '1h': '1h',
+  '6h': '6h',
+  '24h': '24h',
+  '7d': '7d',
+  '30d': '30d',
+};
+
+export function KpiCards({ data, isLoading, timeRange = '24h' }: { data?: KpiData; isLoading: boolean; timeRange?: string }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {kpiConfig.map((kpi, i) => {
