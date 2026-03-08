@@ -19,7 +19,7 @@ const typeColors: Record<string, string> = {
   cve: 'border-accent/30 text-accent',
 };
 
-export function TopIOCs({ items = [], isLoading }: { items?: IOCItem[]; isLoading: boolean }) {
+export const TopIOCs = forwardRef<HTMLDivElement, { items?: IOCItem[]; isLoading: boolean }>(function TopIOCs({ items = [], isLoading }, ref) {
   return (
     <Card className="border-border bg-card h-full">
       <CardHeader className="pb-2">
