@@ -22,6 +22,6 @@ __all__ = [
     "SourceStats", "UserFeedback",
     "Entity", "EntityRelationship",
     "Asset", "Source", "AlertRule", "Alert", "Investigation", "Case",
-    "Report", "LeakItem", "Playbook", "PlaybookRun",
+    "Report", "LeakItem", "Playbook", "PlaybookRun", "FailedIngestion",
     "WorkspaceIntegration", "WorkspaceSettings",
 ]
