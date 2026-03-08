@@ -97,3 +97,4 @@ app.include_router(source_health_router, prefix="/api/sources", tags=["source-he
 app.include_router(lifecycle_router, prefix="/api/intel", tags=["lifecycle"])
 app.include_router(stix_export_router, prefix="/api/stix", tags=["stix-export"])
 app.include_router(vulns_router, prefix="/api/vulnerabilities", tags=["vulnerabilities"])
+app.include_router(leak_monitor_router, prefix="/api/leaks", tags=["leak-monitor"])
