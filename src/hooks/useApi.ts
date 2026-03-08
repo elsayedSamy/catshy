@@ -278,7 +278,7 @@ export const useDashboardMapEvents = (range: string) => useQuery({
     topCountries: { code: string; name: string; score: number; eventCount: number }[];
     topCves: { id: string; cvss: number; summary: string; kev: boolean; patchAvailable: boolean }[];
   }>(`/map/summary?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
 
 // Dashboard Pulse
