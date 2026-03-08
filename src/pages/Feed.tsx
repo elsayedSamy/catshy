@@ -88,7 +88,6 @@ export default function Feed() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [moreFilters, setMoreFilters] = useState(false);
-  const [containsCve, setContainsCve] = useState(false);
   const [containsIoc, setContainsIoc] = useState(false);
   const [govSourcesOnly, setGovSourcesOnly] = useState(false);
   const [highConfOnly, setHighConfOnly] = useState(false);
@@ -112,18 +111,19 @@ export default function Feed() {
 
   const filteredItems = useMemo(() => {
     let result = rawItems;
+    // Exclude CVE/vulnerability items — they belong in the Vulnerabilities page
+    result = result.filter(i => i.observable_type !== 'cve');
     if (severityFilter) result = result.filter(i => i.severity === severityFilter);
     if (assetMatchOnly) result = result.filter(i => i.asset_match);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(i => i.title.toLowerCase().includes(q) || i.observable_value.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
     }
-    if (containsCve) result = result.filter(i => i.observable_type === 'cve');
     if (containsIoc) result = result.filter(i => ['ip', 'domain', 'url', 'hash_sha256'].includes(i.observable_type));
     if (govSourcesOnly) result = result.filter(i => ['CISA KEV', 'NVD'].includes(i.source_name));
     if (highConfOnly) result = result.filter(i => i.confidence_score >= 90);
     return result;
-  }, [rawItems, severityFilter, assetMatchOnly, searchQuery, containsCve, containsIoc, govSourcesOnly, highConfOnly]);
+  }, [rawItems, severityFilter, assetMatchOnly, searchQuery, containsIoc, govSourcesOnly, highConfOnly]);
 
   const selectedItem = filteredItems.find(i => i.id === selectedId) || null;
   const orgRelevantCount = rawItems.filter(i => i.asset_match).length;
@@ -160,7 +160,6 @@ export default function Feed() {
   const clearFilters = useCallback(() => {
     setSearchParams({});
     setSearchQuery('');
-    setContainsCve(false);
     setContainsIoc(false);
     setGovSourcesOnly(false);
     setHighConfOnly(false);
@@ -225,7 +224,7 @@ export default function Feed() {
     finally { setGenerating(false); }
   }, [reportPreset, reportFormat, reportStartDate, reportEndDate, customRangeValid, customRangeError]);
 
-  const activeFilterCount = [severityFilter, assetMatchOnly, containsCve, containsIoc, govSourcesOnly, highConfOnly].filter(Boolean).length;
+  const activeFilterCount = [severityFilter, assetMatchOnly, containsIoc, govSourcesOnly, highConfOnly].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
@@ -328,7 +327,7 @@ export default function Feed() {
       {/* Search bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search CVE, domain, keyword…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
+        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search IP, domain, hash, keyword…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
       </div>
 
       {/* Filters row */}
@@ -352,7 +351,6 @@ export default function Feed() {
           </PopoverTrigger>
           <PopoverContent className="w-56 p-3 space-y-2" align="start">
             {[
-              { label: 'Contains CVE', checked: containsCve, set: setContainsCve },
               { label: 'Contains IOC', checked: containsIoc, set: setContainsIoc },
               { label: 'Government Sources', checked: govSourcesOnly, set: setGovSourcesOnly },
               { label: 'High Confidence Only', checked: highConfOnly, set: setHighConfOnly },
@@ -369,6 +367,17 @@ export default function Feed() {
             <X className="mr-1 h-3 w-3" />Clear ({activeFilterCount})
           </Button>
         )}
+      </div>
+
+      {/* CVE redirect banner */}
+      <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
+        <AlertTriangle className="h-4 w-4 text-primary shrink-0" />
+        <p className="text-xs text-muted-foreground flex-1">
+          Vulnerability & CVE intelligence has moved to a dedicated page for better tracking and remediation.
+        </p>
+        <Button variant="outline" size="sm" className="h-7 text-xs shrink-0" onClick={() => navigate('/vulnerabilities')}>
+          <Shield className="mr-1 h-3 w-3" />Vulnerability Center
+        </Button>
       </div>
 
       {/* Main split layout */}
