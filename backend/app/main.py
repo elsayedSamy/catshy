@@ -27,6 +27,7 @@ from app.routers.lifecycle import router as lifecycle_router
 from app.routers.stix_export import router as stix_export_router
 from app.routers.vulnerabilities import router as vulns_router
 from app.routers.leak_monitor import router as leak_monitor_router
+from app.routers.outputs import router as outputs_router
 from app.middleware.audit import AuditMiddleware
 from app.middleware.csrf import CSRFMiddleware
 from app.services.admin_seed import seed_admin
