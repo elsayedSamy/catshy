@@ -112,7 +112,7 @@ function GraphContent() {
     return n ? { x: n.x, y: n.y } : { x: 0, y: 0 };
   };
 
-  if (isLoading && !isDevMode) {
+  if (isLoading) {
     return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
