@@ -27,40 +27,6 @@ const REPORT_TEMPLATES = [
   { id: 'vuln_digest', label: 'Vulnerability Digest', desc: 'CVEs and vulnerability assessment', icon: Bug, preset: '7d' },
 ];
 
-// ── Local export helpers (used for client-side fallback in dev mode) ──
-function generateCSV(report: Report): string {
-  const lines = ['Section,Type,Content'];
-  report.sections?.forEach(s => {
-    lines.push(`"${s.heading}","${s.type}","${s.content.replace(/"/g, '""')}"`);
-  });
-  return lines.join('\n');
-}
-
-function generateJSON(report: Report): string {
-  return JSON.stringify({
-    title: report.title, generated_at: report.generated_at,
-    generated_by: report.generated_by, format: report.format, sections: report.sections,
-  }, null, 2);
-}
-
-function generateHTML(report: Report): string {
-  return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>${report.title}</title>
-<style>body{font-family:system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1a1a2e;background:#f4f4f8}h1{color:#0d1b2a;border-bottom:3px solid #00b4d8;padding-bottom:8px}h2{color:#1b263b;margin-top:24px}.meta{color:#666;font-size:13px;margin-bottom:24px}.section{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:16px}.badge{display:inline-block;background:#00b4d8;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:6px}footer{margin-top:32px;text-align:center;font-size:11px;color:#999}</style></head><body>
-<h1>🐱 CATSHY — ${report.title}</h1>
-<div class="meta">Generated: ${new Date(report.generated_at).toLocaleString()} • By: ${report.generated_by}</div>
-${report.sections?.map(s => `<div class="section"><h2>${s.heading}</h2><span class="badge">${s.type}</span><p>${s.content}</p></div>`).join('\n') || ''}
-<footer>CATSHY Threat Intelligence Platform • Confidential</footer>
-</body></html>`;
-}
-
-function downloadBlob(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
 
 export default function Reports() {
   
