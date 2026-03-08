@@ -155,6 +155,33 @@ class IngestionPipeline:
             item.geo_country_name = best_geo.get("country_name")
             item.geo_city = best_geo.get("city")
 
+        # 6b. Auto-enrich with WHOIS/DNS/GreyNoise (free APIs, no keys needed)
+        enrichment_results = {}
+        try:
+            from app.services.whois_dns import whois_enrichment, dns_enrichment, greynoise_enrichment
+            import asyncio
+
+            enrich_tasks = []
+            if primary_obs["type"] == "ip":
+                enrich_tasks = [
+                    whois_enrichment.lookup("ip", primary_obs["canonical"]),
+                    dns_enrichment.reverse_dns(primary_obs["canonical"]),
+                    greynoise_enrichment.classify_ip(primary_obs["canonical"]),
+                ]
+            elif primary_obs["type"] == "domain":
+                enrich_tasks = [
+                    whois_enrichment.lookup("domain", primary_obs["canonical"]),
+                    dns_enrichment.lookup_domain(primary_obs["canonical"], ["A", "MX", "NS"]),
+                ]
+
+            if enrich_tasks:
+                results = await asyncio.gather(*enrich_tasks, return_exceptions=True)
+                for r in results:
+                    if isinstance(r, dict):
+                        enrichment_results[r.get("provider", "unknown")] = r
+        except Exception as e:
+            logger.debug(f"Auto-enrichment skipped: {e}")
+
         # 7. Store observables and link M2M
         for obs in observables:
             obs_record = await self._upsert_observable(obs, best_geo if obs == observables[0] and best_geo else None)
@@ -203,7 +230,7 @@ class IngestionPipeline:
                 )
                 self.db.add(match_record)
 
-        # 9. Risk scoring with explainability
+        # 9. Risk scoring v2 with explainability + threat actor reputation + IOC freshness
         highest_crit = self._matcher.get_highest_criticality(
             [(m["asset_id"], m["asset_value"], m["criticality"]) for m in all_matches]
         ) if all_matches and self._matcher else "info"
@@ -219,11 +246,15 @@ class IngestionPipeline:
             {"excerpt": item.excerpt, "original_url": item.original_url, "published_at": item.published_at},
             source_reputation=self._source_reliability,
             corroboration_count=corroboration + 1,
+            enrichment_results=enrichment_results,
         )
         risk_result = calculate_risk_score(
-            {"severity": severity, "dedup_count": item.dedup_count},
+            {"severity": severity, "dedup_count": item.dedup_count,
+             "title": title, "description": description, "tags": entry.get("tags", []),
+             "published_at": item.published_at, "fetched_at": item.fetched_at},
             asset_relevance=asset_relevance,
             criticality=highest_crit,
+            enrichment_results=enrichment_results,
         )
 
         item.confidence_score = conf_result["score"]
@@ -234,6 +265,7 @@ class IngestionPipeline:
             "asset_matches": len(all_matches),
             "observables_extracted": len(observables),
             "geo_enriched": best_geo is not None,
+            "enrichment": enrichment_results,
         }
 
         # 10. MITRE ATT&CK mapping

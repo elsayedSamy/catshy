@@ -4,7 +4,7 @@ import {
   Home, Database, Radio, Rss, Search, Globe, Bell,
   FileSearch, Briefcase, FileText, AlertTriangle,
   Map as MapIcon, Workflow, Shield, Settings, ChevronLeft, Cat, History,
-  Plug, ShieldAlert, Webhook, Brain, ChevronRight
+  Plug, ShieldAlert, Webhook, Brain, ChevronRight, BarChart3
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ const navSections = [
     title: 'Core',
     items: [
       { label: 'Dashboard', path: '/dashboard', icon: Home },
+      { label: 'Executive', path: '/executive', icon: BarChart3 },
       { label: 'Intel Feed', path: '/feed', icon: Rss },
       { label: 'History', path: '/history', icon: History },
       { label: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert },
