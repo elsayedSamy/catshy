@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bell, Moon, Sun, User, LogOut, Command, Check, Trash2, AlertTriangle, CheckCircle2, Info, RefreshCw } from 'lucide-react';
+import { Bell, Moon, Sun, User, LogOut, Command, Check, Trash2, AlertTriangle, CheckCircle2, Info, RefreshCw, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger
+  DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription
 } from '@/components/ui/sheet';
+import { useWorkspaces, type WorkspaceInfo } from '@/hooks/useApi';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Notification {
   id: string;
@@ -44,10 +47,20 @@ function timeAgo(ts: string) {
 }
 
 export function TopBar() {
-  const { user, logout } = useAuth();
+  const { user, logout, workspaceId, switchWorkspace, isDevMode } = useAuth();
   const [darkMode, setDarkMode] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
+  const queryClient = useQueryClient();
+
+  const { data: workspaces } = useWorkspaces();
+  const currentWorkspace = workspaces?.find(w => w.id === workspaceId);
+
+  // Dev mode workspaces
+  const devWorkspaces: WorkspaceInfo[] = isDevMode ? [
+    { id: 'dev-workspace', name: "Dev Admin's Workspace", slug: 'ws-dev', description: '', role: 'team_admin', created_at: new Date().toISOString() },
+  ] : [];
+  const allWorkspaces = workspaces || devWorkspaces;
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -68,9 +81,51 @@ export function TopBar() {
     setNotifications([]);
   };
 
+  const handleSwitchWorkspace = async (wsId: string) => {
+    if (wsId === workspaceId) return;
+    try {
+      await switchWorkspace(wsId);
+      // Invalidate all queries to refetch with new workspace scope
+      queryClient.invalidateQueries();
+      const ws = allWorkspaces.find(w => w.id === wsId);
+      toast.success(`Switched to ${ws?.name || 'workspace'}`);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to switch workspace');
+    }
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-md">
       <div className="flex items-center gap-4">
+        {/* Workspace Switcher */}
+        {allWorkspaces.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 text-xs h-8 border-border bg-secondary/30 hover:bg-secondary/60">
+                <Building2 className="h-3.5 w-3.5 text-primary" />
+                <span className="max-w-[140px] truncate">{currentWorkspace?.name || allWorkspaces[0]?.name || 'Workspace'}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {allWorkspaces.map(ws => (
+                <DropdownMenuItem
+                  key={ws.id}
+                  onClick={() => handleSwitchWorkspace(ws.id)}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="truncate text-sm">{ws.name}</span>
+                  </div>
+                  {ws.id === workspaceId && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         <button
           onClick={() => {
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));

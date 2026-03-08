@@ -4,9 +4,21 @@ import type { Asset, SourceTemplate, IntelItem, Entity, Relationship, AlertRule,
 
 const enabled = () => !api.getDevMode();
 
+// ── Paginated response unwrapper ──
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 // Assets
 export const useAssets = (type?: string) => useQuery({
-  queryKey: ['assets', type], queryFn: () => api.get<Asset[]>(`/assets/${type ? `?type=${type}` : ''}`),
+  queryKey: ['assets', type],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<Asset>>(`/assets/${type ? `?type=${type}` : ''}`);
+    return res.items;
+  },
   enabled: enabled(), retry: 1,
 });
 export const useCreateAsset = () => {
@@ -20,7 +32,11 @@ export const useDeleteAsset = () => {
 
 // Sources
 export const useSources = () => useQuery({
-  queryKey: ['sources'], queryFn: () => api.get<SourceTemplate[]>('/sources/'),
+  queryKey: ['sources'],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<SourceTemplate>>('/sources/');
+    return res.items;
+  },
   enabled: enabled(), retry: 1,
 });
 export const useInitializeSources = () => useMutation({ mutationFn: () => api.post('/sources/initialize') });
@@ -36,7 +52,14 @@ export const useDisableSource = () => {
 // Feed
 export const useFeed = (params?: Record<string, string>) => {
   const sp = new URLSearchParams(params || {});
-  return useQuery({ queryKey: ['feed', params], queryFn: () => api.get<IntelItem[]>(`/feed/?${sp.toString()}`), enabled: enabled(), retry: 1 });
+  return useQuery({
+    queryKey: ['feed', params],
+    queryFn: async () => {
+      const res = await api.get<PaginatedResponse<IntelItem>>(`/feed/?${sp.toString()}`);
+      return res.items;
+    },
+    enabled: enabled(), retry: 1,
+  });
 };
 
 // Search
@@ -48,7 +71,11 @@ export const useSearch = (query: string) => useQuery({
 
 // Entities
 export const useEntities = (type?: string) => useQuery({
-  queryKey: ['entities', type], queryFn: () => api.get<Entity[]>(`/entities/${type ? `?type=${type}` : ''}`),
+  queryKey: ['entities', type],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<Entity>>(`/entities/${type ? `?type=${type}` : ''}`);
+    return res.items;
+  },
   enabled: enabled(), retry: 1,
 });
 export const useEntityRelationships = (entityId: string) => useQuery({
@@ -57,49 +84,98 @@ export const useEntityRelationships = (entityId: string) => useQuery({
 });
 
 // Alerts
-export const useAlertRules = () => useQuery({ queryKey: ['alert-rules'], queryFn: () => api.get<AlertRule[]>('/alerts/rules'), enabled: enabled(), retry: 1 });
+export const useAlertRules = () => useQuery({
+  queryKey: ['alert-rules'],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<AlertRule>>('/alerts/rules');
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
 export const useCreateAlertRule = () => {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (data: { name: string; description: string; severity: string; conditions: unknown[] }) => api.post('/alerts/rules', data), onSuccess: () => qc.invalidateQueries({ queryKey: ['alert-rules'] }) });
 };
-export const useAlerts = (status?: string) => useQuery({ queryKey: ['alerts', status], queryFn: () => api.get<Alert[]>(`/alerts/${status ? `?status=${status}` : ''}`), enabled: enabled(), retry: 1 });
+export const useAlerts = (status?: string) => useQuery({
+  queryKey: ['alerts', status],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<Alert>>(`/alerts/${status ? `?status=${status}` : ''}`);
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
 
 // Cases
-export const useCases = () => useQuery({ queryKey: ['cases'], queryFn: () => api.get<Case[]>('/cases/'), enabled: enabled(), retry: 1 });
+export const useCases = () => useQuery({
+  queryKey: ['cases'],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<Case>>('/cases/');
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
 export const useCreateCase = () => {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (data: { title: string; description: string; priority?: string }) => api.post<{ id: string }>(`/cases/?title=${encodeURIComponent(data.title)}&description=${encodeURIComponent(data.description)}&priority=${data.priority || 'medium'}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['cases'] }) });
 };
 
 // Reports
-export const useReports = () => useQuery({ queryKey: ['reports'], queryFn: () => api.get<Report[]>('/reports/'), enabled: enabled(), retry: 1 });
+export const useReports = () => useQuery({
+  queryKey: ['reports'],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<Report>>('/reports/');
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
 export const useGenerateReport = () => {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (data: { case_id: string; format?: string }) => api.post(`/reports/generate?case_id=${data.case_id}&format=${data.format || 'technical_pdf'}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['reports'] }) });
 };
 
 // Leaks
-export const useLeaks = (type?: string) => useQuery({ queryKey: ['leaks', type], queryFn: () => api.get<LeakItem[]>(`/leaks/${type ? `?type=${type}` : ''}`), enabled: enabled(), retry: 1 });
+export const useLeaks = (type?: string) => useQuery({
+  queryKey: ['leaks', type],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<LeakItem>>(`/leaks/${type ? `?type=${type}` : ''}`);
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
 
 // Admin
-export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => api.get<User[]>('/admin/users'), enabled: enabled(), retry: 1 });
-export const useAuditLogs = (limit = 100) => useQuery({ queryKey: ['audit-logs', limit], queryFn: () => api.get<AuditEntry[]>(`/admin/audit-logs?limit=${limit}`), enabled: enabled(), retry: 1 });
+export const useUsers = () => useQuery({
+  queryKey: ['users'],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<User>>('/admin/users');
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
+export const useAuditLogs = (limit = 100) => useQuery({
+  queryKey: ['audit-logs', limit],
+  queryFn: async () => {
+    const res = await api.get<PaginatedResponse<AuditEntry>>(`/admin/audit-logs?limit=${limit}`);
+    return res.items;
+  },
+  enabled: enabled(), retry: 1,
+});
 export const useHealth = () => useQuery({ queryKey: ['health'], queryFn: () => api.get<{ status: string; service: string; version: string }>('/health'), enabled: enabled(), retry: 1, refetchInterval: 30000 });
 
 // Dashboard Stats (legacy)
 export const useDashboardStats = () => useQuery({
   queryKey: ['dashboard-stats'],
   queryFn: async () => {
-    const [assets, sources, alerts] = await Promise.all([
-      api.get<Asset[]>('/assets/').catch(() => []),
-      api.get<SourceTemplate[]>('/sources/').catch(() => []),
-      api.get<Alert[]>('/alerts/').catch(() => []),
+    const [assetsRes, sourcesRes, alertsRes] = await Promise.all([
+      api.get<PaginatedResponse<Asset>>('/assets/').catch(() => ({ items: [] as Asset[], total: 0, offset: 0, limit: 50 })),
+      api.get<PaginatedResponse<SourceTemplate>>('/sources/').catch(() => ({ items: [] as SourceTemplate[], total: 0, offset: 0, limit: 50 })),
+      api.get<PaginatedResponse<Alert>>('/alerts/').catch(() => ({ items: [] as Alert[], total: 0, offset: 0, limit: 50 })),
     ]);
     return {
-      assetCount: assets.length,
-      sourceCount: sources.filter(s => s.enabled).length,
-      totalSources: sources.length,
-      alertCount: alerts.length,
+      assetCount: assetsRes.total || assetsRes.items.length,
+      sourceCount: sourcesRes.items.filter(s => s.enabled).length,
+      totalSources: sourcesRes.total || sourcesRes.items.length,
+      alertCount: alertsRes.total || alertsRes.items.length,
     };
   },
   enabled: enabled(), retry: 1,
@@ -271,4 +347,20 @@ export const useEnrichmentLookup = (type: string, value: string) => useQuery({
     providers_queried: number;
   }>(`/enrichment/lookup?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`),
   enabled: enabled() && !!value && !!type, retry: 1,
+});
+
+// Workspaces
+export interface WorkspaceInfo {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  role: string;
+  created_at: string;
+}
+
+export const useWorkspaces = () => useQuery({
+  queryKey: ['workspaces'],
+  queryFn: () => api.get<WorkspaceInfo[]>('/workspaces/'),
+  enabled: enabled(), retry: 1,
 });

@@ -410,3 +410,52 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
     workspace_id = await _get_user_workspace(db, user.id)
     access = create_access_token(user.id, user.role, workspace_id=workspace_id)
     return {"access_token": access}
+
+
+# ── Switch Workspace ──
+class SwitchWorkspaceRequest(BaseModel):
+    workspace_id: str
+
+
+@router.post("/switch-workspace")
+async def switch_workspace(req: SwitchWorkspaceRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """Switch to a different workspace. Returns a new access token with the selected workspace_id.
+    Verifies the user is an active member of the target workspace."""
+    from app.core.deps import get_current_user
+
+    user = await get_current_user(request, db)
+
+    # Verify membership
+    result = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == req.workspace_id,
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.is_active == True,
+        )
+    )
+    membership = result.scalar_one_or_none()
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not a member of this workspace")
+
+    # Verify workspace is active
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.id == req.workspace_id, Workspace.is_active == True)
+    )
+    workspace = ws_result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found or inactive")
+
+    access = create_access_token(user.id, user.role, workspace_id=req.workspace_id)
+    db.add(AuditLog(action="workspace_switched", entity_type="workspace",
+                    entity_id=req.workspace_id, user_id=user.id, user_email=user.email,
+                    workspace_id=req.workspace_id))
+    await db.commit()
+
+    return {
+        "access_token": access,
+        "workspace": {
+            "id": workspace.id,
+            "name": workspace.name,
+            "slug": workspace.slug,
+        },
+    }

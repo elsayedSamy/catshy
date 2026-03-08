@@ -19,6 +19,7 @@ from app.routers.feedback import router as feedback_router
 from app.routers.dashboard_extended import router as dashboard_extended_router
 from app.routers.ws_threats import router as ws_threats_router
 from app.routers.enrichment import router as enrichment_router
+from app.routers.workspaces import router as workspaces_router
 from app.middleware.audit import AuditMiddleware
 from app.services.admin_seed import seed_admin
 from app.services.mail import validate_smtp_config
@@ -81,3 +82,4 @@ app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
 app.include_router(dashboard_extended_router, prefix="/api/dashboard", tags=["dashboard-extended"])
 app.include_router(ws_threats_router, prefix="/api/threats", tags=["threats-ws"])
 app.include_router(enrichment_router, prefix="/api/enrichment", tags=["enrichment"])
+app.include_router(workspaces_router, prefix="/api/workspaces", tags=["workspaces"])
