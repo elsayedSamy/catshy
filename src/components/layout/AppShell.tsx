@@ -5,6 +5,7 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 import { PageTransition } from '@/components/PageTransition';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
+import { OnboardingTour } from '@/components/OnboardingTour';
 import { useState, useEffect, useCallback } from 'react';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { motion, AnimatePresence } from 'framer-motion';
