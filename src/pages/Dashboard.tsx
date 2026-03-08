@@ -64,10 +64,10 @@ export default function Dashboard() {
   const hasNoSetup = !kpis && !kpisLoading;
 
   return (
-    <div className="space-y-4">
+    <div className="w-full max-w-full space-y-4">
       {/* Top Bar */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <form onSubmit={handleSearch} className="flex-1 w-full">
+        <form onSubmit={handleSearch} className="flex-1 w-full min-w-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search IOC, IP, Domain, CVE..." className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
@@ -115,8 +115,8 @@ export default function Dashboard() {
       {/* Threat Pulse */}
       <ThreatPulse data={pulseData} isLoading={pulseLoading} />
 
-      {/* Charts Row: Severity Dist + Threat Timeline + Risk Score */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* Charts Row: Severity + Timeline + Risk — responsive grid */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <SeverityDistribution data={severityData} isLoading={severityLoading} />
         <ThreatTimeline data={timelineData} isLoading={timelineLoading} />
         <RiskScoreOverview data={riskData} isLoading={riskLoading} />
@@ -125,13 +125,13 @@ export default function Dashboard() {
       {/* MITRE ATT&CK Heatmap */}
       <MitreHeatmap data={mitreData} isLoading={mitreLoading} />
 
-      {/* Main Content: Triage + Side Panels */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      {/* Main Content: Triage + Side Panels — responsive */}
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-[1fr_minmax(280px,320px)]">
         <div className="space-y-4 min-w-0">
           <TriageQueue items={feedData?.items ?? []} isLoading={feedLoading} />
           <AttackedAssets items={attackedAssets} isLoading={attackedLoading} />
         </div>
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <WhatChanged data={changesData} isLoading={changesLoading} />
           <RecentAlerts items={recentAlerts} isLoading={alertsLoading} />
           <FeedStatus items={feedStatus} isLoading={feedStatusLoading} />
@@ -140,8 +140,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Feed + IOCs + Countries + CVEs */}
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      {/* Feed + IOCs + Countries + CVEs — responsive 2-col on md, 4-col on xl */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
         <LiveFeedWidget items={feedData?.items ?? []} isLoading={feedLoading} onRefresh={() => refetchFeed()} />
         <TopIOCs items={topIOCs} isLoading={iocsLoading} />
         <TopCountries items={mapData?.topCountries ?? []} isLoading={mapLoading} />
@@ -162,7 +162,7 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground">Add your assets and enable intelligence sources to populate this dashboard.</p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={() => navigate('/assets')}>
                   <Database className="mr-1 h-3 w-3" />Add Assets
                 </Button>
