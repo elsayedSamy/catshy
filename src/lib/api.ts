@@ -1,19 +1,43 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 class ApiClient {
-  private token: string | null = null;
   private devMode = false;
+  private csrfToken: string | null = null;
 
-  setToken(t: string | null) { this.token = t; }
   setDevMode(d: boolean) { this.devMode = d; }
   getDevMode() { return this.devMode; }
+
+  /** Kept for backwards compat — no-op in cookie mode */
+  setToken(_t: string | null) {}
+
+  /** Read CSRF token from cookie or cached value */
+  private getCsrfToken(): string | null {
+    if (this.csrfToken) return this.csrfToken;
+    const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  setCsrfToken(token: string) {
+    this.csrfToken = token;
+  }
 
   private async request<T>(path: string, opts: RequestInit = {}): Promise<T> {
     if (this.devMode) throw new Error('DEV_MODE');
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.token && this.token !== 'dev-token') headers['Authorization'] = `Bearer ${this.token}`;
+
+    // Add CSRF token for state-changing methods
+    const method = (opts.method || 'GET').toUpperCase();
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      const csrf = this.getCsrfToken();
+      if (csrf) headers['X-CSRF-Token'] = csrf;
+    }
+
     Object.assign(headers, opts.headers || {});
-    const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...opts,
+      headers,
+      credentials: 'include',  // Send cookies
+    });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.detail || `HTTP ${res.status}`);
