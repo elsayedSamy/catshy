@@ -131,6 +131,50 @@ async def disable_source(source_id: str, db: AsyncSession = Depends(get_db),
     await db.commit()
     return {"message": "Source disabled"}
 
+
+class SourceUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    default_url: Optional[str] = None
+    resolved_url: Optional[str] = None
+    polling_interval_minutes: Optional[int] = None
+    category: Optional[str] = None
+    connector_type: Optional[str] = None
+
+
+@sources_router.put("/{source_id}")
+async def update_source(source_id: str, req: SourceUpdate, db: AsyncSession = Depends(get_db),
+                        user=Depends(require_admin), wid: str = Depends(get_workspace_id)):
+    result = await db.execute(select(Source).where(Source.id == source_id, Source.workspace_id == wid))
+    source = result.scalar_one_or_none()
+    if not source: raise HTTPException(404, "Source not found")
+    if req.name is not None: source.name = req.name
+    if req.description is not None: source.description = req.description
+    if req.default_url is not None: source.default_url = req.default_url
+    if req.resolved_url is not None: source.resolved_url = req.resolved_url
+    if req.polling_interval_minutes is not None: source.polling_interval_minutes = req.polling_interval_minutes
+    if req.category is not None: source.category = req.category
+    if req.connector_type is not None: source.connector_type = req.connector_type
+    db.add(AuditLog(action="source_updated", entity_type="source", entity_id=source_id,
+                    user_id=user.id, user_email=user.email, workspace_id=wid,
+                    details={"name": source.name}))
+    await db.commit()
+    return {"message": "Source updated"}
+
+
+@sources_router.delete("/{source_id}")
+async def delete_source(source_id: str, db: AsyncSession = Depends(get_db),
+                        user=Depends(require_admin), wid: str = Depends(get_workspace_id)):
+    result = await db.execute(select(Source).where(Source.id == source_id, Source.workspace_id == wid))
+    source = result.scalar_one_or_none()
+    if not source: raise HTTPException(404, "Source not found")
+    db.add(AuditLog(action="source_deleted", entity_type="source", entity_id=source_id,
+                    user_id=user.id, user_email=user.email, workspace_id=wid,
+                    details={"name": source.name}))
+    await db.delete(source)
+    await db.commit()
+    return {"message": "Source deleted"}
+
 # ── Feed Router ──
 feed_router = APIRouter()
 

@@ -23,18 +23,18 @@ const navSections = [
     title: 'Intelligence',
     items: [
       { label: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert },
+      { label: 'Leak Hub', path: '/leaks', icon: AlertTriangle },
       { label: 'Graph Explorer', path: '/graph', icon: Globe },
+      { label: 'Global Threats', path: '/global-threat-monitoring', icon: MapIcon },
+    ],
+  },
+  {
+    title: 'Operations',
+    items: [
       { label: 'Alerts', path: '/alerts', icon: Bell },
       { label: 'Investigations', path: '/investigations', icon: FileSearch },
       { label: 'Cases', path: '/cases', icon: Briefcase },
       { label: 'Reports', path: '/reports', icon: FileText },
-    ],
-  },
-  {
-    title: 'Advanced',
-    items: [
-      { label: 'Leak Hub', path: '/leaks', icon: AlertTriangle },
-      { label: 'Global Threat Monitoring', path: '/global-threat-monitoring', icon: MapIcon },
       { label: 'Playbooks', path: '/playbooks', icon: Workflow },
     ],
   },

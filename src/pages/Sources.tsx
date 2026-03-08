@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Radio, Grid3X3, List, RefreshCw, Check, X, ExternalLink, AlertTriangle, Loader2, TestTube, Settings, Plus } from 'lucide-react';
+import { Search, Radio, Grid3X3, List, RefreshCw, Check, X, ExternalLink, AlertTriangle, Loader2, TestTube, Settings, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -38,6 +38,17 @@ export default function Sources() {
   const [wizardTesting, setWizardTesting] = useState(false);
   const [wizardResult, setWizardResult] = useState<'success' | 'error' | null>(null);
   const [testingAll, setTestingAll] = useState(false);
+
+  // Edit dialog
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSource, setEditSource] = useState<SourceTemplate | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editInterval, setEditInterval] = useState('60');
+
+  // Delete confirm
+  const [deleteConfirm, setDeleteConfirm] = useState<SourceTemplate | null>(null);
 
   const filtered = useMemo(() => sources.filter(s => {
     if (categoryFilter !== 'all' && s.category !== categoryFilter) return false;
@@ -89,6 +100,36 @@ export default function Sources() {
     toast.info(`Testing ${source.name}...`);
     await new Promise(r => setTimeout(r, 1000));
     toast.success(`${source.name} is healthy`);
+  };
+
+  const openEdit = (source: SourceTemplate) => {
+    setEditSource(source);
+    setEditName(source.name);
+    setEditUrl(source.resolved_url || source.default_url);
+    setEditDesc(source.description);
+    setEditInterval(String(source.polling_interval_minutes));
+    setEditOpen(true);
+  };
+
+  const handleEditSave = () => {
+    if (!editSource || !editName.trim()) return;
+    setSources(prev => prev.map(s => s.id === editSource.id ? {
+      ...s,
+      name: editName,
+      description: editDesc,
+      default_url: editUrl,
+      resolved_url: editUrl,
+      polling_interval_minutes: parseInt(editInterval) || 60,
+    } : s));
+    setEditOpen(false);
+    toast.success(`${editName} updated`);
+  };
+
+  const handleDelete = () => {
+    if (!deleteConfirm) return;
+    setSources(prev => prev.filter(s => s.id !== deleteConfirm.id));
+    setDeleteConfirm(null);
+    toast.success(`${deleteConfirm.name} deleted`);
   };
 
   return (
@@ -154,16 +195,24 @@ export default function Sources() {
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     {source.last_fetch_at && <span>Last fetch: {new Date(source.last_fetch_at).toLocaleTimeString()}</span>}
                   </div>
-                  {source.enabled && (
-                    <div className="flex gap-1 mt-2">
+                  <div className="flex gap-1 mt-2">
+                    {source.enabled && (
                       <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => handleTestSingle(source.id)}>
                         <TestTube className="mr-1 h-2.5 w-2.5" />Test
                       </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEdit(source)}>
+                      <Pencil className="h-2.5 w-2.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => setDeleteConfirm(source)}>
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </Button>
+                    {source.enabled && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setWizardSource(source); setWizardUrl(source.resolved_url || source.default_url); setWizardStep(0); setWizardResult(null); setWizardOpen(true); }}>
                         <Settings className="h-2.5 w-2.5" />
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -207,6 +256,54 @@ export default function Sources() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setWizardOpen(false)}>Cancel</Button>
             {wizardStep === 1 && <Button onClick={handleWizardEnable} className="glow-cyan">Enable Source</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Pencil className="h-5 w-5 text-primary" />Edit Source</DialogTitle>
+            <DialogDescription>Update source configuration.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Name</label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="bg-secondary/30" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Description</label>
+              <Input value={editDesc} onChange={e => setEditDesc(e.target.value)} className="bg-secondary/30" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Feed URL</label>
+              <Input value={editUrl} onChange={e => setEditUrl(e.target.value)} className="bg-secondary/30 font-mono text-sm" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Polling Interval (minutes)</label>
+              <Input value={editInterval} onChange={e => setEditInterval(e.target.value)} type="number" className="bg-secondary/30 w-32" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditSave} disabled={!editName.trim()} className="glow-cyan">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent className="bg-card border-border max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" />Delete Source</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{deleteConfirm?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
