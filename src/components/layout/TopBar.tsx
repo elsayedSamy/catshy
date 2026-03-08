@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Bell, Moon, Sun, User, LogOut, Command, Check, Trash2, AlertTriangle, CheckCircle2, Info, RefreshCw, Building2, ChevronRight, Settings, Menu } from 'lucide-react';
