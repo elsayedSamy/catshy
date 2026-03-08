@@ -341,7 +341,7 @@ export const useDashboardRecentAlerts = (range: string) => useQuery({
 export const useDashboardFeedStatus = (range: string) => useQuery({
   queryKey: ['dashboard-feed-status', range],
   queryFn: () => api.get<{ id: string; name: string; health: 'healthy' | 'degraded' | 'error' | 'disabled'; lastFetch?: string; itemsToday: number }[]>(`/dashboard/feed-status?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
 
 // Dashboard MITRE ATT&CK
