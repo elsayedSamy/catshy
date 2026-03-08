@@ -144,7 +144,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* KPI Row */}
-      <KpiCards data={kpis} isLoading={kpisLoading} />
+      <KpiCards data={kpis} isLoading={kpisLoading} timeRange={timeRange} />
 
       {/* ── Threat Pulse ── */}
       <SectionHeader icon={Zap} title="Threat Pulse" subtitle="Real-time threat signals" />
