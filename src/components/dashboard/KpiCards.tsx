@@ -61,7 +61,7 @@ export function KpiCards({ data, isLoading, timeRange = '24h' }: { data?: KpiDat
               <div className={`absolute inset-0 bg-gradient-to-br ${kpi.gradient} pointer-events-none`} />
               <div className="relative flex items-start justify-between">
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">{kpi.label}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">{kpi.label}{kpi.timed ? ` (${timeRangeLabels[timeRange] || timeRange})` : ''}</p>
                   {isLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
