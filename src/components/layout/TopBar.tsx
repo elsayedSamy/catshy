@@ -102,6 +102,13 @@ export function TopBar({ onMenuClick, isMobile }: TopBarProps) {
   return (
     <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-border/50 bg-background/60 px-4 backdrop-blur-xl">
       <div className="flex items-center gap-3">
+        {/* Mobile hamburger */}
+        {isMobile && onMenuClick && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onMenuClick}>
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
+
         {allWorkspaces.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
