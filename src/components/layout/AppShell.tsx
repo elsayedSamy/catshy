@@ -16,6 +16,12 @@ export function AppShell() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
+  }, []);
+
+  useKeyboardShortcuts({ onToggleSidebar: handleToggleSidebar });
+
   // Close mobile sidebar on route change
   useEffect(() => {
     if (isMobile) setMobileSidebarOpen(false);
