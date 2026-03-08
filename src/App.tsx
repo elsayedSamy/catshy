@@ -27,6 +27,7 @@ import GlobalThreats from "./pages/GlobalThreats";
 import Playbooks from "./pages/Playbooks";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
+import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 
 import Vulnerabilities from "./pages/Vulnerabilities";
