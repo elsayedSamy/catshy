@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: WsSettings = {
 export default function Settings() {
   const { user, canAccess } = useAuth();
   const isAdmin = canAccess(['system_owner', 'team_admin']);
-  const [darkMode, setDarkMode] = useState(!document.documentElement.classList.contains('light'));
+  const { isDark, toggleTheme } = useTheme();
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
