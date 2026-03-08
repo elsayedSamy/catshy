@@ -28,9 +28,9 @@ export function ThreatPulse({ data, isLoading }: { data?: PulseData; isLoading: 
       </CardHeader>
       <CardContent className="px-3 pb-3">
         {isLoading ? (
-          <div className="grid grid-cols-5 gap-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>
         ) : (
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {metrics.map(m => {
               const Icon = m.icon;
               return (

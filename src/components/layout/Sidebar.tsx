@@ -6,7 +6,6 @@ import {
   Map as MapIcon, Workflow, Shield, Settings, ChevronLeft, Cat, History,
   Plug, Link2
 } from 'lucide-react';
-import { useState } from 'react';
 
 const navSections = [
   {
@@ -49,8 +48,12 @@ const navSections = [
   },
 ];
 
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
 
   return (
@@ -68,7 +71,7 @@ export function Sidebar() {
           </div>
         )}
         {collapsed && <Cat className="mx-auto h-6 w-6 text-primary" />}
-        <button onClick={() => setCollapsed(!collapsed)} className="rounded p-1 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
+        <button onClick={onToggle} className="rounded p-1 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
           <ChevronLeft className={cn('h-4 w-4 transition-transform', collapsed && 'rotate-180')} />
         </button>
       </div>
