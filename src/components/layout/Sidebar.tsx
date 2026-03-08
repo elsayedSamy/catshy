@@ -188,6 +188,7 @@ function SidebarContent({ isCollapsed, onToggle, location, user, isMobile, onNav
             )}
             {section.items.map(item => {
               const isActive = location.pathname === item.path;
+              const badgeCount = badges[item.path];
               const linkContent = (
                 <NavLink
                   key={item.path}
