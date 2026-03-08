@@ -95,7 +95,7 @@ const App = () => (
                 <Route path="playbooks" element={<Playbooks />} />
                 <Route path="integrations" element={<Integrations />} />
                 <Route path="connectors" element={<Navigate to="/integrations" replace />} />
-                <Route path="outputs" element={<Outputs />} />
+                <Route path="outputs" element={<Navigate to="/settings" replace />} />
                 <Route path="admin" element={<Admin />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="ai" element={<AICenter />} />

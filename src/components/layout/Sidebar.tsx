@@ -48,7 +48,6 @@ const navSections = [
     title: 'System',
     items: [
       { label: 'Integrations', path: '/integrations', icon: Plug },
-      { label: 'Outputs', path: '/outputs', icon: Webhook },
       { label: 'Admin Panel', path: '/admin', icon: Shield },
       { label: 'Settings', path: '/settings', icon: Settings },
     ],
