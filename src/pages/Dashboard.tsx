@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Clock, Layers, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History } from 'lucide-react';
+import { Search, Clock, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
