@@ -160,7 +160,6 @@ export default function Feed() {
   const clearFilters = useCallback(() => {
     setSearchParams({});
     setSearchQuery('');
-    setContainsCve(false);
     setContainsIoc(false);
     setGovSourcesOnly(false);
     setHighConfOnly(false);
