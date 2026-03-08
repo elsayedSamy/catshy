@@ -108,6 +108,7 @@ export default function Feed() {
   const [containsIoc, setContainsIoc] = useState(false);
   const [govSourcesOnly, setGovSourcesOnly] = useState(false);
   const [highConfOnly, setHighConfOnly] = useState(false);
+  const [isLive, setIsLive] = useState(true);
 
   // Filter state from URL params
   const severityFilter = searchParams.get('severity') || '';
@@ -121,7 +122,7 @@ export default function Feed() {
   const [generating, setGenerating] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
-  const { data, isLoading, refetch, isFetching } = useThreatFeed(severityFilter || undefined);
+  const { data, isLoading, refetch, isFetching } = useThreatFeed(severityFilter || undefined, isLive);
   const triageMutation = useTriageIntel();
   const rawItems = isDevMode ? DEMO_FEED : (data?.items ?? []);
 
