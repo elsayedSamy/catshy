@@ -127,12 +127,9 @@ export default function Integrations() {
         };
       });
       setProviders(merged);
-    } catch {
-      // Dev mode — show catalog as disconnected
-      setProviders(PROVIDER_CATALOG.map(cat => ({
-        ...cat, id: null, enabled: false, status: 'not_configured',
-        masked_key: null, last_success: null, last_error: null,
-      })));
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to load integrations');
+      setProviders([]);
     } finally {
       setLoading(false);
     }
