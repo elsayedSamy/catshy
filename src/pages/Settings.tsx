@@ -134,6 +134,9 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      {/* AI Configuration (admin only) */}
+      {isAdmin && <AIConfigPanel />}
+
       {/* Workspace Settings (admin only) */}
       {isAdmin && (
         <>

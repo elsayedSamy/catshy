@@ -83,6 +83,7 @@ const App = () => (
               <Route path="outputs" element={<Outputs />} />
               <Route path="admin" element={<Admin />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="ai" element={<AICenter />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
