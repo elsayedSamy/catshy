@@ -245,14 +245,16 @@ export default function Feed() {
         const body: Record<string, unknown> = { scope: 'feed', format: reportFormat };
         if (reportPreset === 'custom' && reportStartDate && reportEndDate) { body.start = reportStartDate.toISOString(); body.end = reportEndDate.toISOString(); }
         else body.preset = reportPreset;
-        const token = localStorage.getItem('catshy_token');
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token && token !== 'dev-token') headers['Authorization'] = `Bearer ${token}`;
-        const res = await fetch(`${API_BASE}/threats/reports/generate`, { method: 'POST', headers, body: JSON.stringify(body) });
+        const res = await fetch(`${API_BASE}/threats/reports/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
         if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'Report generation failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `catshy-report.${reportFormat === 'html' ? 'html' : reportFormat === 'json' ? 'json' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
+        const a = document.createElement('a'); a.href = url; a.download = `catshy-report.${reportFormat === 'html' ? 'html' : reportFormat === 'json' ? 'json' : reportFormat === 'pdf' ? 'pdf' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
         toast.success('Report downloaded successfully');
       }
     } catch (e: any) { toast.error(e.message || 'Failed to generate report'); }
