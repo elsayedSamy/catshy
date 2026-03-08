@@ -46,7 +46,8 @@ export default function Settings() {
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-
+  const { playCritical } = useSoundAlert();
+  const [soundOn, setSoundOn] = useState(isSoundEnabled);
   // Workspace settings
   const [wsSettings, setWsSettings] = useState<WsSettings>(DEFAULT_SETTINGS);
   const [wsLoading, setWsLoading] = useState(true);
