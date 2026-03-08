@@ -78,10 +78,7 @@ export function TopBar({ onMenuClick, isMobile }: TopBarProps) {
   const currentWorkspace = workspaces?.find(w => w.id === workspaceId);
   const allWorkspaces = workspaces || [];
 
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle('light', darkMode);
-  };
+  // toggleTheme is from useTheme hook
 
   const handleMarkAsRead = (id: string) => markRead.mutate(id);
   const handleMarkAllRead = () => markAllRead.mutate(undefined);
