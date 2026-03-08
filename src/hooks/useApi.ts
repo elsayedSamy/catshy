@@ -235,7 +235,7 @@ export const useDashboardKpis = (range: string) => useQuery({
     assetsAffected: number; topAssetGroup: string;
     activeCampaigns: number;
   }>(`/dashboard/kpis?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 15000,
 });
 
 // Dashboard Live Feed
