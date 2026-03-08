@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -8,13 +8,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/components/EmptyState';
 import {
-  ShieldAlert, Search, RefreshCw, Filter, ExternalLink, AlertTriangle,
-  CheckCircle2, XCircle, Bug, Bookmark, ChevronDown, X
+  ShieldAlert, Search, RefreshCw, AlertTriangle,
+  CheckCircle2, Bug, ExternalLink, X, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { api } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface VulnItem {
   id: string;
@@ -47,6 +49,38 @@ const DEMO_VULNS: VulnItem[] = [
   { id: '7', cve_id: 'CVE-2024-38063', title: 'Windows TCP/IP Remote Code Execution', description: 'Remote code execution via specially crafted IPv6 packets in Windows TCP/IP stack.', cvss_score: 9.8, severity: 'critical', vendor: 'Microsoft', product: 'Windows', published_at: new Date(Date.now() - 86400000 * 4).toISOString(), is_kev: false, kev_due_date: null, kev_ransomware_use: false, affects_assets: false, matched_asset_ids: [], status: 'open', patch_available: true, tags: ['windows', 'network'], source_name: 'NVD' },
 ];
 
+// API hooks for vulnerabilities
+const useVulnerabilities = (params?: { severity?: string; kev_only?: boolean; assets_only?: boolean }) => {
+  const { isDevMode } = useAuth();
+  const sp = new URLSearchParams();
+  if (params?.severity) sp.set('severity', params.severity);
+  if (params?.kev_only) sp.set('kev_only', 'true');
+  if (params?.assets_only) sp.set('assets_only', 'true');
+  return useQuery({
+    queryKey: ['vulnerabilities', params],
+    queryFn: () => api.get<{ items: VulnItem[]; total: number }>(`/vulnerabilities/?${sp.toString()}`),
+    enabled: !isDevMode,
+    retry: 1,
+  });
+};
+
+const useTriageVulnerability = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.patch(`/vulnerabilities/${id}/triage`, { status }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vulnerabilities'] }),
+  });
+};
+
+const useCorrelateAssets = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post('/vulnerabilities/correlate'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vulnerabilities'] }),
+  });
+};
+
 function SeverityBadge({ severity }: { severity: string }) {
   const colors: Record<string, string> = {
     critical: 'bg-destructive/20 text-destructive border-destructive/30',
@@ -71,13 +105,25 @@ export default function Vulnerabilities() {
   const [assetsOnly, setAssetsOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const items = DEMO_VULNS;
+  const { data: apiData, isLoading } = useVulnerabilities({
+    severity: severityFilter || undefined,
+    kev_only: kevOnly || undefined,
+    assets_only: assetsOnly || undefined,
+  });
+  const triageMutation = useTriageVulnerability();
+  const correlateMutation = useCorrelateAssets();
+
+  // Use API data when available, fallback to demo
+  const items = isDevMode ? DEMO_VULNS : (apiData?.items ?? DEMO_VULNS);
 
   const filtered = useMemo(() => {
     let result = items;
-    if (severityFilter) result = result.filter(v => v.severity === severityFilter);
-    if (kevOnly) result = result.filter(v => v.is_kev);
-    if (assetsOnly) result = result.filter(v => v.affects_assets);
+    // In dev mode, apply client-side filters (API handles them server-side)
+    if (isDevMode) {
+      if (severityFilter) result = result.filter(v => v.severity === severityFilter);
+      if (kevOnly) result = result.filter(v => v.is_kev);
+      if (assetsOnly) result = result.filter(v => v.affects_assets);
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(v =>
@@ -86,13 +132,35 @@ export default function Vulnerabilities() {
       );
     }
     return result;
-  }, [items, severityFilter, kevOnly, assetsOnly, searchQuery]);
+  }, [items, severityFilter, kevOnly, assetsOnly, searchQuery, isDevMode]);
 
   const selected = filtered.find(v => v.id === selectedId) || null;
   const kevCount = items.filter(v => v.is_kev).length;
   const affectedCount = items.filter(v => v.affects_assets).length;
   const criticalCount = items.filter(v => v.severity === 'critical').length;
   const activeFilterCount = [severityFilter, kevOnly, assetsOnly].filter(Boolean).length;
+
+  const handleTriage = (id: string, status: string) => {
+    if (isDevMode) {
+      toast.success(`Marked as ${status}`);
+      return;
+    }
+    triageMutation.mutate({ id, status }, {
+      onSuccess: () => toast.success(`Marked as ${status}`),
+      onError: (e: any) => toast.error(e.message || 'Failed to triage'),
+    });
+  };
+
+  const handleCorrelate = () => {
+    if (isDevMode) {
+      toast.success('Correlation triggered (dev mode)');
+      return;
+    }
+    correlateMutation.mutate(undefined, {
+      onSuccess: () => toast.success('Asset correlation completed'),
+      onError: (e: any) => toast.error(e.message || 'Correlation failed'),
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -105,8 +173,9 @@ export default function Vulnerabilities() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => toast.success('Correlation triggered')}>
-            <RefreshCw className="mr-2 h-4 w-4" />Correlate Assets
+          <Button variant="outline" size="sm" onClick={handleCorrelate} disabled={correlateMutation.isPending}>
+            {correlateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Correlate Assets
           </Button>
         </div>
       </div>
@@ -164,7 +233,9 @@ export default function Vulnerabilities() {
       </div>
 
       {/* Main split */}
-      {filtered.length === 0 ? (
+      {isLoading && !isDevMode ? (
+        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : filtered.length === 0 ? (
         <EmptyState icon="shield" title="No vulnerabilities found" description="No CVEs match your filters." actionLabel="Clear Filters"
           onAction={() => { setSeverityFilter(''); setKevOnly(false); setAssetsOnly(false); setSearchQuery(''); }} />
       ) : (
@@ -220,14 +291,14 @@ export default function Vulnerabilities() {
                     <TooltipProvider>
                       <Tooltip><TooltipTrigger asChild>
                         <Button variant="outline" size="sm" className="text-xs h-7 text-accent border-accent/30"
-                          onClick={() => toast.success('Marked as mitigated')}>
+                          onClick={() => handleTriage(selected.id, 'mitigated')} disabled={triageMutation.isPending}>
                           <CheckCircle2 className="mr-1 h-3 w-3" />Mitigate
                         </Button>
                       </TooltipTrigger><TooltipContent>Mark as mitigated</TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild>
                         <Button variant="outline" size="sm" className="text-xs h-7"
-                          onClick={() => toast.success('Risk accepted')}>
-                          <Bookmark className="mr-1 h-3 w-3" />Accept Risk
+                          onClick={() => handleTriage(selected.id, 'accepted')}>
+                          Accept Risk
                         </Button>
                       </TooltipTrigger><TooltipContent>Accept risk for this CVE</TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild>

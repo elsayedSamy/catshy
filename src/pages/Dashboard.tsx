@@ -96,17 +96,6 @@ export default function Dashboard() {
               <SelectItem value="30d">Last 30 days</SelectItem>
             </SelectContent>
           </Select>
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[130px] h-9 text-xs bg-secondary/50 border-border">
-              <Layers className="h-3 w-3 mr-1" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Assets</SelectItem>
-              <SelectItem value="critical">Critical Only</SelectItem>
-              <SelectItem value="domains">Domains</SelectItem>
-              <SelectItem value="ips">IP Ranges</SelectItem>
-            </SelectContent>
-          </Select>
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleRefreshAll}>
             <RefreshCw className="h-3 w-3 mr-1" />Refresh
           </Button>

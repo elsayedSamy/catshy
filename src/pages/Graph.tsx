@@ -3,8 +3,9 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ZoomIn, ZoomOut, Maximize2, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
+import { ZoomIn, ZoomOut, Maximize2, Loader2 } from 'lucide-react';
+import { useEntities, useEntityRelationships } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Entity, EntityType } from '@/types';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -59,9 +60,12 @@ export default function Graph() {
 }
 
 function GraphContent() {
+  const { isDevMode } = useAuth();
+  const { data: apiEntities, isLoading } = useEntities();
+
   const svgRef = useRef<SVGSVGElement>(null);
   const [nodes, setNodes] = useState<GNode[]>([]);
-  const [edges] = useState<GEdge[]>(DEMO_EDGES);
+  const [edges, setEdges] = useState<GEdge[]>(DEMO_EDGES);
   const [zoom, setZoom] = useState(1);
   const [dragging, setDragging] = useState<string | null>(null);
   const [selected, setSelected] = useState<GNode | null>(null);
@@ -69,22 +73,28 @@ function GraphContent() {
   const animRef = useRef<number>();
   const W = 900, H = 600;
 
+  // Use API entities when available
+  const entityList = isDevMode ? DEMO_ENTITIES : (
+    apiEntities && apiEntities.length > 0
+      ? apiEntities.map(e => ({ id: e.id, label: e.value, type: e.type }))
+      : DEMO_ENTITIES
+  );
+
   useEffect(() => {
-    const ns: GNode[] = DEMO_ENTITIES.map((e, i) => ({
+    const ns: GNode[] = entityList.map((e, i) => ({
       id: e.id, label: e.label, type: e.type,
-      x: W / 2 + Math.cos(i * Math.PI * 2 / DEMO_ENTITIES.length) * 200 + (Math.random() - 0.5) * 50,
-      y: H / 2 + Math.sin(i * Math.PI * 2 / DEMO_ENTITIES.length) * 180 + (Math.random() - 0.5) * 50,
+      x: W / 2 + Math.cos(i * Math.PI * 2 / entityList.length) * 200 + (Math.random() - 0.5) * 50,
+      y: H / 2 + Math.sin(i * Math.PI * 2 / entityList.length) * 180 + (Math.random() - 0.5) * 50,
       vx: 0, vy: 0,
     }));
     nodesRef.current = ns;
     setNodes([...ns]);
-  }, []);
+  }, [entityList.length]);
 
   useEffect(() => {
     if (nodesRef.current.length === 0) return;
     const tick = () => {
       const ns = nodesRef.current;
-      // Repulsion
       for (let i = 0; i < ns.length; i++) {
         for (let j = i + 1; j < ns.length; j++) {
           const dx = (ns[j].x - ns[i].x) || 1;
@@ -95,7 +105,6 @@ function GraphContent() {
           ns[j].vx += (dx / d) * f; ns[j].vy += (dy / d) * f;
         }
       }
-      // Edge attraction
       for (const edge of edges) {
         const s = ns.find(n => n.id === edge.source);
         const t = ns.find(n => n.id === edge.target);
@@ -106,7 +115,6 @@ function GraphContent() {
         s.vx += (dx / d) * f; s.vy += (dy / d) * f;
         t.vx -= (dx / d) * f; t.vy -= (dy / d) * f;
       }
-      // Center gravity + damping
       for (const n of ns) {
         if (n.id === dragging) continue;
         n.vx += (W / 2 - n.x) * 0.003; n.vy += (H / 2 - n.y) * 0.003;
@@ -133,10 +141,14 @@ function GraphContent() {
     return n ? { x: n.x, y: n.y } : { x: 0, y: 0 };
   };
 
+  if (isLoading && !isDevMode) {
+    return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold">Graph Explorer</h1><p className="text-sm text-muted-foreground mt-1">{DEMO_ENTITIES.length} entities, {edges.length} relationships</p></div>
+        <div><h1 className="text-2xl font-bold">Graph Explorer</h1><p className="text-sm text-muted-foreground mt-1">{entityList.length} entities, {edges.length} relationships</p></div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setZoom(z => Math.min(2, z + 0.2))}><ZoomIn className="h-4 w-4" /></Button>
           <Button variant="outline" size="sm" onClick={() => setZoom(z => Math.max(0.3, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
@@ -156,7 +168,6 @@ function GraphContent() {
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(6,182,212,0.4)" />
                 </marker>
               </defs>
-              {/* Edges */}
               {edges.map((edge, i) => {
                 const s = getNodePos(edge.source), t = getNodePos(edge.target);
                 const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2 - 15;
@@ -167,7 +178,6 @@ function GraphContent() {
                   </g>
                 );
               })}
-              {/* Nodes */}
               {nodes.map(node => (
                 <g key={node.id} transform={`translate(${node.x},${node.y})`}
                   onMouseDown={() => setDragging(node.id)}
@@ -183,7 +193,6 @@ function GraphContent() {
           </CardContent>
         </Card>
 
-        {/* Details panel */}
         <Card className="border-border bg-card">
           <CardContent className="p-4 space-y-4">
             <h3 className="text-sm font-medium">Entity Details</h3>
@@ -199,7 +208,7 @@ function GraphContent() {
                   <div className="mt-1 space-y-1">
                     {edges.filter(e => e.source === selected.id || e.target === selected.id).map((e, i) => {
                       const otherId = e.source === selected.id ? e.target : e.source;
-                      const other = DEMO_ENTITIES.find(n => n.id === otherId);
+                      const other = entityList.find(n => n.id === otherId);
                       return (
                         <button key={i} onClick={() => { const n = nodesRef.current.find(n => n.id === otherId); if (n) setSelected(n); }}
                           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground w-full rounded px-1.5 py-1 hover:bg-secondary/30 transition-colors">
@@ -217,7 +226,6 @@ function GraphContent() {
         </Card>
       </div>
 
-      {/* Legend */}
       <div className="flex flex-wrap gap-3">
         {Object.entries(TYPE_COLORS).map(([type, color]) => (
           <div key={type} className="flex items-center gap-1.5">

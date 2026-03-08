@@ -247,7 +247,13 @@ export default function Outputs() {
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteSyslog(s.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Switch checked={s.enabled} />
+                      <Switch checked={s.enabled} onCheckedChange={async () => {
+                        try {
+                          await api.put(`/outputs/syslog/${s.id}`, { enabled: !s.enabled });
+                          toast.success(`${s.name} ${s.enabled ? 'disabled' : 'enabled'}`);
+                          fetchAll();
+                        } catch (e: any) { toast.error(e.message); }
+                      }} />
                     </div>
                   </CardContent>
                 </Card>
