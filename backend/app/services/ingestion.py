@@ -16,6 +16,7 @@ from app.services.normalizer import extract_observables, canonicalize, compute_d
 from app.services.scoring import calculate_confidence_score, calculate_risk_score
 from app.services.asset_matcher import AssetMatcher
 from app.services.geoip import geoip_for_observable
+from app.services.mitre_mapper import extract_mitre_from_text
 
 logger = logging.getLogger("catshy.ingestion")
 
