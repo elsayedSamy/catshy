@@ -1,4 +1,4 @@
-"""FastAPI dependencies — authentication, authorization, tenant scoping."""
+"""FastAPI dependencies — authentication (cookie + Bearer), authorization, tenant scoping."""
 import logging
 from typing import Optional
 from fastapi import Depends, Request
@@ -15,16 +15,30 @@ from app.core.exceptions import (
 logger = logging.getLogger("catshy.deps")
 
 
+# ── Token extraction: cookie-first, Bearer fallback ──
+
+def _extract_token(request: Request) -> str:
+    """Extract JWT from httpOnly cookie first, then Authorization header."""
+    # 1. Cookie (production default)
+    token = request.cookies.get("access_token")
+    if token:
+        return token
+
+    # 2. Bearer header (CLI / dev / backwards compat)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header.split(" ", 1)[1]
+
+    raise AuthenticationError("No authentication credentials provided")
+
+
 # ── Current User ──
 
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
-    """Extract and validate user from JWT Bearer token."""
+    """Extract and validate user from JWT (cookie or Bearer)."""
     from app.models.user import User, UserRole
 
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise AuthenticationError()
-    token = auth_header.split(" ", 1)[1]
+    token = _extract_token(request)
     try:
         payload = decode_token(token)
     except JWTError:
@@ -46,7 +60,6 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
 
 
 async def get_current_user_optional(request: Request, db: AsyncSession = Depends(get_db)):
-    """Returns user or None if not authenticated."""
     try:
         return await get_current_user(request, db)
     except Exception:
@@ -57,21 +70,16 @@ async def get_current_user_optional(request: Request, db: AsyncSession = Depends
 
 async def get_workspace_id(request: Request, db: AsyncSession = Depends(get_db),
                            user=Depends(get_current_user)) -> str:
-    """Extract workspace_id from JWT and VERIFY the user is a member.
-    Does NOT blindly trust the wid claim — always checks workspace_members table.
-    System owners bypass membership check."""
     from app.models.workspace import WorkspaceMember
 
     wid = getattr(request.state, "workspace_id", None)
     if not wid:
         raise AuthorizationError("No workspace context. Re-login or select a workspace.")
 
-    # System owners bypass workspace membership check
     token_role = getattr(request.state, "token_role", "user")
     if token_role == "system_owner":
         return wid
 
-    # Verify the user is an active member of this workspace
     result = await db.execute(
         select(WorkspaceMember).where(
             WorkspaceMember.workspace_id == wid,
@@ -90,7 +98,6 @@ async def get_workspace_id(request: Request, db: AsyncSession = Depends(get_db),
 # ── Role Enforcement ──
 
 class RequireRole:
-    """Dependency that enforces one of the allowed roles."""
     def __init__(self, *allowed_roles: str):
         self.allowed_roles = set(allowed_roles)
 
@@ -110,7 +117,6 @@ class RequireRole:
         return user
 
 
-# Convenience instances
 require_system_owner = RequireRole("system_owner")
 require_team_admin = RequireRole("system_owner", "team_admin")
 require_any_auth = RequireRole("system_owner", "team_admin", "team_member", "user")
@@ -119,13 +125,9 @@ require_any_auth = RequireRole("system_owner", "team_admin", "team_member", "use
 # ── System Owner (separate token scope) ──
 
 async def get_system_owner(request: Request, db: AsyncSession = Depends(get_db)):
-    """Validates system_owner scope token for /api/system/* endpoints."""
     from app.models.user import User, UserRole
 
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise AuthenticationError()
-    token = auth_header.split(" ", 1)[1]
+    token = _extract_token(request)
     try:
         payload = decode_token(token)
     except JWTError:
@@ -151,11 +153,9 @@ async def get_system_owner(request: Request, db: AsyncSession = Depends(get_db))
     return user
 
 
-# ── Workspace Scoping (legacy — kept for backward compat) ──
+# ── Workspace Scoping (legacy compat) ──
 
 class WorkspaceScope:
-    """Dependency that ensures the user has access to the specified workspace."""
-
     async def __call__(self, request: Request, db: AsyncSession = Depends(get_db)):
         from app.models.workspace import WorkspaceMember
 
