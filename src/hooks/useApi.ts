@@ -355,7 +355,7 @@ export const useDashboardMitre = (range: string) => useQuery({
 export const useDashboardAttackedAssets = (range: string) => useQuery({
   queryKey: ['dashboard-attacked-assets', range],
   queryFn: () => api.get<{ asset: string; count: number; severity: 'critical' | 'high' | 'medium' | 'low' }[]>(`/dashboard/attacked-assets?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
 
 // Map Incidents (real geo data)
