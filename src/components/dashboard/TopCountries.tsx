@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,7 +10,7 @@ export interface CountryRank {
   eventCount: number;
 }
 
-export function TopCountries({ items = [], isLoading }: { items?: CountryRank[]; isLoading: boolean }) {
+export const TopCountries = forwardRef<HTMLDivElement, { items?: CountryRank[]; isLoading: boolean }>(function TopCountries({ items = [], isLoading }, ref) {
   const maxScore = Math.max(1, ...items.map(i => i.score));
 
   return (
@@ -39,4 +40,4 @@ export function TopCountries({ items = [], isLoading }: { items?: CountryRank[];
       </CardContent>
     </Card>
   );
-}
+});

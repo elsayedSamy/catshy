@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Bug, ExternalLink } from 'lucide-react';
@@ -11,7 +12,7 @@ export interface CveItem {
   patchAvailable: boolean;
 }
 
-export function TopCves({ items = [], isLoading }: { items?: CveItem[]; isLoading: boolean }) {
+export const TopCves = forwardRef<HTMLDivElement, { items?: CveItem[]; isLoading: boolean }>(function TopCves({ items = [], isLoading }, ref) {
   const cvssColor = (v: number) => v >= 9 ? 'text-destructive' : v >= 7 ? 'text-orange-400' : v >= 4 ? 'text-yellow-400' : 'text-primary';
 
   return (
@@ -42,4 +43,4 @@ export function TopCves({ items = [], isLoading }: { items?: CveItem[]; isLoadin
       </CardContent>
     </Card>
   );
-}
+});

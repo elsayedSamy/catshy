@@ -621,3 +621,43 @@ export const useDeleteNotificationChannel = () => {
 export const useTestNotificationChannel = () => useMutation({
   mutationFn: (id: string) => api.post<{ success: boolean; message?: string }>(`/alerts/channels/${id}/test`),
 });
+
+// ── Notifications (TopBar) ──
+export interface AppNotification {
+  id: string;
+  type: 'alert' | 'system' | 'info';
+  title: string;
+  message: string;
+  read: boolean;
+  timestamp: string;
+}
+
+export const useNotifications = () => useQuery({
+  queryKey: ['notifications'],
+  queryFn: () => api.get<{ items: AppNotification[]; unread_count: number }>('/notifications/'),
+  enabled: enabled(), retry: 1, refetchInterval: 15000,
+});
+
+export const useMarkNotificationRead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.patch(`/notifications/${id}/read`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+};
+
+export const useMarkAllNotificationsRead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post('/notifications/read-all'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+};
+
+export const useClearNotifications = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.del('/notifications/'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+};
