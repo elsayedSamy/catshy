@@ -7,6 +7,31 @@ import { motion } from 'framer-motion';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+function CyberGrid() {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute -top-1/2 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
+      <svg className="absolute inset-0 h-full w-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="ai-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#ai-grid)" />
+      </svg>
+      {[...Array(5)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute h-1 w-1 rounded-full bg-primary/30"
+          style={{ left: `${15 + i * 18}%`, top: `${20 + i * 12}%` }}
+          animate={{ y: [0, -20, 0], opacity: [0.3, 0.7, 0.3] }}
+          transition={{ duration: 3 + i, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
@@ -50,7 +75,8 @@ export default function AcceptInvite() {
   if (!token) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
+        <CyberGrid />
+        <div className="relative z-10 text-center">
           <h2 className="text-xl font-bold text-foreground">Invalid Invite Link</h2>
           <p className="mt-2 text-muted-foreground">This invite link is invalid or missing a token.</p>
           <Button className="mt-4" onClick={() => navigate('/login')}>Go to Login</Button>
@@ -61,25 +87,28 @@ export default function AcceptInvite() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/2 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
-      </div>
+      <CyberGrid />
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
         className="relative z-10 w-full max-w-md px-6">
-        <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
+        <div className="rounded-2xl border border-border bg-card/80 backdrop-blur-xl p-8 shadow-2xl">
           <div className="mb-8 flex flex-col items-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+              className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-primary/20 bg-primary/10"
+            >
               <Cat className="h-9 w-9 text-primary" />
-            </div>
+            </motion.div>
             <h1 className="text-2xl font-bold tracking-tight">Accept Invite</h1>
             <p className="mt-1 text-sm text-muted-foreground">Set your password to join CATSHY</p>
           </div>
 
           {success ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center gap-3 py-6">
-              <CheckCircle2 className="h-12 w-12 text-green-500" />
+              <CheckCircle2 className="h-12 w-12 text-accent" />
               <p className="text-center font-medium text-foreground">Account created!</p>
               <p className="text-sm text-muted-foreground">Redirecting to login…</p>
             </motion.div>
@@ -110,7 +139,7 @@ export default function AcceptInvite() {
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</motion.p>
               )}
-              <Button type="submit" className="w-full glow-cyan" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Create Account
               </Button>
