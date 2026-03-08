@@ -108,6 +108,7 @@ export default function Feed() {
   const [containsIoc, setContainsIoc] = useState(false);
   const [govSourcesOnly, setGovSourcesOnly] = useState(false);
   const [highConfOnly, setHighConfOnly] = useState(false);
+  const [isLive, setIsLive] = useState(true);
 
   // Filter state from URL params
   const severityFilter = searchParams.get('severity') || '';
@@ -121,7 +122,7 @@ export default function Feed() {
   const [generating, setGenerating] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
-  const { data, isLoading, refetch, isFetching } = useThreatFeed(severityFilter || undefined);
+  const { data, isLoading, refetch, isFetching } = useThreatFeed(severityFilter || undefined, isLive);
   const triageMutation = useTriageIntel();
   const rawItems = isDevMode ? DEMO_FEED : (data?.items ?? []);
 
@@ -274,7 +275,25 @@ export default function Feed() {
             {activeFilterCount > 0 && ` (filtered from ${rawItems.length})`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* Live / Pause toggle */}
+          <button
+            onClick={() => setIsLive(!isLive)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium uppercase tracking-wider border transition-colors',
+              isLive
+                ? 'bg-accent/10 border-accent/20 text-accent'
+                : 'bg-muted/50 border-border text-muted-foreground'
+            )}
+          >
+            {isLive && (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent" />
+              </span>
+            )}
+            {isLive ? 'Live' : 'Paused'}
+          </button>
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />Refresh
           </Button>
