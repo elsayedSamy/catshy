@@ -299,7 +299,7 @@ export const useDashboardChanges = (range: string) => useQuery({
     trendingKeywords: { keyword: string; count: number }[];
     mostTargetedAssets: { value: string; count: number }[];
   }>(`/dashboard/changes?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
 
 // Dashboard Severity Distribution
