@@ -246,13 +246,14 @@ export const useDashboardFeed = (range: string) => useQuery({
 });
 
 // Threat Feed (fresh < 24h)
-export const useThreatFeed = (severity?: string) => {
+export const useThreatFeed = (severity?: string, livePolling = true) => {
   const params = new URLSearchParams();
   if (severity) params.set('severity', severity);
   return useQuery({
     queryKey: ['threat-feed', severity],
     queryFn: () => api.get<{ items: IntelItem[]; total: number }>(`/threats/feed?${params.toString()}`),
     enabled: enabled(), retry: 1,
+    refetchInterval: livePolling ? 10000 : false,
   });
 };
 
