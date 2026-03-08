@@ -64,13 +64,7 @@ export default function Settings() {
     loadSettings();
   }, []);
 
-  const toggleTheme = () => {
-    const newDark = !darkMode;
-    setDarkMode(newDark);
-    document.documentElement.classList.toggle('light', !newDark);
-    document.documentElement.classList.toggle('dark', newDark);
-    localStorage.setItem('catshy_theme', newDark ? 'dark' : 'light');
-  };
+  // toggleTheme is from useTheme hook — no local state needed
 
   const handlePasswordChange = async () => {
     if (newPw !== confirmPw) { toast.error('Passwords do not match'); return; }
