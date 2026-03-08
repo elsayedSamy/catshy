@@ -84,10 +84,10 @@ function InviteUserDialog() {
         setInviteLink(link);
         toast.success(`Dev Mode: Invite generated for ${email}`, { description: 'In production, an email would be sent automatically.' });
       } else {
-        const token = localStorage.getItem('catshy_token');
         const res = await fetch(`${API_BASE}/auth/invite`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ email, name: name || undefined, role }),
         });
         if (!res.ok) {

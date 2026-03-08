@@ -208,11 +208,12 @@ export default function Feed() {
 
       // STIX export — always goes to backend
       if (reportFormat === 'stix') {
-        const token = localStorage.getItem('catshy_token');
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token && token !== 'dev-token') headers['Authorization'] = `Bearer ${token}`;
-        const params = new URLSearchParams({ preset: reportPreset });
-        const res = await fetch(`${API_BASE}/stix/export?${params.toString()}`, { method: 'POST', headers, body: JSON.stringify(null) });
+        const res = await fetch(`${API_BASE}/stix/export`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ preset: reportPreset }),
+        });
         if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'STIX export failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
@@ -244,14 +245,16 @@ export default function Feed() {
         const body: Record<string, unknown> = { scope: 'feed', format: reportFormat };
         if (reportPreset === 'custom' && reportStartDate && reportEndDate) { body.start = reportStartDate.toISOString(); body.end = reportEndDate.toISOString(); }
         else body.preset = reportPreset;
-        const token = localStorage.getItem('catshy_token');
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token && token !== 'dev-token') headers['Authorization'] = `Bearer ${token}`;
-        const res = await fetch(`${API_BASE}/threats/reports/generate`, { method: 'POST', headers, body: JSON.stringify(body) });
+        const res = await fetch(`${API_BASE}/threats/reports/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
         if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'Report generation failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `catshy-report.${reportFormat === 'html' ? 'html' : reportFormat === 'json' ? 'json' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
+        const a = document.createElement('a'); a.href = url; a.download = `catshy-report.${reportFormat === 'html' ? 'html' : reportFormat === 'json' ? 'json' : reportFormat === 'pdf' ? 'pdf' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
         toast.success('Report downloaded successfully');
       }
     } catch (e: any) { toast.error(e.message || 'Failed to generate report'); }
@@ -326,6 +329,7 @@ export default function Feed() {
                     <SelectItem value="csv">CSV</SelectItem>
                     <SelectItem value="html">HTML</SelectItem>
                     <SelectItem value="json">JSON</SelectItem>
+                    <SelectItem value="pdf">PDF</SelectItem>
                     <SelectItem value="stix">STIX 2.1</SelectItem>
                   </SelectContent>
                 </Select>

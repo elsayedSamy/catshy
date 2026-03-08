@@ -1,3 +1,4 @@
+import React from 'react';
 import type { SeverityLevel, SourceHealthState } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -9,14 +10,17 @@ const severityConfig: Record<SeverityLevel, { label: string; className: string }
   info: { label: 'Info', className: 'bg-secondary text-secondary-foreground border-border' },
 };
 
-export function SeverityBadge({ severity, className }: { severity: SeverityLevel; className?: string }) {
-  const config = severityConfig[severity];
-  return (
-    <span className={cn('inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium', config.className, className)}>
-      {config.label}
-    </span>
-  );
-}
+export const SeverityBadge = React.forwardRef<HTMLSpanElement, { severity: SeverityLevel; className?: string }>(
+  ({ severity, className, ...props }, ref) => {
+    const config = severityConfig[severity];
+    return (
+      <span ref={ref} className={cn('inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium', config.className, className)} {...props}>
+        {config.label}
+      </span>
+    );
+  }
+);
+SeverityBadge.displayName = 'SeverityBadge';
 
 const healthConfig: Record<SourceHealthState, { label: string; dotClass: string; textClass: string }> = {
   healthy: { label: 'Healthy', dotClass: 'bg-success', textClass: 'text-success' },
@@ -26,20 +30,26 @@ const healthConfig: Record<SourceHealthState, { label: string; dotClass: string;
   unknown: { label: 'Unknown', dotClass: 'bg-muted-foreground', textClass: 'text-muted-foreground' },
 };
 
-export function HealthBadge({ health, className }: { health: SourceHealthState; className?: string }) {
-  const config = healthConfig[health];
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 text-xs font-medium', config.textClass, className)}>
-      <span className={cn('h-2 w-2 rounded-full', config.dotClass, health === 'healthy' && 'animate-pulse-glow')} />
-      {config.label}
-    </span>
-  );
-}
+export const HealthBadge = React.forwardRef<HTMLSpanElement, { health: SourceHealthState; className?: string }>(
+  ({ health, className, ...props }, ref) => {
+    const config = healthConfig[health];
+    return (
+      <span ref={ref} className={cn('inline-flex items-center gap-1.5 text-xs font-medium', config.textClass, className)} {...props}>
+        <span className={cn('h-2 w-2 rounded-full', config.dotClass, health === 'healthy' && 'animate-pulse-glow')} />
+        {config.label}
+      </span>
+    );
+  }
+);
+HealthBadge.displayName = 'HealthBadge';
 
-export function ObservableTypeBadge({ type, className }: { type: string; className?: string }) {
-  return (
-    <span className={cn('inline-flex items-center rounded border border-primary/20 bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary', className)}>
-      {type.toUpperCase()}
-    </span>
-  );
-}
+export const ObservableTypeBadge = React.forwardRef<HTMLSpanElement, { type: string; className?: string }>(
+  ({ type, className, ...props }, ref) => {
+    return (
+      <span ref={ref} className={cn('inline-flex items-center rounded border border-primary/20 bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary', className)} {...props}>
+        {type.toUpperCase()}
+      </span>
+    );
+  }
+);
+ObservableTypeBadge.displayName = 'ObservableTypeBadge';
