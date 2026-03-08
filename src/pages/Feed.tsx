@@ -167,9 +167,8 @@ export default function Feed() {
   }, [setSearchParams]);
 
   const handleRefresh = useCallback(() => {
-    if (!isDevMode) refetch();
-    else toast.success(`Feed refreshed — ${filteredItems.length} items (Dev Mode)`);
-  }, [isDevMode, filteredItems.length, refetch]);
+    refetch();
+  }, [refetch]);
 
   const customRangeValid = useMemo(() => {
     if (reportPreset !== 'custom') return true;
