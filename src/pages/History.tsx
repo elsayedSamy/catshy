@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { History as HistoryIcon, ExternalLink, Search, Clock, RefreshCw, Filter, X } from 'lucide-react';
 import { useThreatHistory } from '@/hooks/useApi';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { format } from 'date-fns';
 import type { IntelItem, SeverityLevel, ObservableType } from '@/types';
 
