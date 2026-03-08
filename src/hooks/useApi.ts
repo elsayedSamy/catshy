@@ -320,7 +320,7 @@ export const useDashboardTimeline = (range: string) => useQuery({
 export const useDashboardTopIOCs = (range: string) => useQuery({
   queryKey: ['dashboard-top-iocs', range],
   queryFn: () => api.get<{ value: string; type: string; hitCount: number; severity: 'critical' | 'high' | 'medium' | 'low' }[]>(`/dashboard/top-iocs?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
 
 // Dashboard Risk Score
