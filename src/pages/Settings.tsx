@@ -123,9 +123,9 @@ export default function Settings() {
 
       {/* Appearance */}
       <Card className="border-border bg-card">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base">{darkMode ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}Appearance</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base">{isDark ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}Appearance</CardTitle></CardHeader>
         <CardContent>
-          <Button variant="outline" size="sm" onClick={toggleTheme}>Switch to {darkMode ? 'Light' : 'Dark'} Mode</Button>
+          <Button variant="outline" size="sm" onClick={toggleTheme}>Switch to {isDark ? 'Light' : 'Dark'} Mode</Button>
         </CardContent>
       </Card>
 
