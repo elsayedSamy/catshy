@@ -458,7 +458,7 @@ export default function Feed() {
                         <Button variant="outline" size="sm" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => {
                           triageMutation.mutate({ itemId: selectedItem.id, status: 'false_positive', analyst_verdict: 'false_positive', verdict_reason: 'Analyst marked as false positive' }, {
                             onSuccess: () => toast.success('Marked as false positive — risk score reduced'),
-                            onError: () => toast.success('False positive (dev mode)'),
+                            onError: (e: any) => toast.error(e.message || 'Failed to update'),
                           });
                         }}>
                           <XCircle className="mr-1 h-3 w-3" />False Positive
