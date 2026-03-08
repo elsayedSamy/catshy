@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { SeverityBadge, ObservableTypeBadge } from '@/components/StatusBadge';
 import { motion } from 'framer-motion';
 import { useSearch } from '@/hooks/useApi';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { toast } from 'sonner';
 import type { SeverityLevel, ObservableType, IntelItem, Entity } from '@/types';
 
@@ -15,14 +15,6 @@ interface SearchResult {
   value: string; source: string; category: 'intel' | 'entity';
 }
 
-const DEMO_DATA: SearchResult[] = [
-  { id: '1', title: 'CVE-2024-3400 - PAN-OS Command Injection', severity: 'critical', type: 'cve', value: 'CVE-2024-3400', source: 'CISA KEV', category: 'intel' },
-  { id: '2', title: 'CVE-2024-21887 - Ivanti Auth Bypass', severity: 'critical', type: 'cve', value: 'CVE-2024-21887', source: 'NVD', category: 'intel' },
-  { id: '3', title: 'Emotet C2 Infrastructure', severity: 'high', type: 'ip', value: '185.244.25.14', source: 'Feodo Tracker', category: 'intel' },
-  { id: '4', title: 'LockBit 3.0 Ransomware Group', severity: 'high', type: 'actor', value: 'LockBit 3.0', source: 'The Hacker News', category: 'entity' },
-  { id: '5', title: 'Phishing domain - secure-banklogin.com', severity: 'high', type: 'domain', value: 'secure-banklogin.com', source: 'OpenPhish', category: 'intel' },
-  { id: '6', title: 'AgentTesla Stealer Distribution URL', severity: 'medium', type: 'url', value: 'https://malicious-downloads.xyz/update.exe', source: 'URLhaus', category: 'intel' },
-];
 
 const exampleQueries = [
   'CVE-2024-*', '192.168.0.0/16', 'APT29', 'emotet', 'ransomware',
@@ -30,7 +22,6 @@ const exampleQueries = [
 ];
 
 export default function SearchPage() {
-  const { isDevMode } = useAuth();
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -53,13 +44,6 @@ export default function SearchPage() {
 
   // Map API response to unified results
   const results: SearchResult[] = (() => {
-    if (isDevMode && submittedQuery) {
-      const lower = submittedQuery.toLowerCase();
-      return DEMO_DATA.filter(d =>
-        d.title.toLowerCase().includes(lower) || d.value.toLowerCase().includes(lower) ||
-        d.source.toLowerCase().includes(lower) || d.type.toLowerCase().includes(lower)
-      );
-    }
     if (!data) return [];
     const items: SearchResult[] = [];
     (data.intel_items || []).forEach((i: IntelItem) => items.push({
@@ -75,7 +59,7 @@ export default function SearchPage() {
 
   const hasSearched = !!submittedQuery;
   const searching = isLoading || isFetching;
-  const total = isDevMode ? results.length : (data?.total ?? results.length);
+  const total = data?.total ?? results.length;
 
   return (
     <div className="space-y-6">

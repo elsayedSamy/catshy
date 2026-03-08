@@ -37,32 +37,7 @@ const featureFlagLabels: Record<keyof FeatureFlags, { label: string; description
   integrations_marketplace: { label: 'Integrations Marketplace', description: 'Third-party connector marketplace' },
 };
 
-// ── Demo audit data for dev mode ──
-const DEMO_AUDIT: AuditEntry[] = [
-  { id: '1', action: 'AUTH_LOGIN_SUCCESS', entity_type: 'user', entity_id: 'dev-admin', user_id: 'dev-admin', user_email: 'admin@catshy.local', details: { outcome: 'success', source_ip: '192.168.1.10', user_agent: 'Mozilla/5.0' }, ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 3600000).toISOString() },
-  { id: '2', action: 'AUTH_LOGIN_FAILED', entity_type: 'user', entity_id: '', user_id: '', user_email: 'attacker@evil.com', details: { outcome: 'failure', failure_reason: 'Invalid password', source_ip: '45.33.32.156', user_agent: 'curl/7.88' }, ip_address: '45.33.32.156', timestamp: new Date(Date.now() - 7200000).toISOString() },
-  { id: '3', action: 'AUTH_LOGIN_FAILED', entity_type: 'user', entity_id: '', user_id: '', user_email: 'admin@catshy.local', details: { outcome: 'failure', failure_reason: 'Invalid password', source_ip: '45.33.32.156', user_agent: 'curl/7.88' }, ip_address: '45.33.32.156', timestamp: new Date(Date.now() - 7000000).toISOString() },
-  { id: '4', action: 'USER_ROLE_CHANGED', entity_type: 'user', entity_id: 'u-2', user_id: 'dev-admin', user_email: 'admin@catshy.local', details: { outcome: 'success', old_role: 'analyst', new_role: 'manager', target_email: 'analyst1@catshy.local' }, ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 86400000).toISOString() },
-  { id: '5', action: 'INTEGRATION_API_KEY_UPDATED', entity_type: 'integration', entity_id: 'virustotal', user_id: 'dev-admin', user_email: 'admin@catshy.local', details: { outcome: 'success', integration: 'VirusTotal' }, ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 90000000).toISOString() },
-  { id: '6', action: 'FEATURE_FLAG_TOGGLED', entity_type: 'config', entity_id: 'leaks_tor', user_id: 'dev-admin', user_email: 'admin@catshy.local', details: { outcome: 'success', flag: 'leaks_tor', new_value: true }, ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 100000000).toISOString() },
-  { id: '7', action: 'PLAYBOOK_RUN', entity_type: 'playbook', entity_id: 'pb-1', user_id: 'dev-admin', user_email: 'admin@catshy.local', details: { outcome: 'success', playbook: 'High-Conf IOC Triage', duration_ms: 4200 }, ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 172800000).toISOString() },
-  { id: '8', action: 'EXPORT_ACTION', entity_type: 'report', entity_id: 'rpt-1', user_id: 'dev-admin', user_email: 'admin@catshy.local', details: { outcome: 'success', format: 'csv', items_count: 47 }, ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 200000000).toISOString() },
-  { id: '9', action: 'AUTH_LOGIN_FAILED', entity_type: 'user', entity_id: '', user_id: '', user_email: 'admin@catshy.local', details: { outcome: 'failure', failure_reason: 'Rate limited', source_ip: '45.33.32.156' }, ip_address: '45.33.32.156', timestamp: new Date(Date.now() - 6900000).toISOString() },
-  { id: '10', action: 'SESSION_REVOKED', entity_type: 'session', entity_id: 'sess-3', user_id: 'dev-admin', user_email: 'admin@catshy.local', details: { outcome: 'success', revoked_user: 'analyst1@catshy.local', reason: 'Suspicious activity' }, ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 250000000).toISOString() },
-];
 
-const DEMO_SESSIONS = [
-  { id: 'sess-1', user_email: 'admin@catshy.local', user_name: 'Dev Admin', role: 'admin', login_at: new Date(Date.now() - 1800000).toISOString(), last_activity: new Date(Date.now() - 60000).toISOString(), ip: '192.168.1.10', ua: 'Chrome 120 / macOS', current: true },
-  { id: 'sess-2', user_email: 'analyst1@catshy.local', user_name: 'Analyst One', role: 'analyst', login_at: new Date(Date.now() - 7200000).toISOString(), last_activity: new Date(Date.now() - 600000).toISOString(), ip: '192.168.1.22', ua: 'Firefox 121 / Linux', current: false },
-  { id: 'sess-3', user_email: 'hunter@catshy.local', user_name: 'Threat Hunter', role: 'hunter', login_at: new Date(Date.now() - 86400000).toISOString(), last_activity: new Date(Date.now() - 43200000).toISOString(), ip: '10.0.0.50', ua: 'Chrome 120 / Windows', current: false },
-];
-
-const DEMO_USERS_LIST = [
-  { id: 'dev-admin', email: 'admin@catshy.local', name: 'Dev Admin', role: 'admin', is_active: true, created_at: new Date(Date.now() - 30*86400000).toISOString(), last_login: new Date(Date.now() - 1800000).toISOString(), mfa: true },
-  { id: 'u-2', email: 'analyst1@catshy.local', name: 'Analyst One', role: 'analyst', is_active: true, created_at: new Date(Date.now() - 20*86400000).toISOString(), last_login: new Date(Date.now() - 7200000).toISOString(), mfa: false },
-  { id: 'u-3', email: 'hunter@catshy.local', name: 'Threat Hunter', role: 'hunter', is_active: true, created_at: new Date(Date.now() - 15*86400000).toISOString(), last_login: new Date(Date.now() - 86400000).toISOString(), mfa: false },
-  { id: 'u-4', email: 'viewer@catshy.local', name: 'Read Only Viewer', role: 'readonly', is_active: false, created_at: new Date(Date.now() - 10*86400000).toISOString(), last_login: null, mfa: false },
-];
 
 function InviteUserDialog() {
   const [open, setOpen] = useState(false);
@@ -371,7 +346,7 @@ function AuditLogTab({ logs }: { logs: AuditEntry[] }) {
 
 // ── Sessions Tab ──
 function SessionsTab() {
-  const [sessions, setSessions] = useState(DEMO_SESSIONS);
+  const [sessions, setSessions] = useState<{ id: string; user_email: string; user_name: string; role: string; login_at: string; last_activity: string; ip: string; ua: string; current: boolean }[]>([]);
 
   const revokeSession = (id: string) => {
     setSessions(prev => prev.filter(s => s.id !== id));
@@ -437,8 +412,8 @@ function SessionsTab() {
 // ── Users Tab (Enhanced) ──
 function UsersTab() {
   const { data: apiUsers = [] } = useUsers();
-  const users = apiUsers.length > 0 ? apiUsers : DEMO_USERS_LIST;
-  const [userDetail, setUserDetail] = useState<typeof DEMO_USERS_LIST[0] | null>(null);
+  const users = apiUsers;
+  const [userDetail, setUserDetail] = useState<any | null>(null);
 
   return (
     <div className="space-y-4">
@@ -541,7 +516,7 @@ export default function Admin() {
   const { data: health } = useHealth();
   const [torWarning, setTorWarning] = useState(false);
 
-  const allLogs = auditLogs.length > 0 ? auditLogs : DEMO_AUDIT;
+  const allLogs = auditLogs;
 
   if (!hasRole(['system_owner', 'team_admin'])) {
     return (

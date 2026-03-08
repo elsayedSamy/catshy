@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ZoomIn, ZoomOut, Maximize2, Loader2 } from 'lucide-react';
 import { useEntities, useEntityRelationships } from '@/hooks/useApi';
-import { useAuth } from '@/contexts/AuthContext';
+
 import type { Entity, EntityType } from '@/types';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -21,35 +21,6 @@ interface GNode {
 }
 interface GEdge { source: string; target: string; type: string; }
 
-// Demo entities + relationships
-const DEMO_ENTITIES: { id: string; label: string; type: EntityType }[] = [
-  { id: 'e1', label: 'APT29', type: 'threat_actor' },
-  { id: 'e2', label: 'CVE-2024-3400', type: 'vulnerability' },
-  { id: 'e3', label: 'CobaltStrike', type: 'tool' },
-  { id: 'e4', label: 'Emotet', type: 'malware' },
-  { id: 'e5', label: 'LockBit 3.0', type: 'threat_actor' },
-  { id: 'e6', label: 'CVE-2024-21887', type: 'vulnerability' },
-  { id: 'e7', label: 'SolarWinds Campaign', type: 'campaign' },
-  { id: 'e8', label: '185.244.25.14', type: 'indicator' },
-  { id: 'e9', label: 'phishing-kit-v2', type: 'tool' },
-  { id: 'e10', label: 'Healthcare Org', type: 'organization' },
-  { id: 'e11', label: 'Company VPN', type: 'infrastructure' },
-  { id: 'e12', label: 'T1566 - Phishing', type: 'ttp' },
-];
-
-const DEMO_EDGES: GEdge[] = [
-  { source: 'e1', target: 'e3', type: 'uses' },
-  { source: 'e1', target: 'e7', type: 'attributed-to' },
-  { source: 'e1', target: 'e2', type: 'exploits' },
-  { source: 'e4', target: 'e8', type: 'communicates-with' },
-  { source: 'e5', target: 'e10', type: 'targets' },
-  { source: 'e5', target: 'e4', type: 'uses' },
-  { source: 'e6', target: 'e11', type: 'affects' },
-  { source: 'e1', target: 'e12', type: 'uses' },
-  { source: 'e9', target: 'e12', type: 'implements' },
-  { source: 'e7', target: 'e6', type: 'exploits' },
-  { source: 'e3', target: 'e8', type: 'communicates-with' },
-];
 
 export default function Graph() {
   return (
@@ -60,12 +31,12 @@ export default function Graph() {
 }
 
 function GraphContent() {
-  const { isDevMode } = useAuth();
   const { data: apiEntities, isLoading } = useEntities();
+  // Relationships will be loaded per-entity from the API when needed
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [nodes, setNodes] = useState<GNode[]>([]);
-  const [edges, setEdges] = useState<GEdge[]>(DEMO_EDGES);
+  const [edges, setEdges] = useState<GEdge[]>([]);
   const [zoom, setZoom] = useState(1);
   const [dragging, setDragging] = useState<string | null>(null);
   const [selected, setSelected] = useState<GNode | null>(null);
@@ -74,10 +45,10 @@ function GraphContent() {
   const W = 900, H = 600;
 
   // Use API entities when available
-  const entityList = isDevMode ? DEMO_ENTITIES : (
+  const entityList = (
     apiEntities && apiEntities.length > 0
       ? apiEntities.map(e => ({ id: e.id, label: e.name, type: e.type }))
-      : DEMO_ENTITIES
+      : []
   );
 
   useEffect(() => {
@@ -141,7 +112,7 @@ function GraphContent() {
     return n ? { x: n.x, y: n.y } : { x: 0, y: 0 };
   };
 
-  if (isLoading && !isDevMode) {
+  if (isLoading) {
     return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 

@@ -12,7 +12,7 @@ import {
   CheckCircle2, Bug, ExternalLink, X, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
@@ -39,19 +39,9 @@ interface VulnItem {
   source_name: string | null;
 }
 
-const DEMO_VULNS: VulnItem[] = [
-  { id: '1', cve_id: 'CVE-2024-3400', title: 'PAN-OS GlobalProtect Command Injection', description: 'A command injection vulnerability in GlobalProtect gateway of PAN-OS allows an unauthenticated attacker to execute arbitrary OS commands with root privileges on the firewall.', cvss_score: 10.0, severity: 'critical', vendor: 'Palo Alto Networks', product: 'PAN-OS', published_at: new Date(Date.now() - 86400000).toISOString(), is_kev: true, kev_due_date: new Date(Date.now() + 86400000 * 7).toISOString(), kev_ransomware_use: true, affects_assets: true, matched_asset_ids: ['fw-01'], status: 'open', patch_available: true, tags: ['firewall', 'rce'], source_name: 'CISA KEV' },
-  { id: '2', cve_id: 'CVE-2024-21887', title: 'Ivanti Connect Secure Auth Bypass', description: 'Authentication bypass in Ivanti Connect Secure and Policy Secure gateways allowing remote code execution.', cvss_score: 9.1, severity: 'critical', vendor: 'Ivanti', product: 'Connect Secure', published_at: new Date(Date.now() - 86400000 * 3).toISOString(), is_kev: true, kev_due_date: new Date(Date.now() + 86400000 * 3).toISOString(), kev_ransomware_use: false, affects_assets: true, matched_asset_ids: ['vpn-01'], status: 'open', patch_available: true, tags: ['vpn', 'auth-bypass'], source_name: 'NVD' },
-  { id: '3', cve_id: 'CVE-2024-1709', title: 'ConnectWise ScreenConnect Auth Bypass', description: 'Authentication bypass in ScreenConnect allowing admin access to the server.', cvss_score: 10.0, severity: 'critical', vendor: 'ConnectWise', product: 'ScreenConnect', published_at: new Date(Date.now() - 86400000 * 5).toISOString(), is_kev: true, kev_due_date: null, kev_ransomware_use: true, affects_assets: false, matched_asset_ids: [], status: 'open', patch_available: true, tags: ['rce'], source_name: 'CISA KEV' },
-  { id: '4', cve_id: 'CVE-2024-27198', title: 'JetBrains TeamCity Auth Bypass', description: 'Critical authentication bypass in JetBrains TeamCity On-Premises allowing unauthenticated admin access.', cvss_score: 9.8, severity: 'critical', vendor: 'JetBrains', product: 'TeamCity', published_at: new Date(Date.now() - 86400000 * 7).toISOString(), is_kev: true, kev_due_date: null, kev_ransomware_use: false, affects_assets: false, matched_asset_ids: [], status: 'mitigated', patch_available: true, tags: ['ci-cd'], source_name: 'NVD' },
-  { id: '5', cve_id: 'CVE-2024-0204', title: 'GoAnywhere MFT RCE', description: 'Remote code execution vulnerability in Fortra GoAnywhere MFT file transfer solution.', cvss_score: 9.8, severity: 'critical', vendor: 'Fortra', product: 'GoAnywhere MFT', published_at: new Date(Date.now() - 86400000 * 14).toISOString(), is_kev: true, kev_due_date: null, kev_ransomware_use: true, affects_assets: true, matched_asset_ids: ['ft-01'], status: 'open', patch_available: false, tags: ['file-transfer', 'rce'], source_name: 'CISA KEV' },
-  { id: '6', cve_id: 'CVE-2024-6387', title: 'OpenSSH regreSSHion Race Condition', description: 'Signal handler race condition in OpenSSH sshd allowing unauthenticated remote code execution on glibc-based Linux systems.', cvss_score: 8.1, severity: 'high', vendor: 'OpenSSH', product: 'sshd', published_at: new Date(Date.now() - 86400000 * 2).toISOString(), is_kev: false, kev_due_date: null, kev_ransomware_use: false, affects_assets: true, matched_asset_ids: ['srv-01', 'srv-02'], status: 'open', patch_available: true, tags: ['ssh', 'linux'], source_name: 'NVD' },
-  { id: '7', cve_id: 'CVE-2024-38063', title: 'Windows TCP/IP Remote Code Execution', description: 'Remote code execution via specially crafted IPv6 packets in Windows TCP/IP stack.', cvss_score: 9.8, severity: 'critical', vendor: 'Microsoft', product: 'Windows', published_at: new Date(Date.now() - 86400000 * 4).toISOString(), is_kev: false, kev_due_date: null, kev_ransomware_use: false, affects_assets: false, matched_asset_ids: [], status: 'open', patch_available: true, tags: ['windows', 'network'], source_name: 'NVD' },
-];
 
 // API hooks for vulnerabilities
 const useVulnerabilities = (params?: { severity?: string; kev_only?: boolean; assets_only?: boolean }) => {
-  const { isDevMode } = useAuth();
   const sp = new URLSearchParams();
   if (params?.severity) sp.set('severity', params.severity);
   if (params?.kev_only) sp.set('kev_only', 'true');
@@ -59,7 +49,6 @@ const useVulnerabilities = (params?: { severity?: string; kev_only?: boolean; as
   return useQuery({
     queryKey: ['vulnerabilities', params],
     queryFn: () => api.get<{ items: VulnItem[]; total: number }>(`/vulnerabilities/?${sp.toString()}`),
-    enabled: !isDevMode,
     retry: 1,
   });
 };
@@ -98,7 +87,6 @@ function CvssBadge({ score }: { score: number | null }) {
 }
 
 export default function Vulnerabilities() {
-  const { isDevMode } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [kevOnly, setKevOnly] = useState(false);
@@ -113,26 +101,16 @@ export default function Vulnerabilities() {
   const triageMutation = useTriageVulnerability();
   const correlateMutation = useCorrelateAssets();
 
-  // Use API data when available, fallback to demo
-  const items = isDevMode ? DEMO_VULNS : (apiData?.items ?? DEMO_VULNS);
+  const items = apiData?.items ?? [];
 
   const filtered = useMemo(() => {
     let result = items;
-    // In dev mode, apply client-side filters (API handles them server-side)
-    if (isDevMode) {
-      if (severityFilter) result = result.filter(v => v.severity === severityFilter);
-      if (kevOnly) result = result.filter(v => v.is_kev);
-      if (assetsOnly) result = result.filter(v => v.affects_assets);
-    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(v =>
-        v.cve_id.toLowerCase().includes(q) || v.title.toLowerCase().includes(q) ||
-        (v.vendor || '').toLowerCase().includes(q) || (v.product || '').toLowerCase().includes(q)
-      );
+      result = result.filter(v => v.cve_id.toLowerCase().includes(q) || v.title.toLowerCase().includes(q) || v.description.toLowerCase().includes(q));
     }
     return result;
-  }, [items, severityFilter, kevOnly, assetsOnly, searchQuery, isDevMode]);
+  }, [items, searchQuery]);
 
   const selected = filtered.find(v => v.id === selectedId) || null;
   const kevCount = items.filter(v => v.is_kev).length;
@@ -141,10 +119,6 @@ export default function Vulnerabilities() {
   const activeFilterCount = [severityFilter, kevOnly, assetsOnly].filter(Boolean).length;
 
   const handleTriage = (id: string, status: string) => {
-    if (isDevMode) {
-      toast.success(`Marked as ${status}`);
-      return;
-    }
     triageMutation.mutate({ id, status }, {
       onSuccess: () => toast.success(`Marked as ${status}`),
       onError: (e: any) => toast.error(e.message || 'Failed to triage'),
@@ -152,10 +126,6 @@ export default function Vulnerabilities() {
   };
 
   const handleCorrelate = () => {
-    if (isDevMode) {
-      toast.success('Correlation triggered (dev mode)');
-      return;
-    }
     correlateMutation.mutate(undefined, {
       onSuccess: () => toast.success('Asset correlation completed'),
       onError: (e: any) => toast.error(e.message || 'Correlation failed'),
@@ -233,7 +203,7 @@ export default function Vulnerabilities() {
       </div>
 
       {/* Main split */}
-      {isLoading && !isDevMode ? (
+      {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : filtered.length === 0 ? (
         <EmptyState icon="shield" title="No vulnerabilities found" description="No CVEs match your filters." actionLabel="Clear Filters"

@@ -10,25 +10,15 @@ import { EmptyState } from '@/components/EmptyState';
 import { History as HistoryIcon, ExternalLink, Search, Clock, RefreshCw, Filter, X } from 'lucide-react';
 import { useThreatHistory } from '@/hooks/useApi';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { format } from 'date-fns';
 import type { IntelItem, SeverityLevel, ObservableType } from '@/types';
 
-// Dev mode demo data — aged items (older than 24h)
-const DEMO_HISTORY: IntelItem[] = [
-  { id: 'h1', title: 'CVE-2024-1709 — ConnectWise ScreenConnect Auth Bypass', description: 'Authentication bypass allowing admin access to ScreenConnect instances.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-1709', source_id: 'nvd-cve', source_name: 'NVD', fetched_at: new Date(Date.now() - 86400000 * 2).toISOString(), published_at: new Date(Date.now() - 86400000 * 2).toISOString(), original_url: 'https://nvd.nist.gov', excerpt: 'Critical auth bypass in ConnectWise ScreenConnect', dedup_count: 6, asset_match: true, matched_assets: ['remote.company.com'], confidence_score: 98, risk_score: 99, tags: ['rce', 'auth-bypass'] },
-  { id: 'h2', title: 'APT28 spear-phishing campaign targeting EU defense', description: 'Russian state-sponsored group targeting EU defense sector with macro-laden documents.', severity: 'high' as SeverityLevel, observable_type: 'actor' as ObservableType, observable_value: 'APT28', source_id: 'hackernews-sec', source_name: 'The Hacker News', fetched_at: new Date(Date.now() - 86400000 * 3).toISOString(), published_at: new Date(Date.now() - 86400000 * 3).toISOString(), original_url: 'https://thehackernews.com', excerpt: 'APT28 spear-phishing with macro documents.', dedup_count: 3, asset_match: false, matched_assets: [], confidence_score: 85, risk_score: 78, tags: ['apt', 'phishing'] },
-  { id: 'h3', title: 'Qakbot resurgence via OneNote attachments', description: 'New distribution vector for Qakbot trojan using malicious OneNote files.', severity: 'high' as SeverityLevel, observable_type: 'hash_sha256' as ObservableType, observable_value: 'a1b2c3d4e5f6...', source_id: 'malwarebazaar', source_name: 'MalwareBazaar', fetched_at: new Date(Date.now() - 86400000 * 5).toISOString(), published_at: new Date(Date.now() - 86400000 * 5).toISOString(), original_url: 'https://bazaar.abuse.ch', excerpt: 'Qakbot distributed via OneNote.', dedup_count: 2, asset_match: false, matched_assets: [], confidence_score: 90, risk_score: 72, tags: ['trojan', 'qakbot'] },
-  { id: 'h4', title: 'CVE-2024-0204 — GoAnywhere MFT RCE', description: 'Remote code execution in Fortra GoAnywhere MFT allowing unauthenticated access.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-0204', source_id: 'cisa-kev', source_name: 'CISA KEV', fetched_at: new Date(Date.now() - 86400000 * 8).toISOString(), published_at: new Date(Date.now() - 86400000 * 8).toISOString(), original_url: 'https://www.cisa.gov', excerpt: 'Fortra GoAnywhere MFT RCE vulnerability', dedup_count: 10, asset_match: true, matched_assets: ['filetransfer.company.com'], confidence_score: 99, risk_score: 97, tags: ['rce', 'file-transfer'] },
-  { id: 'h5', title: 'DDoS botnet targeting financial services', description: 'Mirai variant targeting financial sector infrastructure with amplification attacks.', severity: 'medium' as SeverityLevel, observable_type: 'ip' as ObservableType, observable_value: '203.0.113.42', source_id: 'feodo-tracker', source_name: 'Feodo Tracker', fetched_at: new Date(Date.now() - 86400000 * 12).toISOString(), published_at: new Date(Date.now() - 86400000 * 12).toISOString(), original_url: 'https://feodotracker.abuse.ch', excerpt: 'Mirai variant C2 for DDoS campaigns.', dedup_count: 1, asset_match: false, matched_assets: [], confidence_score: 75, risk_score: 55, tags: ['botnet', 'ddos'] },
-  { id: 'h6', title: 'Supply chain compromise via npm typosquatting', description: 'Malicious npm packages mimicking popular libraries with data exfiltration payloads.', severity: 'medium' as SeverityLevel, observable_type: 'domain' as ObservableType, observable_value: 'npm-safe-eval.com', source_id: 'openphish', source_name: 'OpenPhish', fetched_at: new Date(Date.now() - 86400000 * 18).toISOString(), published_at: new Date(Date.now() - 86400000 * 18).toISOString(), original_url: 'https://openphish.com', excerpt: 'npm typosquatting supply chain attack.', dedup_count: 4, asset_match: false, matched_assets: [], confidence_score: 82, risk_score: 65, tags: ['supply-chain', 'npm'] },
-];
 
 type RangeFilter = '24h' | '7d' | '30d';
 
 export default function History() {
   const navigate = useNavigate();
-  const { isDevMode } = useAuth();
   const [range, setRange] = useState<RangeFilter>('30d');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,27 +30,7 @@ export default function History() {
 
   const { data, isLoading, refetch, isFetching } = useThreatHistory(range, searchQuery);
 
-  // Dev mode: filter demo data by range, search, and filters
-  const getDevItems = useCallback(() => {
-    const now = Date.now();
-    const cutoffs: Record<RangeFilter, number> = {
-      '24h': 86400000,
-      '7d': 86400000 * 7,
-      '30d': 86400000 * 30,
-    };
-    const cutoff = cutoffs[range];
-    let items = DEMO_HISTORY.filter(i => {
-      const age = now - new Date(i.published_at).getTime();
-      return age <= cutoff;
-    });
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter(i => i.title.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
-    }
-    return items;
-  }, [range, searchQuery]);
-
-  const rawItems = isDevMode ? getDevItems() : (data?.items ?? []);
+  const rawItems = data?.items ?? [];
 
   // Apply client-side filters
   const filteredItems = useMemo(() => {
@@ -73,7 +43,7 @@ export default function History() {
 
   const total = filteredItems.length;
   const activeFilterCount = [severityFilter, typeFilter, assetMatchOnly].filter(Boolean).length;
-  const queriedAt = isDevMode ? new Date().toISOString() : data?.queried_at;
+  const queriedAt = data?.queried_at;
 
   const setFilter = useCallback((key: string, value: string) => {
     setSearchParams(prev => {
@@ -86,12 +56,8 @@ export default function History() {
   const clearFilters = useCallback(() => setSearchParams({}), [setSearchParams]);
 
   const handleRefresh = useCallback(() => {
-    if (!isDevMode) {
-      refetch();
-    } else {
-      toast('History refreshed (Dev Mode)');
-    }
-  }, [isDevMode, refetch]);
+    refetch();
+  }, [refetch]);
 
   return (
     <div className="space-y-6">
@@ -196,7 +162,7 @@ export default function History() {
       </div>
 
       {/* Items */}
-      {isLoading && !isDevMode ? (
+      {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-20 w-full rounded-lg bg-secondary/20 animate-pulse" />

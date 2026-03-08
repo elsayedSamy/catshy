@@ -19,19 +19,10 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useThreatFeed, useTriageIntel } from '@/hooks/useApi';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { IntelItem, SeverityLevel, ObservableType } from '@/types';
 
-// Dev mode demo data — only items < 24h old
-const DEMO_FEED: IntelItem[] = [
-  { id: '1', title: 'CVE-2024-3400 - PAN-OS Command Injection', description: 'Critical command injection vulnerability in Palo Alto Networks PAN-OS GlobalProtect feature.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-3400', source_id: 'cisa-kev', source_name: 'CISA KEV', fetched_at: new Date(Date.now() - 3600000).toISOString(), published_at: new Date(Date.now() - 3600000).toISOString(), original_url: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog', excerpt: 'A command injection vulnerability in GlobalProtect gateway of PAN-OS allows an unauthenticated attacker to execute arbitrary OS commands with root privileges.', dedup_count: 3, asset_match: true, matched_assets: ['paloalto.company.com'], confidence_score: 95, risk_score: 98, tags: ['firewall', 'rce'] },
-  { id: '2', title: 'Emotet botnet C2 activity detected', description: 'New Emotet C2 server identified serving malware payloads.', severity: 'high' as SeverityLevel, observable_type: 'ip' as ObservableType, observable_value: '185.244.25.14', source_id: 'feodo-tracker', source_name: 'Feodo Tracker', fetched_at: new Date(Date.now() - 7200000).toISOString(), published_at: new Date(Date.now() - 7200000).toISOString(), original_url: 'https://feodotracker.abuse.ch', excerpt: 'Emotet C2 infrastructure IP identified in active botnet operations.', dedup_count: 1, asset_match: false, matched_assets: [], confidence_score: 88, risk_score: 75, tags: ['botnet'] },
-  { id: '3', title: 'Phishing campaign targeting finance sector', description: 'New phishing kit mimicking major banking portals with credential harvesting.', severity: 'high' as SeverityLevel, observable_type: 'domain' as ObservableType, observable_value: 'secure-banklogin.com', source_id: 'openphish', source_name: 'OpenPhish', fetched_at: new Date(Date.now() - 10800000).toISOString(), published_at: new Date(Date.now() - 10800000).toISOString(), original_url: 'https://openphish.com', excerpt: 'Phishing domain impersonating banking portal with credential harvesting capabilities.', dedup_count: 5, asset_match: true, matched_assets: ['company-bank.com'], confidence_score: 92, risk_score: 85, tags: ['phishing', 'finance'] },
-  { id: '4', title: 'Malicious URL distributing AgentTesla', description: 'URL hosting executable payload identified as AgentTesla stealer.', severity: 'medium' as SeverityLevel, observable_type: 'url' as ObservableType, observable_value: 'https://malicious-downloads.xyz/update.exe', source_id: 'urlhaus', source_name: 'URLhaus', fetched_at: new Date(Date.now() - 14400000).toISOString(), published_at: new Date(Date.now() - 14400000).toISOString(), original_url: 'https://urlhaus.abuse.ch', excerpt: 'AgentTesla payload URL distributing malware via fake update prompts.', dedup_count: 2, asset_match: false, matched_assets: [], confidence_score: 80, risk_score: 60, tags: ['malware'] },
-  { id: '5', title: 'CVE-2024-21887 - Ivanti Connect Secure Auth Bypass', description: 'Authentication bypass in Ivanti Connect Secure and Policy Secure gateways.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-21887', source_id: 'nvd-cve', source_name: 'NVD', fetched_at: new Date(Date.now() - 18000000).toISOString(), published_at: new Date(Date.now() - 18000000).toISOString(), original_url: 'https://nvd.nist.gov', excerpt: 'Command injection vulnerability in Ivanti Connect Secure web components.', dedup_count: 8, asset_match: true, matched_assets: ['vpn.company.com'], confidence_score: 99, risk_score: 97, tags: ['vpn', 'auth-bypass'] },
-  { id: '6', title: 'Tor exit node scanning activity', description: 'Known Tor exit node port scanning enterprise ranges.', severity: 'low' as SeverityLevel, observable_type: 'ip' as ObservableType, observable_value: '104.244.76.13', source_id: 'tor-exit', source_name: 'Tor Exit Nodes', fetched_at: new Date(Date.now() - 21600000).toISOString(), published_at: new Date(Date.now() - 21600000).toISOString(), original_url: 'https://check.torproject.org', excerpt: 'Tor exit node detected scanning TCP ports across enterprise IP ranges.', dedup_count: 1, asset_match: false, matched_assets: [], confidence_score: 60, risk_score: 30, tags: ['tor', 'scanning'] },
-];
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -90,16 +81,9 @@ function generateJsonFromItems(items: IntelItem[], title: string, period: string
   }, null, 2);
 }
 
-// Extended demo data for reports
-const DEMO_HISTORY: IntelItem[] = [
-  { id: 'h1', title: 'CVE-2024-1709 — ConnectWise ScreenConnect Auth Bypass', description: 'Authentication bypass allowing admin access.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-1709', source_id: 'nvd-cve', source_name: 'NVD', fetched_at: new Date(Date.now() - 86400000 * 2).toISOString(), published_at: new Date(Date.now() - 86400000 * 2).toISOString(), original_url: 'https://nvd.nist.gov', excerpt: 'Critical auth bypass', dedup_count: 6, asset_match: true, matched_assets: ['remote.company.com'], confidence_score: 98, risk_score: 99, tags: ['rce'] },
-  { id: 'h2', title: 'APT28 spear-phishing campaign', description: 'Russian state-sponsored phishing.', severity: 'high' as SeverityLevel, observable_type: 'actor' as ObservableType, observable_value: 'APT28', source_id: 'hackernews-sec', source_name: 'The Hacker News', fetched_at: new Date(Date.now() - 86400000 * 3).toISOString(), published_at: new Date(Date.now() - 86400000 * 3).toISOString(), original_url: 'https://thehackernews.com', excerpt: 'APT28 phishing', dedup_count: 3, asset_match: false, matched_assets: [], confidence_score: 85, risk_score: 78, tags: ['apt'] },
-  { id: 'h3', title: 'CVE-2024-0204 — GoAnywhere MFT RCE', description: 'Remote code execution in Fortra GoAnywhere.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-0204', source_id: 'cisa-kev', source_name: 'CISA KEV', fetched_at: new Date(Date.now() - 86400000 * 8).toISOString(), published_at: new Date(Date.now() - 86400000 * 8).toISOString(), original_url: 'https://www.cisa.gov', excerpt: 'GoAnywhere RCE', dedup_count: 10, asset_match: true, matched_assets: ['filetransfer.company.com'], confidence_score: 99, risk_score: 97, tags: ['rce'] },
-];
-
 export default function Feed() {
   const navigate = useNavigate();
-  const { isDevMode } = useAuth();
+  
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -124,7 +108,7 @@ export default function Feed() {
 
   const { data, isLoading, refetch, isFetching } = useThreatFeed(severityFilter || undefined, isLive);
   const triageMutation = useTriageIntel();
-  const rawItems = isDevMode ? DEMO_FEED : (data?.items ?? []);
+  const rawItems = data?.items ?? [];
 
   const filteredItems = useMemo(() => {
     let result = rawItems;
@@ -183,9 +167,8 @@ export default function Feed() {
   }, [setSearchParams]);
 
   const handleRefresh = useCallback(() => {
-    if (!isDevMode) refetch();
-    else toast.success(`Feed refreshed — ${filteredItems.length} items (Dev Mode)`);
-  }, [isDevMode, filteredItems.length, refetch]);
+    refetch();
+  }, [refetch]);
 
   const customRangeValid = useMemo(() => {
     if (reportPreset !== 'custom') return true;
@@ -224,43 +207,23 @@ export default function Feed() {
         return;
       }
 
-      if (isDevMode) {
-        const fullPool = [...DEMO_FEED, ...DEMO_HISTORY];
-        let cutoffStart: number, cutoffEnd = now, periodLabel: string;
-        if (reportPreset === 'today') { cutoffStart = now - 86400000; periodLabel = 'Last 24 hours'; }
-        else if (reportPreset === '7d') { cutoffStart = now - 86400000 * 7; periodLabel = 'Last 7 days'; }
-        else if (reportPreset === '30d') { cutoffStart = now - 86400000 * 30; periodLabel = 'Last 30 days'; }
-        else if (reportPreset === 'custom' && reportStartDate && reportEndDate) { cutoffStart = reportStartDate.getTime(); cutoffEnd = reportEndDate.getTime(); periodLabel = `${format(reportStartDate, 'MMM d, yyyy')} to ${format(reportEndDate, 'MMM d, yyyy')}`; }
-        else { cutoffStart = now - 86400000; periodLabel = 'Last 24 hours'; }
-        const reportItems = fullPool.filter(i => { const t = new Date(i.published_at).getTime(); return t >= cutoffStart && t <= cutoffEnd; });
-        const reportTitle = `CATSHY Threat Report — ${periodLabel}`;
-        let content: string, mimeType: string, fileExt: string;
-        if (reportFormat === 'html') { content = generateHtmlFromItems(reportItems, reportTitle, periodLabel); mimeType = 'text/html'; fileExt = 'html'; }
-        else if (reportFormat === 'json') { content = generateJsonFromItems(reportItems, reportTitle, periodLabel); mimeType = 'application/json'; fileExt = 'json'; }
-        else { content = generateCsvFromItems(reportItems); mimeType = 'text/csv'; fileExt = 'csv'; }
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `catshy-report-${reportPreset}.${fileExt}`; a.click(); URL.revokeObjectURL(url);
-        toast.success(`Report downloaded — ${reportItems.length} items (${periodLabel})`);
-      } else {
-        const body: Record<string, unknown> = { scope: 'feed', format: reportFormat };
-        if (reportPreset === 'custom' && reportStartDate && reportEndDate) { body.start = reportStartDate.toISOString(); body.end = reportEndDate.toISOString(); }
-        else body.preset = reportPreset;
-        const res = await fetch(`${API_BASE}/threats/reports/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'Report generation failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `catshy-report.${reportFormat === 'html' ? 'html' : reportFormat === 'json' ? 'json' : reportFormat === 'pdf' ? 'pdf' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
-        toast.success('Report downloaded successfully');
-      }
+      const body: Record<string, unknown> = { scope: 'feed', format: reportFormat };
+      if (reportPreset === 'custom' && reportStartDate && reportEndDate) { body.start = reportStartDate.toISOString(); body.end = reportEndDate.toISOString(); }
+      else body.preset = reportPreset;
+      const res = await fetch(`${API_BASE}/threats/reports/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'Report generation failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `catshy-report.${reportFormat === 'html' ? 'html' : reportFormat === 'json' ? 'json' : reportFormat === 'pdf' ? 'pdf' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
+      toast.success('Report downloaded successfully');
     } catch (e: any) { toast.error(e.message || 'Failed to generate report'); }
     finally { setGenerating(false); }
-  }, [isDevMode, reportPreset, reportFormat, reportStartDate, reportEndDate, customRangeValid, customRangeError]);
+  }, [reportPreset, reportFormat, reportStartDate, reportEndDate, customRangeValid, customRangeError]);
 
   const activeFilterCount = [severityFilter, assetMatchOnly, containsCve, containsIoc, govSourcesOnly, highConfOnly].filter(Boolean).length;
 
@@ -409,7 +372,7 @@ export default function Feed() {
       </div>
 
       {/* Main split layout */}
-      {isLoading && !isDevMode ? (
+      {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-20 rounded-lg bg-secondary/20 animate-pulse" />)}</div>
       ) : filteredItems.length === 0 ? (
         <EmptyState icon="radio" title="No fresh intel items" description={activeFilterCount > 0 ? 'No items match filters.' : 'Enable sources to start collecting intelligence.'} actionLabel={activeFilterCount > 0 ? 'Clear Filters' : 'Enable Sources'} onAction={activeFilterCount > 0 ? clearFilters : () => navigate('/sources')} />

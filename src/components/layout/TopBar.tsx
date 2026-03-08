@@ -19,14 +19,6 @@ import {
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
-// Dev mode fallback notifications
-const DEMO_NOTIFICATIONS: AppNotification[] = [
-  { id: 'n1', type: 'alert', title: 'Critical CVE detected', message: 'CVE-2024-3400 matches monitored asset paloalto.company.com', read: false, timestamp: new Date(Date.now() - 600000).toISOString() },
-  { id: 'n2', type: 'alert', title: 'Credential leak found', message: '12 company email:password pairs discovered on paste site.', read: false, timestamp: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'n3', type: 'system', title: 'Source fetch failed', message: 'Feodo Tracker returned HTTP 503. Will retry in 15 minutes.', read: false, timestamp: new Date(Date.now() - 7200000).toISOString() },
-  { id: 'n4', type: 'info', title: 'Daily report generated', message: 'Daily Brief for Jan 10 is ready for download.', read: true, timestamp: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'n5', type: 'system', title: 'Retention cleanup', message: '42 items older than 30 days were purged.', read: true, timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
-];
 
 const typeIcon = (type: AppNotification['type']) => {
   if (type === 'alert') return <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />;
@@ -48,27 +40,18 @@ export function TopBar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Backend notifications with dev fallback
+  // Backend notifications
   const { data: notifData } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const clearAll = useClearNotifications();
 
-  // Dev mode: use local state fallback
-  const [devNotifications, setDevNotifications] = useState<AppNotification[]>(DEMO_NOTIFICATIONS);
-
-  const notifications = isDevMode ? devNotifications : (notifData?.items ?? []);
-  const unreadCount = isDevMode
-    ? devNotifications.filter(n => !n.read).length
-    : (notifData?.unread_count ?? 0);
+  const notifications = notifData?.items ?? [];
+  const unreadCount = notifData?.unread_count ?? 0;
 
   const { data: workspaces } = useWorkspaces();
   const currentWorkspace = workspaces?.find(w => w.id === workspaceId);
-
-  const devWorkspaces: WorkspaceInfo[] = isDevMode ? [
-    { id: 'dev-workspace', name: "Dev Admin's Workspace", slug: 'ws-dev', description: '', role: 'team_admin', created_at: new Date().toISOString() },
-  ] : [];
-  const allWorkspaces = workspaces || devWorkspaces;
+  const allWorkspaces = workspaces || [];
 
   const toggleTheme = () => {
     setDarkMode(!darkMode);
@@ -76,27 +59,15 @@ export function TopBar() {
   };
 
   const handleMarkAsRead = (id: string) => {
-    if (isDevMode) {
-      setDevNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } else {
-      markRead.mutate(id);
-    }
+    markRead.mutate(id);
   };
 
   const handleMarkAllRead = () => {
-    if (isDevMode) {
-      setDevNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } else {
-      markAllRead.mutate(undefined);
-    }
+    markAllRead.mutate(undefined);
   };
 
   const handleClearAll = () => {
-    if (isDevMode) {
-      setDevNotifications([]);
-    } else {
-      clearAll.mutate(undefined);
-    }
+    clearAll.mutate(undefined);
   };
 
   const handleSwitchWorkspace = async (wsId: string) => {
