@@ -111,18 +111,19 @@ export default function Feed() {
 
   const filteredItems = useMemo(() => {
     let result = rawItems;
+    // Exclude CVE/vulnerability items — they belong in the Vulnerabilities page
+    result = result.filter(i => i.observable_type !== 'cve');
     if (severityFilter) result = result.filter(i => i.severity === severityFilter);
     if (assetMatchOnly) result = result.filter(i => i.asset_match);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(i => i.title.toLowerCase().includes(q) || i.observable_value.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
     }
-    if (containsCve) result = result.filter(i => i.observable_type === 'cve');
     if (containsIoc) result = result.filter(i => ['ip', 'domain', 'url', 'hash_sha256'].includes(i.observable_type));
     if (govSourcesOnly) result = result.filter(i => ['CISA KEV', 'NVD'].includes(i.source_name));
     if (highConfOnly) result = result.filter(i => i.confidence_score >= 90);
     return result;
-  }, [rawItems, severityFilter, assetMatchOnly, searchQuery, containsCve, containsIoc, govSourcesOnly, highConfOnly]);
+  }, [rawItems, severityFilter, assetMatchOnly, searchQuery, containsIoc, govSourcesOnly, highConfOnly]);
 
   const selectedItem = filteredItems.find(i => i.id === selectedId) || null;
   const orgRelevantCount = rawItems.filter(i => i.asset_match).length;
