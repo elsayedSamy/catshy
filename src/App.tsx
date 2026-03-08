@@ -22,7 +22,7 @@ import SearchPage from "./pages/SearchPage";
 import Graph from "./pages/Graph";
 import Alerts from "./pages/Alerts";
 import Investigations from "./pages/Investigations";
-import Cases from "./pages/Cases";
+
 import Reports from "./pages/Reports";
 import Leaks from "./pages/Leaks";
 import Playbooks from "./pages/Playbooks";
