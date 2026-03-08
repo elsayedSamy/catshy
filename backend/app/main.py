@@ -20,6 +20,8 @@ from app.routers.dashboard_extended import router as dashboard_extended_router
 from app.routers.ws_threats import router as ws_threats_router
 from app.routers.enrichment import router as enrichment_router
 from app.routers.workspaces import router as workspaces_router
+from app.routers.integrations import router as integrations_router
+from app.routers.settings import router as settings_router
 from app.middleware.audit import AuditMiddleware
 from app.middleware.csrf import CSRFMiddleware
 from app.services.admin_seed import seed_admin
