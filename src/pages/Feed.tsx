@@ -369,6 +369,17 @@ export default function Feed() {
         )}
       </div>
 
+      {/* CVE redirect banner */}
+      <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
+        <AlertTriangle className="h-4 w-4 text-primary shrink-0" />
+        <p className="text-xs text-muted-foreground flex-1">
+          Vulnerability & CVE intelligence has moved to a dedicated page for better tracking and remediation.
+        </p>
+        <Button variant="outline" size="sm" className="h-7 text-xs shrink-0" onClick={() => navigate('/vulnerabilities')}>
+          <Shield className="mr-1 h-3 w-3" />Vulnerability Center
+        </Button>
+      </div>
+
       {/* Main split layout */}
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-20 rounded-lg bg-secondary/20 animate-pulse" />)}</div>
