@@ -104,20 +104,20 @@ export default function Reports() {
   };
 
   const handleRedownload = async (r: Report) => {
-    if (!isDevMode) {
-      // Try downloading from backend
-      try {
-        const res = await fetch(`${API_BASE}/reports/${r.id}/download`, { credentials: 'include' });
-        if (res.ok) {
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = `catshy-${r.id.slice(0, 8)}.${r.format}`; a.click();
-          URL.revokeObjectURL(url);
-          toast.success('Report downloaded');
-          return;
-        }
-      } catch { /* fallthrough to local */ }
+    try {
+      const res = await fetch(`${API_BASE}/reports/${r.id}/download`, { credentials: 'include' });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `catshy-${r.id.slice(0, 8)}.${r.format}`; a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Report downloaded');
+        return;
+      }
+      toast.error('Failed to download report');
+    } catch {
+      toast.error('Failed to download report');
     }
     const slug = `catshy-${r.id.slice(0, 8)}`;
     switch (r.format) {
