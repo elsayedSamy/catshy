@@ -88,48 +88,14 @@ export default function Reports() {
         if (customEnd < customStart) { toast.error('End date must be after start'); setGenerating(false); return; }
       }
 
-      if (!isDevMode) {
-        // Call backend to generate
-        await generateReport.mutateAsync({
-          case_id: selectedTemplate,
-          format: formatVal === 'pdf' ? 'technical_pdf' : formatVal,
-        });
-        toast.success(`Report generated (${formatVal.toUpperCase()})`);
-        setDialogOpen(false);
-        setTitle('');
-        setUseCustomRange(false);
-        setGenerating(false);
-        return;
-      }
-
-      // Dev mode: local generation
-      const reportTitle = title || `${template?.label || 'Report'} — ${format(new Date(), 'MMM d, yyyy')}`;
-      const report: Report = {
-        id: crypto.randomUUID(),
-        title: reportTitle,
-        format: formatVal,
-        generated_at: new Date().toISOString(),
-        generated_by: 'Current User',
-        sections: [
-          { heading: 'Executive Summary', content: `Intelligence report covering the selected period. This report summarizes threat landscape observations, key indicators of compromise, and recommended actions.`, type: 'narrative' },
-          { heading: 'Threat Landscape', content: 'Analysis of current threat actors, campaigns, and TTPs observed during the reporting period.', type: 'narrative' },
-          { heading: 'Key Indicators', content: 'Top IOCs identified: Malicious IPs, suspicious domains, and file hashes associated with active campaigns.', type: 'evidence' },
-          { heading: 'Recommendations', content: '1. Update firewall rules\n2. Patch critical CVEs\n3. Review access logs\n4. Conduct phishing awareness training', type: 'recommendations' },
-        ],
-      };
-
-      const slug = `catshy-${selectedTemplate}-${report.id.slice(0, 8)}`;
-      switch (formatVal) {
-        case 'csv': downloadBlob(generateCSV(report), `${slug}.csv`, 'text/csv'); break;
-        case 'json': downloadBlob(generateJSON(report), `${slug}.json`, 'application/json'); break;
-        case 'html': downloadBlob(generateHTML(report), `${slug}.html`, 'text/html'); break;
-        case 'pdf': downloadBlob(generateHTML(report), `${slug}.html`, 'text/html'); toast.info('Downloaded as HTML — use browser Print → Save as PDF'); break;
-      }
-      setLocalReports(prev => [report, ...prev]);
+      await generateReport.mutateAsync({
+        case_id: selectedTemplate,
+        format: formatVal === 'pdf' ? 'technical_pdf' : formatVal,
+      });
+      toast.success(`Report generated (${formatVal.toUpperCase()})`);
       setDialogOpen(false);
       setTitle('');
       setUseCustomRange(false);
-      toast.success(`Report generated (${formatVal.toUpperCase()})`);
     } catch (e: any) {
       toast.error(e.message || 'Failed to generate report');
     } finally {
