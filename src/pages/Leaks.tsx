@@ -40,10 +40,6 @@ const STATUS_OPTIONS = [
   { value: 'resolved', label: 'Resolved', color: 'bg-accent/20 text-accent' },
 ];
 
-// Demo fallback data for dev mode
-const DEMO_LEAKS: (LeakItem & { status?: string })[] = [
-  { id: 'l1', type: 'credential', title: 'Credential leak on paste site — 12 company emails found', description: 'Multiple email:password pairs found.', severity: 'critical' as SeverityLevel, source_name: 'Paste Monitor', source_url: 'https://pastebin.com', discovered_at: new Date().toISOString(), matched_assets: ['company.com'], evidence_excerpt: 'j███@company.com:P@██████3', provenance: 'Public paste site', is_tor_source: false, status: 'new' },
-  { id: 'l2', type: 'breach', title: 'Company domain found in BreachForums dump', description: '450 records from company domain.', severity: 'high' as SeverityLevel, source_name: 'HIBP', source_url: 'https://haveibeenpwned.com', discovered_at: new Date(Date.now() - 86400000).toISOString(), matched_assets: ['company.com'], evidence_excerpt: 'Breach: "MegaCorp 2024" — 450 records.', provenance: 'Have I Been Pwned API', is_tor_source: false, status: 'investigating' },
 ];
 
 export default function Leaks() {

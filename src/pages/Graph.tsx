@@ -21,35 +21,6 @@ interface GNode {
 }
 interface GEdge { source: string; target: string; type: string; }
 
-// Demo entities + relationships
-const DEMO_ENTITIES: { id: string; label: string; type: EntityType }[] = [
-  { id: 'e1', label: 'APT29', type: 'threat_actor' },
-  { id: 'e2', label: 'CVE-2024-3400', type: 'vulnerability' },
-  { id: 'e3', label: 'CobaltStrike', type: 'tool' },
-  { id: 'e4', label: 'Emotet', type: 'malware' },
-  { id: 'e5', label: 'LockBit 3.0', type: 'threat_actor' },
-  { id: 'e6', label: 'CVE-2024-21887', type: 'vulnerability' },
-  { id: 'e7', label: 'SolarWinds Campaign', type: 'campaign' },
-  { id: 'e8', label: '185.244.25.14', type: 'indicator' },
-  { id: 'e9', label: 'phishing-kit-v2', type: 'tool' },
-  { id: 'e10', label: 'Healthcare Org', type: 'organization' },
-  { id: 'e11', label: 'Company VPN', type: 'infrastructure' },
-  { id: 'e12', label: 'T1566 - Phishing', type: 'ttp' },
-];
-
-const DEMO_EDGES: GEdge[] = [
-  { source: 'e1', target: 'e3', type: 'uses' },
-  { source: 'e1', target: 'e7', type: 'attributed-to' },
-  { source: 'e1', target: 'e2', type: 'exploits' },
-  { source: 'e4', target: 'e8', type: 'communicates-with' },
-  { source: 'e5', target: 'e10', type: 'targets' },
-  { source: 'e5', target: 'e4', type: 'uses' },
-  { source: 'e6', target: 'e11', type: 'affects' },
-  { source: 'e1', target: 'e12', type: 'uses' },
-  { source: 'e9', target: 'e12', type: 'implements' },
-  { source: 'e7', target: 'e6', type: 'exploits' },
-  { source: 'e3', target: 'e8', type: 'communicates-with' },
-];
 
 export default function Graph() {
   return (
