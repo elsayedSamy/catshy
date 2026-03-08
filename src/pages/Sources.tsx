@@ -35,10 +35,8 @@ export default function Sources() {
   const updateSource = useUpdateSource();
   const deleteSource = useDeleteSource();
 
-  // Use backend data when available, fallback to catalog for dev mode
   const sources: SourceTemplate[] = useMemo(() => {
-    if (backendSources && backendSources.length > 0) return backendSources;
-    return SOURCES_CATALOG.map(s => ({ ...s }));
+    return backendSources ?? [];
   }, [backendSources]);
 
   const [searchQuery, setSearchQuery] = useState('');
