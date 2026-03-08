@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bell, Moon, Sun, User, LogOut, Command, Check, Trash2, AlertTriangle, CheckCircle2, Info, RefreshCw, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,20 +11,16 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription
 } from '@/components/ui/sheet';
-import { useWorkspaces, type WorkspaceInfo } from '@/hooks/useApi';
+import {
+  useWorkspaces, useNotifications, useMarkNotificationRead,
+  useMarkAllNotificationsRead, useClearNotifications,
+  type WorkspaceInfo, type AppNotification,
+} from '@/hooks/useApi';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
-interface Notification {
-  id: string;
-  type: 'alert' | 'system' | 'info';
-  title: string;
-  message: string;
-  read: boolean;
-  timestamp: string;
-}
-
-const DEMO_NOTIFICATIONS: Notification[] = [
+// Dev mode fallback notifications
+const DEMO_NOTIFICATIONS: AppNotification[] = [
   { id: 'n1', type: 'alert', title: 'Critical CVE detected', message: 'CVE-2024-3400 matches monitored asset paloalto.company.com', read: false, timestamp: new Date(Date.now() - 600000).toISOString() },
   { id: 'n2', type: 'alert', title: 'Credential leak found', message: '12 company email:password pairs discovered on paste site.', read: false, timestamp: new Date(Date.now() - 3600000).toISOString() },
   { id: 'n3', type: 'system', title: 'Source fetch failed', message: 'Feodo Tracker returned HTTP 503. Will retry in 15 minutes.', read: false, timestamp: new Date(Date.now() - 7200000).toISOString() },
@@ -32,7 +28,7 @@ const DEMO_NOTIFICATIONS: Notification[] = [
   { id: 'n5', type: 'system', title: 'Retention cleanup', message: '42 items older than 30 days were purged.', read: true, timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
 ];
 
-const typeIcon = (type: Notification['type']) => {
+const typeIcon = (type: AppNotification['type']) => {
   if (type === 'alert') return <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />;
   if (type === 'system') return <RefreshCw className="h-4 w-4 text-warning shrink-0" />;
   return <Info className="h-4 w-4 text-primary shrink-0" />;
@@ -50,42 +46,63 @@ export function TopBar() {
   const { user, logout, workspaceId, switchWorkspace, isDevMode } = useAuth();
   const [darkMode, setDarkMode] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
   const queryClient = useQueryClient();
+
+  // Backend notifications with dev fallback
+  const { data: notifData } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const clearAll = useClearNotifications();
+
+  // Dev mode: use local state fallback
+  const [devNotifications, setDevNotifications] = useState<AppNotification[]>(DEMO_NOTIFICATIONS);
+
+  const notifications = isDevMode ? devNotifications : (notifData?.items ?? []);
+  const unreadCount = isDevMode
+    ? devNotifications.filter(n => !n.read).length
+    : (notifData?.unread_count ?? 0);
 
   const { data: workspaces } = useWorkspaces();
   const currentWorkspace = workspaces?.find(w => w.id === workspaceId);
 
-  // Dev mode workspaces
   const devWorkspaces: WorkspaceInfo[] = isDevMode ? [
     { id: 'dev-workspace', name: "Dev Admin's Workspace", slug: 'ws-dev', description: '', role: 'team_admin', created_at: new Date().toISOString() },
   ] : [];
   const allWorkspaces = workspaces || devWorkspaces;
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   const toggleTheme = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('light', darkMode);
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const handleMarkAsRead = (id: string) => {
+    if (isDevMode) {
+      setDevNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } else {
+      markRead.mutate(id);
+    }
   };
 
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const handleMarkAllRead = () => {
+    if (isDevMode) {
+      setDevNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } else {
+      markAllRead.mutate(undefined);
+    }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
+  const handleClearAll = () => {
+    if (isDevMode) {
+      setDevNotifications([]);
+    } else {
+      clearAll.mutate(undefined);
+    }
   };
 
   const handleSwitchWorkspace = async (wsId: string) => {
     if (wsId === workspaceId) return;
     try {
       await switchWorkspace(wsId);
-      // Invalidate all queries to refetch with new workspace scope
       queryClient.invalidateQueries();
       const ws = allWorkspaces.find(w => w.id === wsId);
       toast.success(`Switched to ${ws?.name || 'workspace'}`);
@@ -97,7 +114,6 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-md">
       <div className="flex items-center gap-4">
-        {/* Workspace Switcher */}
         {allWorkspaces.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -110,11 +126,7 @@ export function TopBar() {
               <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {allWorkspaces.map(ws => (
-                <DropdownMenuItem
-                  key={ws.id}
-                  onClick={() => handleSwitchWorkspace(ws.id)}
-                  className="flex items-center justify-between"
-                >
+                <DropdownMenuItem key={ws.id} onClick={() => handleSwitchWorkspace(ws.id)} className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="truncate text-sm">{ws.name}</span>
@@ -127,9 +139,7 @@ export function TopBar() {
         )}
 
         <button
-          onClick={() => {
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
-          }}
+          onClick={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })); }}
           className="flex items-center gap-2 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <Command className="h-3.5 w-3.5" />
@@ -167,8 +177,7 @@ export function TopBar() {
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
+              <LogOut className="mr-2 h-4 w-4" />Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -182,12 +191,12 @@ export function TopBar() {
               <SheetTitle className="text-base">Notifications</SheetTitle>
               <div className="flex gap-1">
                 {unreadCount > 0 && (
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllRead}>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleMarkAllRead}>
                     <Check className="mr-1 h-3 w-3" />Mark all read
                   </Button>
                 )}
                 {notifications.length > 0 && (
-                  <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={clearAll}>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={handleClearAll}>
                     <Trash2 className="mr-1 h-3 w-3" />Clear
                   </Button>
                 )}
@@ -209,7 +218,7 @@ export function TopBar() {
                 {notifications.map(n => (
                   <button
                     key={n.id}
-                    onClick={() => markAsRead(n.id)}
+                    onClick={() => handleMarkAsRead(n.id)}
                     className={`w-full text-left px-4 py-3 transition-colors hover:bg-secondary/30 ${!n.read ? 'bg-primary/5' : ''}`}
                   >
                     <div className="flex gap-3">
