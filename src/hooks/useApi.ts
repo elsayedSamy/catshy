@@ -255,3 +255,20 @@ export const useMapIncidents = (params: {
   },
   enabled: enabled(), retry: 1,
 });
+
+// Enrichment
+export const useEnrichmentProviders = () => useQuery({
+  queryKey: ['enrichment-providers'],
+  queryFn: () => api.get<{ providers: string[]; total: number }>('/enrichment/providers'),
+  enabled: enabled(), retry: 1,
+});
+
+export const useEnrichmentLookup = (type: string, value: string) => useQuery({
+  queryKey: ['enrichment-lookup', type, value],
+  queryFn: () => api.get<{
+    ioc_type: string; ioc_value: string;
+    enrichments: Record<string, { provider: string; status: string; [key: string]: unknown }>;
+    providers_queried: number;
+  }>(`/enrichment/lookup?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`),
+  enabled: enabled() && !!value && !!type, retry: 1,
+});

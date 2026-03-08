@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     ENABLE_TOR: bool = False
     # Report branding
     REPORT_COMPANY_NAME: str = "CATSHY"
+    # Enrichment API keys (optional)
+    VIRUSTOTAL_API_KEY: str = ""
+    SHODAN_API_KEY: str = ""
+    ABUSEIPDB_API_KEY: str = ""
+    OTX_API_KEY: str = ""
 
     # ── Admin / System Owner Seed ──
     ADMIN_EMAIL: str = ""
