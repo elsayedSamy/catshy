@@ -114,6 +114,51 @@
   .border-glow {
     border-color: hsl(var(--cyan-glow) / 0.3);
   }
+
+  /* Glassmorphism card */
+  .glass-card {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .glass-card:hover {
+    background: hsl(var(--card) / 0.8);
+    border-color: hsl(var(--primary) / 0.3);
+    box-shadow: 0 8px 32px -8px hsl(var(--primary) / 0.15),
+                0 0 0 1px hsl(var(--primary) / 0.05);
+    transform: translateY(-2px);
+  }
+
+  /* Subtle card lift */
+  .card-hover {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card-hover:hover {
+    border-color: hsl(var(--primary) / 0.25);
+    box-shadow: 0 4px 20px -4px hsl(var(--primary) / 0.12);
+    transform: translateY(-1px);
+  }
+
+  /* Pulse dot for live indicators */
+  .pulse-dot {
+    position: relative;
+  }
+  .pulse-dot::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 9999px;
+    background: inherit;
+    opacity: 0.4;
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.8); opacity: 0; }
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }
