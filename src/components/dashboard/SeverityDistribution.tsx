@@ -19,6 +19,20 @@ const COLORS: Record<string, string> = {
   Info: 'hsl(215, 15%, 55%)',
 };
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  const { name, value, payload: data } = payload[0];
+  return (
+    <div className="rounded-xl border border-border bg-card/95 backdrop-blur-xl px-3 py-2 shadow-lg">
+      <div className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[name] }} />
+        <span className="text-xs font-medium text-foreground">{name}</span>
+      </div>
+      <p className="text-lg font-bold font-mono text-foreground mt-0.5">{value}</p>
+    </div>
+  );
+};
+
 export function SeverityDistribution({ data, isLoading }: { data?: SeverityDistData; isLoading: boolean }) {
   const chartData = data
     ? [
@@ -33,7 +47,7 @@ export function SeverityDistribution({ data, isLoading }: { data?: SeverityDistD
   const total = chartData.reduce((s, d) => s + d.value, 0);
 
   return (
-    <Card className="border-border bg-card h-full">
+    <Card className="border-border bg-card/60 backdrop-blur-sm h-full card-hover">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <ShieldAlert className="h-4 w-4 text-primary" />Severity Distribution
@@ -50,16 +64,32 @@ export function SeverityDistribution({ data, isLoading }: { data?: SeverityDistD
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value" strokeWidth={0}>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={3}
+                dataKey="value"
+                strokeWidth={0}
+                animationBegin={0}
+                animationDuration={800}
+                animationEasing="ease-out"
+              >
                 {chartData.map(entry => (
-                  <Cell key={entry.name} fill={COLORS[entry.name]} />
+                  <Cell key={entry.name} fill={COLORS[entry.name]} className="drop-shadow-sm" />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{ background: 'hsl(220, 18%, 10%)', border: '1px solid hsl(220, 15%, 16%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(210, 20%, 92%)' }}
-                formatter={(value: number, name: string) => [`${value} (${Math.round((value / total) * 100)}%)`, name]}
+              <Tooltip content={<CustomTooltip />} />
+              <Legend
+                iconSize={8}
+                iconType="circle"
+                wrapperStyle={{ fontSize: '11px' }}
+                formatter={(value: string) => (
+                  <span className="text-muted-foreground">{value}</span>
+                )}
               />
-              <Legend iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
             </PieChart>
           </ResponsiveContainer>
         )}
