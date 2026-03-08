@@ -42,9 +42,14 @@ function Breadcrumb() {
   if (segments.length === 0) return null;
 
   return (
-    <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
+    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      {/* On mobile, show only last segment */}
+      <span className="md:hidden text-foreground font-medium capitalize">
+        {segments[segments.length - 1]?.replace(/-/g, ' ')}
+      </span>
+      {/* On desktop, show full path */}
       {segments.map((seg, i) => (
-        <span key={i} className="flex items-center gap-1">
+        <span key={i} className="hidden md:flex items-center gap-1">
           {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/40" />}
           <span className={i === segments.length - 1 ? 'text-foreground font-medium capitalize' : 'capitalize'}>
             {seg.replace(/-/g, ' ')}
