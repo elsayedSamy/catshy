@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, Download, Plus, Loader2, Clock, CalendarIcon, BarChart3, Briefcase, AlertTriangle, Bug } from 'lucide-react';
+import { FileText, Download, Plus, Loader2, Clock, CalendarIcon, BarChart3, Briefcase, AlertTriangle, Bug, FileDown } from 'lucide-react';
+import { downloadCSV, downloadJSON } from '@/lib/export';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -94,7 +95,18 @@ export default function Reports() {
           <h1 className="text-2xl font-bold text-foreground">Reports</h1>
           <p className="text-sm text-muted-foreground mt-1">Generate and download threat intelligence reports in PDF, CSV, JSON, or HTML</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="glow-cyan"><Plus className="mr-2 h-4 w-4" />New Report</Button>
+        <div className="flex items-center gap-2">
+          {reports.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => {
+              const exportData = reports.map(r => ({ id: r.id, title: r.title, format: r.format, generated_at: r.generated_at, generated_by: r.generated_by }));
+              downloadCSV(exportData, 'catshy-reports');
+              toast.success('Reports list exported');
+            }}>
+              <FileDown className="mr-2 h-4 w-4" />Export CSV
+            </Button>
+          )}
+          <Button onClick={() => setDialogOpen(true)} className="glow-cyan"><Plus className="mr-2 h-4 w-4" />New Report</Button>
+        </div>
       </div>
 
       <div>

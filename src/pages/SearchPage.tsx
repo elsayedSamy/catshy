@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Search as SearchIcon, Clock, ExternalLink, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { SeverityBadge, ObservableTypeBadge } from '@/components/StatusBadge';
 import { motion } from 'framer-motion';
 import { useSearch } from '@/hooks/useApi';
-
+import { useDebouncedValue } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import type { SeverityLevel, ObservableType, IntelItem, Entity } from '@/types';
 
@@ -28,8 +28,8 @@ export default function SearchPage() {
     try { return JSON.parse(localStorage.getItem('catshy_recent_searches') || '[]'); }
     catch { return []; }
   });
-
-  const { data, isLoading, isFetching } = useSearch(submittedQuery);
+  const debouncedQuery = useDebouncedValue(submittedQuery, 350);
+  const { data, isLoading, isFetching } = useSearch(debouncedQuery);
 
   const handleSearch = useCallback((q?: string) => {
     const searchQuery = (q || query).trim();

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Clock, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History, Activity, BarChart3, Shield, Cpu, Zap } from 'lucide-react';
+import { Search, Clock, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History, Activity, BarChart3, Shield, Cpu, Zap, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,8 @@ import {
   useRetryFailure, useResolveFailure,
 } from '@/hooks/useApi';
 import { Card, CardContent } from '@/components/ui/card';
+import { downloadJSON } from '@/lib/export';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -126,6 +128,13 @@ export default function Dashboard() {
           </Button>
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/reports')}>
             <FileText className="h-3 w-3 mr-1" />Report
+          </Button>
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => {
+            const snapshot = { kpis, severityData, riskData, timeRange, exportedAt: new Date().toISOString() };
+            downloadJSON(snapshot, `catshy-dashboard-${timeRange}`);
+            toast.success('Dashboard snapshot exported');
+          }}>
+            <Download className="h-3 w-3 mr-1" />Export
           </Button>
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/history')}>
             <History className="h-3 w-3 mr-1" />History

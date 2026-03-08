@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Key, Shield, Moon, Sun, Settings2, Bell, Clock, Zap, Loader2, Save } from 'lucide-react';
+import { User, Key, Shield, Moon, Sun, Settings2, Bell, Clock, Zap, Loader2, Save, Volume2, VolumeX, Smartphone, Monitor, RefreshCw, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import AIConfigPanel from '@/components/ai/AIConfigPanel';
+import { isSoundEnabled, setSoundEnabled, useSoundAlert } from '@/hooks/useSoundAlert';
 
 interface WsSettings {
   retention_days: number;
@@ -121,11 +122,91 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Appearance */}
+      {/* Appearance & Sound */}
       <Card className="border-border bg-card">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base">{isDark ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}Appearance</CardTitle></CardHeader>
-        <CardContent>
-          <Button variant="outline" size="sm" onClick={toggleTheme}>Switch to {isDark ? 'Light' : 'Dark'} Mode</Button>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base">{isDark ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}Appearance & Sound</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Theme</p>
+              <p className="text-xs text-muted-foreground">Switch between dark and light mode</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={toggleTheme}>
+              {isDark ? <Sun className="mr-2 h-3.5 w-3.5" /> : <Moon className="mr-2 h-3.5 w-3.5" />}
+              {isDark ? 'Light' : 'Dark'} Mode
+            </Button>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Sound Alerts</p>
+              <p className="text-xs text-muted-foreground">Play sound on critical threat events</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isSoundEnabled() ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+              <Switch
+                checked={isSoundEnabled()}
+                onCheckedChange={(v) => { setSoundEnabled(v); if (v) { const { playCritical } = useSoundAlert(); playCritical(); } }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Security */}
+      <Card className="border-border bg-card">
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Shield className="h-4 w-4 text-primary" />Security</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {/* 2FA Setup */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Two-Factor Authentication</p>
+              <p className="text-xs text-muted-foreground">Add an extra layer of security to your account</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">Not Configured</Badge>
+              <Button variant="outline" size="sm" onClick={() => toast.info('2FA setup requires backend configuration')}>
+                <Smartphone className="mr-1.5 h-3.5 w-3.5" />Setup 2FA
+              </Button>
+            </div>
+          </div>
+
+          {/* Active Sessions */}
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-medium">Active Sessions</p>
+                <p className="text-xs text-muted-foreground">Manage your logged-in devices</p>
+              </div>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => toast.info('Session revocation requires backend')}>
+                <LogOut className="mr-1.5 h-3.5 w-3.5" />Revoke All
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/20 p-3">
+                <div className="flex items-center gap-3">
+                  <Monitor className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Current Session</p>
+                    <p className="text-[10px] text-muted-foreground">{navigator.userAgent.split('(')[0].trim()} • {new Date().toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <Badge className="bg-accent/10 text-accent border-accent/20 text-[10px]">Active</Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Onboarding Reset */}
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Reset Onboarding Tour</p>
+                <p className="text-xs text-muted-foreground">Show the welcome tour again on next visit</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => { localStorage.removeItem('catshy_onboarding_done'); toast.success('Tour will show on next page load'); }}>
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />Reset Tour
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
