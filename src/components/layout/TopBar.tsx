@@ -19,14 +19,6 @@ import {
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
-// Dev mode fallback notifications
-const DEMO_NOTIFICATIONS: AppNotification[] = [
-  { id: 'n1', type: 'alert', title: 'Critical CVE detected', message: 'CVE-2024-3400 matches monitored asset paloalto.company.com', read: false, timestamp: new Date(Date.now() - 600000).toISOString() },
-  { id: 'n2', type: 'alert', title: 'Credential leak found', message: '12 company email:password pairs discovered on paste site.', read: false, timestamp: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'n3', type: 'system', title: 'Source fetch failed', message: 'Feodo Tracker returned HTTP 503. Will retry in 15 minutes.', read: false, timestamp: new Date(Date.now() - 7200000).toISOString() },
-  { id: 'n4', type: 'info', title: 'Daily report generated', message: 'Daily Brief for Jan 10 is ready for download.', read: true, timestamp: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'n5', type: 'system', title: 'Retention cleanup', message: '42 items older than 30 days were purged.', read: true, timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
-];
 
 const typeIcon = (type: AppNotification['type']) => {
   if (type === 'alert') return <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />;
