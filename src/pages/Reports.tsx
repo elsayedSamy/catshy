@@ -119,14 +119,6 @@ export default function Reports() {
     } catch {
       toast.error('Failed to download report');
     }
-    const slug = `catshy-${r.id.slice(0, 8)}`;
-    switch (r.format) {
-      case 'csv': downloadBlob(generateCSV(r), `${slug}.csv`, 'text/csv'); break;
-      case 'json': downloadBlob(generateJSON(r), `${slug}.json`, 'application/json'); break;
-      case 'html': downloadBlob(generateHTML(r), `${slug}.html`, 'text/html'); break;
-      case 'pdf': downloadBlob(generateHTML(r), `${slug}.html`, 'text/html'); break;
-    }
-    toast.success('Report downloaded');
   };
 
   return (
