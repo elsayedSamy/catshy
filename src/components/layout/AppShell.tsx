@@ -4,6 +4,7 @@ import { TopBar } from './TopBar';
 import { CommandPalette } from '@/components/CommandPalette';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 import { PageTransition } from '@/components/PageTransition';
+import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { useState, useEffect, useCallback } from 'react';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,6 +60,7 @@ export function AppShell() {
             </PageTransition>
           </AnimatePresence>
         </main>
+        <FloatingActionButton />
       </motion.div>
     </div>
   );
