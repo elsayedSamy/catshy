@@ -42,7 +42,6 @@ interface VulnItem {
 
 // API hooks for vulnerabilities
 const useVulnerabilities = (params?: { severity?: string; kev_only?: boolean; assets_only?: boolean }) => {
-  const { isDevMode } = useAuth();
   const sp = new URLSearchParams();
   if (params?.severity) sp.set('severity', params.severity);
   if (params?.kev_only) sp.set('kev_only', 'true');
@@ -50,7 +49,6 @@ const useVulnerabilities = (params?: { severity?: string; kev_only?: boolean; as
   return useQuery({
     queryKey: ['vulnerabilities', params],
     queryFn: () => api.get<{ items: VulnItem[]; total: number }>(`/vulnerabilities/?${sp.toString()}`),
-    enabled: !isDevMode,
     retry: 1,
   });
 };

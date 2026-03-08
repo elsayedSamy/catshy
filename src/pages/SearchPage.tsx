@@ -15,14 +15,6 @@ interface SearchResult {
   value: string; source: string; category: 'intel' | 'entity';
 }
 
-const DEMO_DATA: SearchResult[] = [
-  { id: '1', title: 'CVE-2024-3400 - PAN-OS Command Injection', severity: 'critical', type: 'cve', value: 'CVE-2024-3400', source: 'CISA KEV', category: 'intel' },
-  { id: '2', title: 'CVE-2024-21887 - Ivanti Auth Bypass', severity: 'critical', type: 'cve', value: 'CVE-2024-21887', source: 'NVD', category: 'intel' },
-  { id: '3', title: 'Emotet C2 Infrastructure', severity: 'high', type: 'ip', value: '185.244.25.14', source: 'Feodo Tracker', category: 'intel' },
-  { id: '4', title: 'LockBit 3.0 Ransomware Group', severity: 'high', type: 'actor', value: 'LockBit 3.0', source: 'The Hacker News', category: 'entity' },
-  { id: '5', title: 'Phishing domain - secure-banklogin.com', severity: 'high', type: 'domain', value: 'secure-banklogin.com', source: 'OpenPhish', category: 'intel' },
-  { id: '6', title: 'AgentTesla Stealer Distribution URL', severity: 'medium', type: 'url', value: 'https://malicious-downloads.xyz/update.exe', source: 'URLhaus', category: 'intel' },
-];
 
 const exampleQueries = [
   'CVE-2024-*', '192.168.0.0/16', 'APT29', 'emotet', 'ransomware',
