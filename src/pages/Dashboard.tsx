@@ -137,7 +137,8 @@ export default function Dashboard() {
       {/* KPI Row */}
       <KpiCards data={kpis} isLoading={kpisLoading} />
 
-      {/* Threat Pulse */}
+      {/* ── Threat Pulse ── */}
+      <SectionHeader icon={Zap} title="Threat Pulse" subtitle="Real-time threat signals" />
       <ThreatPulse data={pulseData} isLoading={pulseLoading} />
 
       {/* Charts Row: Severity + Timeline + Risk — responsive grid */}
