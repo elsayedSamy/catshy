@@ -33,6 +33,7 @@ export function AppShell() {
     <div className="flex min-h-screen bg-background">
       <CommandPalette />
       <KeyboardShortcutsModal />
+      <OnboardingTour />
 
       {/* Desktop sidebar */}
       {!isMobile && (
