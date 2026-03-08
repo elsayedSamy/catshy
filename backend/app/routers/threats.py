@@ -10,7 +10,7 @@ import io, csv, json, uuid
 
 from app.database import get_db
 from app.models import IntelItem
-from app.services.report_generator import generate_csv_report, generate_html_report, generate_json_report
+from app.services.report_generator import generate_csv_report, generate_html_report, generate_json_report, generate_pdf_report
 from app.core.deps import get_current_user, get_workspace_id, RequireRole
 
 threats_router = APIRouter()
