@@ -86,3 +86,5 @@ app.include_router(dashboard_extended_router, prefix="/api/dashboard", tags=["da
 app.include_router(ws_threats_router, prefix="/api/threats", tags=["threats-ws"])
 app.include_router(enrichment_router, prefix="/api/enrichment", tags=["enrichment"])
 app.include_router(workspaces_router, prefix="/api/workspaces", tags=["workspaces"])
+app.include_router(integrations_router, prefix="/api/integrations", tags=["integrations"])
+app.include_router(settings_router, prefix="/api/settings", tags=["settings"])

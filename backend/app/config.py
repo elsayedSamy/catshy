@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     SHODAN_API_KEY: str = ""
     ABUSEIPDB_API_KEY: str = ""
     OTX_API_KEY: str = ""
+    # Integration encryption
+    INTEGRATIONS_MASTER_KEY: str = ""  # Fernet key for encrypting BYOK API keys
     # Admin
     ADMIN_EMAIL: str = ""
     ADMIN_PASSWORD: str = ""
