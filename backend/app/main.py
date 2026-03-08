@@ -30,7 +30,6 @@ from app.routers.leak_monitor import router as leak_monitor_router
 from app.routers.outputs import router as outputs_router
 from app.routers.ai import router as ai_router
 from app.routers.correlation import router as correlation_router
-from app.routers.noise_reduction import router as noise_reduction_router
 from app.middleware.audit import AuditMiddleware
 from app.middleware.csrf import CSRFMiddleware
 from app.services.admin_seed import seed_admin
@@ -105,4 +104,3 @@ app.include_router(leak_monitor_router, prefix="/api/leaks", tags=["leak-monitor
 app.include_router(outputs_router, prefix="/api/outputs", tags=["outputs"])
 app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
 app.include_router(correlation_router, prefix="/api/correlation", tags=["correlation"])
-app.include_router(noise_reduction_router, prefix="/api/noise", tags=["noise-reduction"])
