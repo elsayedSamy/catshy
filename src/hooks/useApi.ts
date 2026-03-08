@@ -5,6 +5,25 @@ import type { SourceHealthItem } from '@/components/dashboard/SourceHealth';
 import type { IngestionRateData } from '@/components/dashboard/IngestionRate';
 import type { FailedIngestionItem } from '@/components/dashboard/FailedIngestions';
 
+// Intel detail with lifecycle + MITRE
+export interface IntelDetail extends IntelItem {
+  status: string;
+  expires_at?: string;
+  analyst_verdict?: string;
+  verdict_reason?: string;
+  analyst_notes?: string;
+  mitre_technique_ids: string[];
+  mitre_tactics: string[];
+  mitre_mapping_confidence: number;
+  mitre_mapping_source?: string;
+  geo_lat?: number;
+  geo_lon?: number;
+  geo_country?: string;
+  geo_country_name?: string;
+  campaign_name?: string;
+  score_explanation?: Record<string, unknown>;
+}
+
 const enabled = () => !api.getDevMode();
 
 // ── Paginated response unwrapper ──

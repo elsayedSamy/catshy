@@ -265,21 +265,67 @@ async def dashboard_feed_status(range: str = "24h", db: AsyncSession = Depends(g
 @dashboard_router.get("/mitre")
 async def dashboard_mitre(range: str = "24h", db: AsyncSession = Depends(get_db),
                           user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
+    """MITRE heatmap — uses stored MITRE mappings from intel items."""
     cutoff = _parse_range(range)
+
+    # Query items that have MITRE tactics stored
+    q = (
+        select(IntelItem.mitre_tactics, IntelItem.severity)
+        .where(and_(
+            IntelItem.workspace_id == wid,
+            IntelItem.fetched_at >= cutoff,
+            IntelItem.mitre_tactics != None,
+            func.array_length(IntelItem.mitre_tactics, 1) > 0,
+        ))
+    )
+    rows = (await db.execute(q)).all()
+
+    tactic_counts: dict = {}
+    tactic_max_sev: dict = {}
+    sev_order = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
+
+    for tactics_arr, severity in rows:
+        if not tactics_arr:
+            continue
+        for tactic in tactics_arr:
+            tactic_counts[tactic] = tactic_counts.get(tactic, 0) + 1
+            cur = tactic_max_sev.get(tactic, "none")
+            if sev_order.get(severity, 0) > sev_order.get(cur, -1):
+                tactic_max_sev[tactic] = severity
+
+    # Fallback: also count from tags for items without stored MITRE
+    tag_q = (
+        select(IntelItem.tags)
+        .where(and_(
+            IntelItem.workspace_id == wid,
+            IntelItem.fetched_at >= cutoff,
+            (IntelItem.mitre_tactics == None) | (func.array_length(IntelItem.mitre_tactics, 1) == 0),
+        ))
+    )
+    tag_rows = (await db.execute(tag_q)).all()
     MITRE_TACTICS = [
         ("TA0001", "Initial Access"), ("TA0002", "Execution"), ("TA0003", "Persistence"),
         ("TA0004", "Privilege Escalation"), ("TA0005", "Defense Evasion"), ("TA0006", "Credential Access"),
         ("TA0007", "Discovery"), ("TA0008", "Lateral Movement"), ("TA0009", "Collection"),
         ("TA0010", "Exfiltration"), ("TA0011", "Command and Control"), ("TA0040", "Impact"),
     ]
+    for (tags,) in tag_rows:
+        if not tags:
+            continue
+        for tid, _ in MITRE_TACTICS:
+            if tid in tags:
+                tactic_counts[tid] = tactic_counts.get(tid, 0) + 1
 
     results = []
     for tid, tname in MITRE_TACTICS:
-        q = select(func.count()).select_from(IntelItem).where(
-            and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff, IntelItem.tags.any(tid))
-        )
-        cnt = (await db.execute(q)).scalar() or 0
-        sev = "critical" if cnt > 20 else "high" if cnt > 10 else "medium" if cnt > 5 else "low" if cnt > 0 else "none"
+        cnt = tactic_counts.get(tid, 0)
+        sev = tactic_max_sev.get(tid, "none")
+        if cnt == 0:
+            sev = "none"
+        elif cnt > 20:
+            sev = "critical"
+        elif cnt > 10:
+            sev = "high" if sev_order.get(sev, 0) < 3 else sev
         results.append({"id": tid, "name": tname, "techniqueCount": cnt, "severity": sev})
     return results
 
