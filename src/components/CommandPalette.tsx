@@ -4,23 +4,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Home, Shield, Database, Radio, Rss, Globe, BarChart3,
   Bell, FileSearch, Briefcase, FileText, AlertTriangle, Map as MapIcon,
-  Workflow, Settings, Command
+  Workflow, Settings, Command, History, ShieldAlert, Plug, Webhook
 } from 'lucide-react';
 
 const commands = [
-  { label: 'Mission Control', path: '/dashboard', icon: Home, section: 'Navigate' },
+  { label: 'Dashboard', path: '/dashboard', icon: Home, section: 'Navigate' },
+  { label: 'Intel Feed', path: '/feed', icon: Rss, section: 'Navigate' },
+  { label: 'History', path: '/history', icon: History, section: 'Navigate' },
+  { label: 'Global Search', path: '/search', icon: Search, section: 'Navigate' },
   { label: 'Assets', path: '/assets', icon: Database, section: 'Navigate' },
   { label: 'Source Catalog', path: '/sources', icon: Radio, section: 'Navigate' },
-  { label: 'Intel Feed', path: '/feed', icon: Rss, section: 'Navigate' },
-  { label: 'Global Search', path: '/search', icon: Search, section: 'Navigate' },
+  { label: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert, section: 'Navigate' },
+  { label: 'Leak Hub', path: '/leaks', icon: AlertTriangle, section: 'Navigate' },
   { label: 'Graph Explorer', path: '/graph', icon: Globe, section: 'Navigate' },
+  { label: 'Global Threat Monitoring', path: '/global-threat-monitoring', icon: MapIcon, section: 'Navigate' },
   { label: 'Alerts & Rules', path: '/alerts', icon: Bell, section: 'Navigate' },
   { label: 'Investigations', path: '/investigations', icon: FileSearch, section: 'Navigate' },
   { label: 'Cases', path: '/cases', icon: Briefcase, section: 'Navigate' },
   { label: 'Reports', path: '/reports', icon: FileText, section: 'Navigate' },
-  { label: 'Leaks Center', path: '/leaks', icon: AlertTriangle, section: 'Navigate' },
-  { label: '3D Threat Map', path: '/threat-map', icon: MapIcon, section: 'Navigate' },
   { label: 'Playbooks', path: '/playbooks', icon: Workflow, section: 'Navigate' },
+  { label: 'Integrations', path: '/integrations', icon: Plug, section: 'Navigate' },
+  { label: 'Outputs', path: '/outputs', icon: Webhook, section: 'Navigate' },
   { label: 'Admin Panel', path: '/admin', icon: Shield, section: 'Navigate' },
   { label: 'Settings', path: '/settings', icon: Settings, section: 'Navigate' },
 ];
