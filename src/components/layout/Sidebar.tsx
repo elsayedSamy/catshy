@@ -220,10 +220,19 @@ function SidebarContent({ isCollapsed, onToggle, location, user, isMobile, onNav
                     <motion.span
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="truncate"
+                      className="truncate flex-1"
                     >
                       {item.label}
                     </motion.span>
+                  )}
+                  {/* Badge count */}
+                  {badgeCount && badgeCount > 0 && (
+                    <span className={cn(
+                      'flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground',
+                      isCollapsed && 'absolute -top-1 -right-1 h-4 min-w-4 text-[8px]'
+                    )}>
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
                   )}
                   {/* Hover glow for active */}
                   {isActive && (
