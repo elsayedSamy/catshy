@@ -46,7 +46,7 @@ export function MitreHeatmap({ data, isLoading }: { data?: MitreTactic[]; isLoad
         {isLoading ? (
           <Skeleton className="h-[120px] w-full" />
         ) : (
-          <div className="grid grid-cols-6 gap-1">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1">
             {MITRE_TACTICS.map(tactic => {
               const match = tacticsMap.get(tactic.id);
               const severity = match?.severity ?? 'none';
