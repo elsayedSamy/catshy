@@ -4,7 +4,7 @@ import {
   Home, Database, Radio, Rss, Search, Globe, Bell,
   FileSearch, Briefcase, FileText, AlertTriangle,
   Map as MapIcon, Workflow, Shield, Settings, ChevronLeft, Cat, History,
-  Plug, ShieldAlert, Webhook
+  Plug, ShieldAlert, Webhook, Brain
 } from 'lucide-react';
 
 const navSections = [
