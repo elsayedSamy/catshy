@@ -8,11 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, Download, Plus, Loader2, Clock, CalendarIcon, Shield, BarChart3, Briefcase, AlertTriangle, Bug } from 'lucide-react';
+import { FileText, Download, Plus, Loader2, Clock, CalendarIcon, BarChart3, Briefcase, AlertTriangle, Bug } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useReports, useGenerateReport } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 import type { Report, ReportFormat } from '@/types';
+
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const REPORT_TEMPLATES = [
   { id: 'daily_brief', label: 'Daily Brief', desc: 'Last 24 hours intelligence summary', icon: Clock, preset: 'today' },
@@ -22,6 +27,7 @@ const REPORT_TEMPLATES = [
   { id: 'vuln_digest', label: 'Vulnerability Digest', desc: 'CVEs and vulnerability assessment', icon: Bug, preset: '7d' },
 ];
 
+// ── Local export helpers (used for client-side fallback in dev mode) ──
 function generateCSV(report: Report): string {
   const lines = ['Section,Type,Content'];
   report.sections?.forEach(s => {
@@ -32,65 +38,19 @@ function generateCSV(report: Report): string {
 
 function generateJSON(report: Report): string {
   return JSON.stringify({
-    title: report.title,
-    generated_at: report.generated_at,
-    generated_by: report.generated_by,
-    format: report.format,
-    sections: report.sections,
+    title: report.title, generated_at: report.generated_at,
+    generated_by: report.generated_by, format: report.format, sections: report.sections,
   }, null, 2);
 }
 
 function generateHTML(report: Report): string {
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>${report.title}</title>
-<style>
-  body{font-family:system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1a1a2e;background:#f4f4f8}
-  h1{color:#0d1b2a;border-bottom:3px solid #00b4d8;padding-bottom:8px}
-  h2{color:#1b263b;margin-top:24px}
-  .meta{color:#666;font-size:13px;margin-bottom:24px}
-  .section{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:16px}
-  .badge{display:inline-block;background:#00b4d8;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:6px}
-  table{width:100%;border-collapse:collapse;margin:12px 0}
-  th,td{border:1px solid #ddd;padding:8px 12px;text-align:left;font-size:13px}
-  th{background:#f0f0f5}
-  footer{margin-top:32px;text-align:center;font-size:11px;color:#999}
-</style></head><body>
+<style>body{font-family:system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1a1a2e;background:#f4f4f8}h1{color:#0d1b2a;border-bottom:3px solid #00b4d8;padding-bottom:8px}h2{color:#1b263b;margin-top:24px}.meta{color:#666;font-size:13px;margin-bottom:24px}.section{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:16px}.badge{display:inline-block;background:#00b4d8;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:6px}footer{margin-top:32px;text-align:center;font-size:11px;color:#999}</style></head><body>
 <h1>🐱 CATSHY — ${report.title}</h1>
-<div class="meta">Generated: ${new Date(report.generated_at).toLocaleString()} • By: ${report.generated_by} • Format: ${report.format.toUpperCase()}</div>
+<div class="meta">Generated: ${new Date(report.generated_at).toLocaleString()} • By: ${report.generated_by}</div>
 ${report.sections?.map(s => `<div class="section"><h2>${s.heading}</h2><span class="badge">${s.type}</span><p>${s.content}</p></div>`).join('\n') || ''}
 <footer>CATSHY Threat Intelligence Platform • Confidential</footer>
-</body></html>`;
-}
-
-function generatePDFHTML(report: Report): string {
-  // Generate a print-optimized HTML that opens in a new tab for PDF printing
-  return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>${report.title}</title>
-<style>
-  @media print{@page{margin:1.5cm;size:A4}body{font-size:11pt}}
-  body{font-family:'Segoe UI',system-ui,sans-serif;max-width:700px;margin:30px auto;padding:0 20px;color:#1a1a2e}
-  h1{font-size:22pt;color:#0d1b2a;border-bottom:3px solid #00b4d8;padding-bottom:6px}
-  h2{font-size:14pt;color:#1b263b;margin-top:20px;border-left:4px solid #00b4d8;padding-left:10px}
-  .meta{color:#666;font-size:10pt;margin-bottom:20px;border-bottom:1px solid #eee;padding-bottom:8px}
-  .section{margin-bottom:14px;page-break-inside:avoid}
-  .badge{display:inline-block;background:#00b4d8;color:#fff;padding:1px 6px;border-radius:3px;font-size:9pt;margin-right:4px}
-  table{width:100%;border-collapse:collapse;margin:8px 0}
-  th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:10pt}
-  th{background:#f5f5fa;font-weight:600}
-  footer{margin-top:30px;text-align:center;font-size:9pt;color:#999;border-top:1px solid #eee;padding-top:8px}
-  .watermark{position:fixed;bottom:10px;right:10px;font-size:8pt;color:#ccc}
-</style></head><body>
-<h1>🐱 CATSHY Intelligence Report</h1>
-<div class="meta">
-  <strong>${report.title}</strong><br>
-  Generated: ${new Date(report.generated_at).toLocaleString()}<br>
-  Analyst: ${report.generated_by}<br>
-  Classification: TLP:AMBER
-</div>
-${report.sections?.map(s => `<div class="section"><h2>${s.heading}</h2><span class="badge">${s.type}</span><p>${s.content}</p></div>`).join('\n') || ''}
-<footer>CATSHY Threat Intelligence Platform — Confidential — ${new Date().getFullYear()}</footer>
-<div class="watermark">CATSHY TIP v1.0</div>
-<script>window.onload=()=>{window.print()}</script>
 </body></html>`;
 }
 
@@ -98,14 +58,16 @@ function downloadBlob(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
+  a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
 export default function Reports() {
-  const [reports, setReports] = useState<Report[]>([]);
+  const { isDevMode } = useAuth();
+  const { data: apiReports = [], isLoading } = useReports();
+  const generateReport = useGenerateReport();
+
+  const [localReports, setLocalReports] = useState<Report[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('daily_brief');
   const [title, setTitle] = useState('');
@@ -116,16 +78,31 @@ export default function Reports() {
   const [useCustomRange, setUseCustomRange] = useState(false);
 
   const template = REPORT_TEMPLATES.find(t => t.id === selectedTemplate);
+  const reports = isDevMode ? localReports : (apiReports.length > 0 ? apiReports : localReports);
 
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const preset = useCustomRange ? 'custom' : (template?.preset || 'today');
       if (useCustomRange) {
         if (!customStart || !customEnd) { toast.error('Select both start and end dates'); setGenerating(false); return; }
         if (customEnd < customStart) { toast.error('End date must be after start'); setGenerating(false); return; }
       }
 
+      if (!isDevMode) {
+        // Call backend to generate
+        await generateReport.mutateAsync({
+          case_id: selectedTemplate,
+          format: formatVal === 'pdf' ? 'technical_pdf' : formatVal,
+        });
+        toast.success(`Report generated (${formatVal.toUpperCase()})`);
+        setDialogOpen(false);
+        setTitle('');
+        setUseCustomRange(false);
+        setGenerating(false);
+        return;
+      }
+
+      // Dev mode: local generation
       const reportTitle = title || `${template?.label || 'Report'} — ${format(new Date(), 'MMM d, yyyy')}`;
       const report: Report = {
         id: crypto.randomUUID(),
@@ -134,41 +111,21 @@ export default function Reports() {
         generated_at: new Date().toISOString(),
         generated_by: 'Current User',
         sections: [
-          { heading: 'Executive Summary', content: `Intelligence report covering period: ${preset}. This report summarizes threat landscape observations, key indicators of compromise, and recommended actions.`, type: 'narrative' },
-          { heading: 'Threat Landscape', content: 'Analysis of current threat actors, campaigns, and TTPs observed during the reporting period. Key trends include increased phishing activity and ransomware campaigns targeting critical infrastructure.', type: 'narrative' },
-          { heading: 'Key Indicators', content: 'Top IOCs identified: Malicious IPs, suspicious domains, and file hashes associated with active campaigns. See detailed IOC table in appendix.', type: 'evidence' },
-          { heading: 'Risk Assessment', content: 'Overall risk level: MODERATE. Asset exposure has increased by 12% compared to the previous period. 3 critical vulnerabilities require immediate patching.', type: 'narrative' },
-          { heading: 'Recommendations', content: '1. Update firewall rules with latest IOC blocklist\n2. Patch CVE-2024-XXXX on exposed systems\n3. Review access logs for anomalous activity\n4. Conduct phishing awareness training', type: 'recommendations' },
+          { heading: 'Executive Summary', content: `Intelligence report covering the selected period. This report summarizes threat landscape observations, key indicators of compromise, and recommended actions.`, type: 'narrative' },
+          { heading: 'Threat Landscape', content: 'Analysis of current threat actors, campaigns, and TTPs observed during the reporting period.', type: 'narrative' },
+          { heading: 'Key Indicators', content: 'Top IOCs identified: Malicious IPs, suspicious domains, and file hashes associated with active campaigns.', type: 'evidence' },
+          { heading: 'Recommendations', content: '1. Update firewall rules\n2. Patch critical CVEs\n3. Review access logs\n4. Conduct phishing awareness training', type: 'recommendations' },
         ],
       };
 
       const slug = `catshy-${selectedTemplate}-${report.id.slice(0, 8)}`;
-
       switch (formatVal) {
-        case 'csv':
-          downloadBlob(generateCSV(report), `${slug}.csv`, 'text/csv');
-          break;
-        case 'json':
-          downloadBlob(generateJSON(report), `${slug}.json`, 'application/json');
-          break;
-        case 'html':
-          downloadBlob(generateHTML(report), `${slug}.html`, 'text/html');
-          break;
-        case 'pdf': {
-          const pdfHTML = generatePDFHTML(report);
-          const win = window.open('', '_blank');
-          if (win) {
-            win.document.write(pdfHTML);
-            win.document.close();
-          } else {
-            downloadBlob(generateHTML(report), `${slug}.html`, 'text/html');
-            toast.info('Pop-up blocked — downloaded as HTML instead. Use browser Print → Save as PDF.');
-          }
-          break;
-        }
+        case 'csv': downloadBlob(generateCSV(report), `${slug}.csv`, 'text/csv'); break;
+        case 'json': downloadBlob(generateJSON(report), `${slug}.json`, 'application/json'); break;
+        case 'html': downloadBlob(generateHTML(report), `${slug}.html`, 'text/html'); break;
+        case 'pdf': downloadBlob(generateHTML(report), `${slug}.html`, 'text/html'); toast.info('Downloaded as HTML — use browser Print → Save as PDF'); break;
       }
-
-      setReports(prev => [report, ...prev]);
+      setLocalReports(prev => [report, ...prev]);
       setDialogOpen(false);
       setTitle('');
       setUseCustomRange(false);
@@ -180,18 +137,28 @@ export default function Reports() {
     }
   };
 
-  const handleRedownload = (r: Report) => {
+  const handleRedownload = async (r: Report) => {
+    if (!isDevMode) {
+      // Try downloading from backend
+      try {
+        const res = await fetch(`${API_BASE}/reports/${r.id}/download`, { credentials: 'include' });
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `catshy-${r.id.slice(0, 8)}.${r.format}`; a.click();
+          URL.revokeObjectURL(url);
+          toast.success('Report downloaded');
+          return;
+        }
+      } catch { /* fallthrough to local */ }
+    }
     const slug = `catshy-${r.id.slice(0, 8)}`;
     switch (r.format) {
       case 'csv': downloadBlob(generateCSV(r), `${slug}.csv`, 'text/csv'); break;
       case 'json': downloadBlob(generateJSON(r), `${slug}.json`, 'application/json'); break;
       case 'html': downloadBlob(generateHTML(r), `${slug}.html`, 'text/html'); break;
-      case 'pdf': {
-        const win = window.open('', '_blank');
-        if (win) { win.document.write(generatePDFHTML(r)); win.document.close(); }
-        else downloadBlob(generateHTML(r), `${slug}.html`, 'text/html');
-        break;
-      }
+      case 'pdf': downloadBlob(generateHTML(r), `${slug}.html`, 'text/html'); break;
     }
     toast.success('Report downloaded');
   };
@@ -226,7 +193,9 @@ export default function Reports() {
 
       <div>
         <h3 className="text-sm font-medium text-muted-foreground mb-3">Recent Reports</h3>
-        {reports.length === 0 ? (
+        {isLoading && !isDevMode ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : reports.length === 0 ? (
           <EmptyState icon="file" title="No Reports Yet" description="Generate reports from templates or create custom reports with specific date ranges." actionLabel="Generate Report" onAction={() => setDialogOpen(true)} />
         ) : (
           <div className="space-y-2">{reports.map(r => (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Clock, Layers, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History } from 'lucide-react';
+import { Search, Clock, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -94,17 +94,6 @@ export default function Dashboard() {
               <SelectItem value="24h">Last 24 hours</SelectItem>
               <SelectItem value="7d">Last 7 days</SelectItem>
               <SelectItem value="30d">Last 30 days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[130px] h-9 text-xs bg-secondary/50 border-border">
-              <Layers className="h-3 w-3 mr-1" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Assets</SelectItem>
-              <SelectItem value="critical">Critical Only</SelectItem>
-              <SelectItem value="domains">Domains</SelectItem>
-              <SelectItem value="ips">IP Ranges</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleRefreshAll}>

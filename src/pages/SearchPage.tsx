@@ -1,12 +1,14 @@
 import { useState, useCallback } from 'react';
-import { Search as SearchIcon, Clock, ExternalLink } from 'lucide-react';
+import { Search as SearchIcon, Clock, ExternalLink, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { SeverityBadge, ObservableTypeBadge } from '@/components/StatusBadge';
 import { motion } from 'framer-motion';
+import { useSearch } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import type { SeverityLevel, ObservableType } from '@/types';
+import type { SeverityLevel, ObservableType, IntelItem, Entity } from '@/types';
 
 interface SearchResult {
   id: string; title: string; severity: SeverityLevel; type: ObservableType;
@@ -20,10 +22,6 @@ const DEMO_DATA: SearchResult[] = [
   { id: '4', title: 'LockBit 3.0 Ransomware Group', severity: 'high', type: 'actor', value: 'LockBit 3.0', source: 'The Hacker News', category: 'entity' },
   { id: '5', title: 'Phishing domain - secure-banklogin.com', severity: 'high', type: 'domain', value: 'secure-banklogin.com', source: 'OpenPhish', category: 'intel' },
   { id: '6', title: 'AgentTesla Stealer Distribution URL', severity: 'medium', type: 'url', value: 'https://malicious-downloads.xyz/update.exe', source: 'URLhaus', category: 'intel' },
-  { id: '7', title: 'CobaltStrike Beacon Hash', severity: 'medium', type: 'hash_sha256', value: 'e3b0c44298fc1c149afbf4c8996fb924', source: 'MalwareBazaar', category: 'intel' },
-  { id: '8', title: 'APT29 - Cozy Bear', severity: 'high', type: 'actor', value: 'APT29', source: 'MITRE ATT&CK', category: 'entity' },
-  { id: '9', title: 'Emotet Malware Family', severity: 'high', type: 'malware', value: 'Emotet', source: 'ThreatFox', category: 'entity' },
-  { id: '10', title: 'Tor Exit Node Scanning', severity: 'low', type: 'ip', value: '104.244.76.13', source: 'Tor Exit Nodes', category: 'intel' },
 ];
 
 const exampleQueries = [
@@ -32,40 +30,52 @@ const exampleQueries = [
 ];
 
 export default function SearchPage() {
+  const { isDevMode } = useAuth();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [submittedQuery, setSubmittedQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('catshy_recent_searches') || '[]'); }
     catch { return []; }
   });
-  const [hasSearched, setHasSearched] = useState(false);
-  const [searching, setSearching] = useState(false);
+
+  const { data, isLoading, isFetching } = useSearch(submittedQuery);
 
   const handleSearch = useCallback((q?: string) => {
     const searchQuery = (q || query).trim();
     if (!searchQuery) return;
     setQuery(searchQuery);
-    setHasSearched(true);
-    setSearching(true);
-
-    // Simulate search with filtering
-    setTimeout(() => {
-      const lower = searchQuery.toLowerCase();
-      const matched = DEMO_DATA.filter(d =>
-        d.title.toLowerCase().includes(lower) ||
-        d.value.toLowerCase().includes(lower) ||
-        d.source.toLowerCase().includes(lower) ||
-        d.type.toLowerCase().includes(lower)
-      );
-      setResults(matched);
-      setSearching(false);
-      toast.success(`Found ${matched.length} results for "${searchQuery}"`);
-    }, 600);
+    setSubmittedQuery(searchQuery);
 
     const updated = [searchQuery, ...recentSearches.filter(s => s !== searchQuery)].slice(0, 10);
     setRecentSearches(updated);
     localStorage.setItem('catshy_recent_searches', JSON.stringify(updated));
   }, [query, recentSearches]);
+
+  // Map API response to unified results
+  const results: SearchResult[] = (() => {
+    if (isDevMode && submittedQuery) {
+      const lower = submittedQuery.toLowerCase();
+      return DEMO_DATA.filter(d =>
+        d.title.toLowerCase().includes(lower) || d.value.toLowerCase().includes(lower) ||
+        d.source.toLowerCase().includes(lower) || d.type.toLowerCase().includes(lower)
+      );
+    }
+    if (!data) return [];
+    const items: SearchResult[] = [];
+    (data.intel_items || []).forEach((i: IntelItem) => items.push({
+      id: i.id, title: i.title, severity: i.severity, type: i.observable_type,
+      value: i.observable_value, source: i.source_name, category: 'intel',
+    }));
+    (data.entities || []).forEach((e: Entity) => items.push({
+      id: e.id, title: e.name, severity: 'medium' as SeverityLevel, type: 'actor' as ObservableType,
+      value: e.name, source: 'Entity DB', category: 'entity',
+    }));
+    return items;
+  })();
+
+  const hasSearched = !!submittedQuery;
+  const searching = isLoading || isFetching;
+  const total = isDevMode ? results.length : (data?.total ?? results.length);
 
   return (
     <div className="space-y-6">
@@ -79,7 +89,7 @@ export default function SearchPage() {
         <Input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()}
           placeholder="Search IOCs, CVEs, actors, domains, keywords..." className="h-12 pl-12 pr-24 text-base bg-card border-border focus:border-primary" />
         <Button onClick={() => handleSearch()} className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9" disabled={searching}>
-          {searching ? 'Searching...' : 'Search'}
+          {searching ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Searching...</> : 'Search'}
         </Button>
       </div>
 
@@ -108,9 +118,9 @@ export default function SearchPage() {
         </Card>
       )}
 
-      {hasSearched && results.length > 0 && (
+      {hasSearched && !searching && results.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">{results.length} results for "<span className="text-foreground font-medium">{query}</span>"</p>
+          <p className="text-sm text-muted-foreground">{total} results for "<span className="text-foreground font-medium">{submittedQuery}</span>"</p>
           {results.map(r => (
             <Card key={r.id} className="border-border bg-card hover:border-primary/20 transition-colors">
               <CardContent className="flex items-center justify-between p-4">
@@ -132,10 +142,17 @@ export default function SearchPage() {
         </div>
       )}
 
+      {hasSearched && searching && (
+        <div className="flex flex-col items-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-sm text-muted-foreground">Searching...</p>
+        </div>
+      )}
+
       {hasSearched && !searching && results.length === 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center py-16">
           <SearchIcon className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-sm text-muted-foreground">No results found for "{query}".</p>
+          <p className="text-sm text-muted-foreground">No results found for "{submittedQuery}".</p>
           <p className="text-xs text-muted-foreground mt-1">Try searching for CVE IDs, IP addresses, domain names, or threat actor names.</p>
         </motion.div>
       )}
