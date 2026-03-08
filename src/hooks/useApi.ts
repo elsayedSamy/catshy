@@ -70,6 +70,21 @@ export const useDisableSource = () => {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.post(`/sources/${id}/disable`), onSuccess: () => qc.invalidateQueries({ queryKey: ['sources'] }) });
 };
+export const useUpdateSource = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; description?: string; default_url?: string; resolved_url?: string; polling_interval_minutes?: number }) =>
+      api.put(`/sources/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sources'] }),
+  });
+};
+export const useDeleteSource = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.del(`/sources/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sources'] }),
+  });
+};
 
 // Feed
 export const useFeed = (params?: Record<string, string>) => {

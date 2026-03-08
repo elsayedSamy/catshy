@@ -329,6 +329,7 @@ export default function Feed() {
                     <SelectItem value="csv">CSV</SelectItem>
                     <SelectItem value="html">HTML</SelectItem>
                     <SelectItem value="json">JSON</SelectItem>
+                    <SelectItem value="pdf">PDF</SelectItem>
                     <SelectItem value="stix">STIX 2.1</SelectItem>
                   </SelectContent>
                 </Select>
