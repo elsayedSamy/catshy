@@ -115,9 +115,10 @@ interface SidebarContentProps {
   user: any;
   isMobile?: boolean;
   onNavigate?: () => void;
+  badges?: Record<string, number>;
 }
 
-function SidebarContent({ isCollapsed, onToggle, location, user, isMobile, onNavigate }: SidebarContentProps) {
+function SidebarContent({ isCollapsed, onToggle, location, user, isMobile, onNavigate, badges = {} }: SidebarContentProps) {
   return (
     <>
       {/* Logo */}
