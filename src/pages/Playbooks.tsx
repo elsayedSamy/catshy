@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import {
   Plus, Workflow, Play, ArrowUp, ArrowDown, Trash2, Search, Briefcase, Download, Bell, Globe, GitBranch, Layers,
-  Zap, Clock, Shield, AlertTriangle, FileText, Copy, Eye, HistoryIcon, ChevronRight, Loader2
+  Zap, Clock, Shield, AlertTriangle, FileText, Copy, Eye, History, ChevronRight, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaybooks, useCreatePlaybook, useUpdatePlaybook, useDeletePlaybook, useRunPlaybook } from '@/hooks/useApi';
