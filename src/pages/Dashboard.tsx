@@ -129,6 +129,7 @@ export default function Dashboard() {
             <History className="h-3 w-3 mr-1" />History
           </Button>
         </div>
+        </div>
       </motion.div>
 
       {/* KPI Row */}
