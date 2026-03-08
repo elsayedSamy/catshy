@@ -342,7 +342,49 @@ class IngestionPipeline:
         self.db.add(stats)
 
         self.source.last_fetch_at = now
+        self.source.last_success_at = now
         self.source.item_count = (self.source.item_count or 0) + self.stats["items_new"]
         self.source.health = "healthy"
         self.source.consecutive_failures = 0
+        self.source.backoff_seconds = 0
         self.source.last_error = None
+        self.source.last_fetched_count = self.stats["items_fetched"]
+        self.source.last_new_count = self.stats["items_new"]
+        self.source.last_dedup_count = self.stats["items_deduplicated"]
+
+        # Schedule next fetch
+        interval = self.source.polling_interval_minutes or 60
+        self.source.next_fetch_at = now + timedelta(minutes=interval)
+
+    async def record_failure(self, error_type: str, error_message: str, raw_excerpt: str = None):
+        """Record a fetch failure in the dead-letter table and update source health."""
+        from app.models.operations import FailedIngestion
+        now = _utcnow()
+
+        self.source.consecutive_failures = (self.source.consecutive_failures or 0) + 1
+        self.source.last_error = error_message[:1000]
+        self.source.last_fetch_at = now
+
+        # Exponential backoff: 60s, 120s, 240s, 480s... capped at 1h
+        backoff = min(60 * (2 ** (self.source.consecutive_failures - 1)), 3600)
+        self.source.backoff_seconds = backoff
+        self.source.backoff_until = now + timedelta(seconds=backoff)
+        self.source.next_fetch_at = now + timedelta(seconds=backoff)
+
+        if self.source.consecutive_failures >= 5:
+            self.source.health = "error"
+        elif self.source.consecutive_failures >= 2:
+            self.source.health = "degraded"
+
+        failure = FailedIngestion(
+            id=gen_uuid(),
+            workspace_id=self.workspace_id,
+            source_id=self.source.id,
+            source_name=self.source.name,
+            fetched_at=now,
+            error_type=error_type,
+            error_message=error_message[:2000],
+            raw_response_excerpt=raw_excerpt[:1000] if raw_excerpt else None,
+        )
+        self.db.add(failure)
+        return failure

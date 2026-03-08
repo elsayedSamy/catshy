@@ -22,6 +22,7 @@ from app.routers.enrichment import router as enrichment_router
 from app.routers.workspaces import router as workspaces_router
 from app.routers.integrations import router as integrations_router
 from app.routers.settings import router as settings_router
+from app.routers.source_health import router as source_health_router
 from app.middleware.audit import AuditMiddleware
 from app.middleware.csrf import CSRFMiddleware
 from app.services.admin_seed import seed_admin
@@ -88,3 +89,4 @@ app.include_router(enrichment_router, prefix="/api/enrichment", tags=["enrichmen
 app.include_router(workspaces_router, prefix="/api/workspaces", tags=["workspaces"])
 app.include_router(integrations_router, prefix="/api/integrations", tags=["integrations"])
 app.include_router(settings_router, prefix="/api/settings", tags=["settings"])
+app.include_router(source_health_router, prefix="/api/sources", tags=["source-health"])

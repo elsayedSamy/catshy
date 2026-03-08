@@ -22,12 +22,17 @@ import { RecentAlerts } from '@/components/dashboard/RecentAlerts';
 import { FeedStatus } from '@/components/dashboard/FeedStatus';
 import { MitreHeatmap } from '@/components/dashboard/MitreHeatmap';
 import { AttackedAssets } from '@/components/dashboard/AttackedAssets';
+import { SourceHealthWidget } from '@/components/dashboard/SourceHealth';
+import { IngestionRateWidget } from '@/components/dashboard/IngestionRate';
+import { FailedIngestions } from '@/components/dashboard/FailedIngestions';
 import {
   useDashboardKpis, useDashboardFeed, useDashboardMapEvents,
   useDashboardPulse, useDashboardChanges,
   useDashboardSeverity, useDashboardTimeline, useDashboardTopIOCs,
   useDashboardRiskScore, useDashboardRecentAlerts, useDashboardFeedStatus,
   useDashboardMitre, useDashboardAttackedAssets,
+  useSourceHealth, useIngestionRate, useFailedIngestions,
+  useRetryFailure, useResolveFailure,
 } from '@/hooks/useApi';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -49,6 +54,11 @@ export default function Dashboard() {
   const { data: feedStatus, isLoading: feedStatusLoading } = useDashboardFeedStatus(timeRange);
   const { data: mitreData, isLoading: mitreLoading } = useDashboardMitre(timeRange);
   const { data: attackedAssets, isLoading: attackedLoading } = useDashboardAttackedAssets(timeRange);
+  const { data: sourceHealth, isLoading: sourceHealthLoading } = useSourceHealth(timeRange);
+  const { data: ingestionRate, isLoading: ingestionLoading } = useIngestionRate(timeRange);
+  const { data: failedData, isLoading: failedLoading } = useFailedIngestions('failed');
+  const retryMutation = useRetryFailure();
+  const resolveMutation = useResolveFailure();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,8 +135,20 @@ export default function Dashboard() {
       {/* MITRE ATT&CK Heatmap */}
       <MitreHeatmap data={mitreData} isLoading={mitreLoading} />
 
-      {/* Feed Status + What Changed — full width row */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+      {/* Source Health + Ingestion Rate — operational streaming section */}
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+        <SourceHealthWidget items={sourceHealth?.items} isLoading={sourceHealthLoading} />
+        <IngestionRateWidget data={ingestionRate} isLoading={ingestionLoading} />
+      </div>
+
+      {/* Failed Ingestions + Feed Status + What Changed */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <FailedIngestions
+          items={failedData?.items}
+          isLoading={failedLoading}
+          onRetry={(id) => retryMutation.mutate(id)}
+          onResolve={(id) => resolveMutation.mutate(id)}
+        />
         <FeedStatus items={feedStatus} isLoading={feedStatusLoading} />
         <WhatChanged data={changesData} isLoading={changesLoading} />
       </div>

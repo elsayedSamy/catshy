@@ -24,6 +24,7 @@ def upgrade():
         sa.Column("config", sa.JSON, default=dict),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.UniqueConstraint("workspace_id", "provider", name="uq_workspace_provider"),
     )
 
     op.create_table(
