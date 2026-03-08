@@ -759,3 +759,62 @@ export const useUpdateClusterStatus = () => {
     },
   });
 };
+
+// ── Noise Reduction ──
+
+export interface NoiseStats {
+  active_items: number;
+  suppressed_items: number;
+  noise_ratio: number;
+  top_noise_sources: { source: string; count: number }[];
+}
+
+export interface SuppressedItem {
+  id: string;
+  title: string;
+  severity: string;
+  source_name: string;
+  observable_type: string;
+  observable_value: string;
+  noise_score: number | null;
+  top_signal: Record<string, number>;
+  fetched_at: string | null;
+}
+
+export const useNoiseStats = () => useQuery({
+  queryKey: ['noise-stats'],
+  queryFn: () => api.get<NoiseStats>('/noise/stats'),
+  enabled: enabled(), retry: 1,
+});
+
+export const useSuppressedItems = (limit = 50) => useQuery({
+  queryKey: ['noise-suppressed', limit],
+  queryFn: () => api.get<SuppressedItem[]>(`/noise/suppressed?limit=${limit}`),
+  enabled: enabled(), retry: 1,
+});
+
+export const useRunNoiseReduction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (threshold?: number) =>
+      api.post<{ total: number; suppressed: number; kept: number }>(
+        `/noise/run?threshold=${threshold || 70}`
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['noise-stats'] });
+      qc.invalidateQueries({ queryKey: ['noise-suppressed'] });
+    },
+  });
+};
+
+export const useRestoreItem = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) =>
+      api.post<{ message: string }>(`/noise/restore/${itemId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['noise-stats'] });
+      qc.invalidateQueries({ queryKey: ['noise-suppressed'] });
+    },
+  });
+};
