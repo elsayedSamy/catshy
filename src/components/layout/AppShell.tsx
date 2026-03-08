@@ -60,6 +60,7 @@ export function AppShell() {
             </PageTransition>
           </AnimatePresence>
         </main>
+        <FloatingActionButton />
       </motion.div>
     </div>
   );
