@@ -59,7 +59,7 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
             </Button>
           </div>
         ) : (
-          <div className="space-y-1 max-h-[300px] overflow-y-auto scrollbar-thin">
+          <div className="space-y-1 max-h-[420px] overflow-y-auto scrollbar-thin">
             {filtered.slice(0, 20).map(item => (
               <div key={item.id} className="flex items-start gap-2 rounded-lg border border-border bg-secondary/10 px-3 py-2 transition-colors hover:bg-secondary/30 cursor-pointer" onClick={() => navigate('/feed')}>
                 <Badge variant="outline" className={`text-[10px] px-1.5 shrink-0 mt-0.5 ${severityStyle[item.severity]}`}>
