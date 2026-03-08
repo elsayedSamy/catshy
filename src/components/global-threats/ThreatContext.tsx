@@ -74,7 +74,9 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
             `🚨 Critical: ${event.category} from ${event.source.city}`,
             {
               description: `${event.source.ip} → ${event.target.ip}`,
-              duration: 5000,
+              duration: 8000,
+              dismissible: true,
+              closeButton: true,
             },
           );
         }
