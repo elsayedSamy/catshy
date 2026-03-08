@@ -14,6 +14,7 @@ from jose import jwt, JWTError
 from app.database import get_db
 from app.config import settings
 from app.models import User, UserRole, RefreshToken, AuthToken, AuditLog
+from app.models.workspace import Workspace, WorkspaceMember
 from app.services.mail import send_invite_email, send_reset_email
 from app.core.security import get_rate_limiter
 
@@ -47,6 +48,7 @@ class InviteRequest(BaseModel):
     email: str
     name: str = ""
     role: str = DEFAULT_ROLE
+    workspace_id: str = ""
 
 class AcceptInviteRequest(BaseModel):
     token: str
@@ -67,9 +69,13 @@ class RegisterRequest(BaseModel):
 
 
 # ── Helpers ──
-def create_access_token(user_id: str, role: str) -> str:
+def create_access_token(user_id: str, role: str, workspace_id: str | None = None) -> str:
+    """Create JWT with workspace_id (wid) claim for tenant scoping."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return jwt.encode({"sub": user_id, "role": role, "exp": expire}, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    payload = {"sub": user_id, "role": role, "exp": expire}
+    if workspace_id:
+        payload["wid"] = workspace_id
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 def create_refresh_token_value() -> str:
     return str(uuid.uuid4())
@@ -104,6 +110,35 @@ async def _assign_role(db: AsyncSession, user_id: str, role: str):
         db.add(UserRole(user_id=user_id, role=role))
 
 
+async def _get_user_workspace(db: AsyncSession, user_id: str) -> str | None:
+    """Get the user's first active workspace_id, or None."""
+    result = await db.execute(
+        select(WorkspaceMember.workspace_id)
+        .where(WorkspaceMember.user_id == user_id, WorkspaceMember.is_active == True)
+        .limit(1)
+    )
+    row = result.first()
+    return row[0] if row else None
+
+
+async def _ensure_default_workspace(db: AsyncSession, user_id: str, user_email: str) -> str:
+    """Create a default workspace for the user if none exists, return workspace_id."""
+    wid = await _get_user_workspace(db, user_id)
+    if wid:
+        return wid
+    # Create default workspace
+    ws = Workspace(
+        name=f"{user_email.split('@')[0]}'s Workspace",
+        slug=f"ws-{user_id[:8]}",
+        owner_id=user_id,
+    )
+    db.add(ws)
+    await db.flush()
+    db.add(WorkspaceMember(workspace_id=ws.id, user_id=user_id, role="team_admin"))
+    await db.flush()
+    return ws.id
+
+
 # ── Login ──
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
@@ -113,15 +148,21 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account disabled")
-    access = create_access_token(user.id, user.role)
+
+    # Resolve workspace for token
+    workspace_id = await _ensure_default_workspace(db, user.id, user.email)
+
+    access = create_access_token(user.id, user.role, workspace_id=workspace_id)
     refresh = create_refresh_token_value()
     rt = RefreshToken(user_id=user.id, token_hash=hashlib.sha256(refresh.encode()).hexdigest(),
                       expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
     db.add(rt)
-    db.add(AuditLog(action="login", entity_type="user", entity_id=user.id, user_id=user.id, user_email=user.email))
+    db.add(AuditLog(action="login", entity_type="user", entity_id=user.id,
+                    user_id=user.id, user_email=user.email, workspace_id=workspace_id))
     await db.commit()
     return TokenResponse(access_token=access, refresh_token=refresh,
-                         user={"id": user.id, "email": user.email, "name": user.name, "role": user.role})
+                         user={"id": user.id, "email": user.email, "name": user.name,
+                               "role": user.role, "workspace_id": workspace_id})
 
 
 # ── Register (public sign-up) ──
@@ -147,13 +188,16 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         name=req.name or req.email.split("@")[0],
         hashed_password=pwd_context.hash(req.password),
         role=assigned_role,
-        is_active=False if not is_first_user else True,  # First user auto-active
+        is_active=False if not is_first_user else True,
     )
     db.add(user)
     await db.flush()
 
     # Assign role in user_roles table
     await _assign_role(db, user.id, assigned_role)
+
+    # Create default workspace for new user
+    workspace_id = await _ensure_default_workspace(db, user.id, req.email)
 
     if not is_first_user:
         # Generate verification token
@@ -167,7 +211,8 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         )
         db.add(auth_token)
 
-    db.add(AuditLog(action="user_registered", entity_type="user", entity_id=user.id, user_email=req.email))
+    db.add(AuditLog(action="user_registered", entity_type="user", entity_id=user.id,
+                    user_email=req.email, workspace_id=workspace_id))
     await db.commit()
 
     if is_first_user:
@@ -280,6 +325,10 @@ async def accept_invite(req: AcceptInviteRequest, db: AsyncSession = Depends(get
     db.add(user)
     await db.flush()
     await _assign_role(db, user.id, assigned_role)
+
+    # Create default workspace for invited user
+    await _ensure_default_workspace(db, user.id, at.email)
+
     at.used_at = datetime.now(timezone.utc)
     at.user_id = user.id
     db.add(AuditLog(action="invite_accepted", entity_type="user", entity_id=user.id, user_email=at.email))
@@ -356,5 +405,8 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    access = create_access_token(user.id, user.role)
+
+    # Include workspace_id in refreshed token
+    workspace_id = await _get_user_workspace(db, user.id)
+    access = create_access_token(user.id, user.role, workspace_id=workspace_id)
     return {"access_token": access}

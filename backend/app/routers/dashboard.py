@@ -1,6 +1,7 @@
-"""Dashboard & Map API endpoints — aggregation for the main dashboard"""
+"""Dashboard & Map API endpoints — aggregation for the main dashboard.
+All queries are scoped to the authenticated user's workspace_id."""
 import builtins
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, case, extract
 from typing import Optional
@@ -8,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.models import Alert, IntelItem, Asset, Entity
 from app.models.operations import Source
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_workspace_id
 
 dashboard_router = APIRouter()
 map_router = APIRouter()
@@ -28,39 +29,43 @@ def _bucket_count(range_str: str) -> int:
 
 @dashboard_router.get("/kpis")
 async def dashboard_kpis(range: str = "24h", db: AsyncSession = Depends(get_db),
-                         user=Depends(get_current_user)):
+                         user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
     now = datetime.now(timezone.utc)
     prev_cutoff = cutoff - (now - cutoff)
 
     crit_q = select(func.count()).select_from(Alert).where(
-        and_(Alert.severity == "critical", Alert.triggered_at >= cutoff)
+        and_(Alert.workspace_id == wid, Alert.severity == "critical", Alert.triggered_at >= cutoff)
     )
     crit_count = (await db.execute(crit_q)).scalar() or 0
 
     prev_crit_q = select(func.count()).select_from(Alert).where(
-        and_(Alert.severity == "critical", Alert.triggered_at >= prev_cutoff, Alert.triggered_at < cutoff)
+        and_(Alert.workspace_id == wid, Alert.severity == "critical",
+             Alert.triggered_at >= prev_cutoff, Alert.triggered_at < cutoff)
     )
     prev_crit = (await db.execute(prev_crit_q)).scalar() or 0
     crit_delta = round(((crit_count - prev_crit) / max(prev_crit, 1)) * 100)
 
     ioc_q = select(func.count()).select_from(IntelItem).where(
-        and_(IntelItem.confidence_score >= 0.7, IntelItem.fetched_at >= cutoff)
+        and_(IntelItem.workspace_id == wid, IntelItem.confidence_score >= 0.7, IntelItem.fetched_at >= cutoff)
     )
     ioc_count = (await db.execute(ioc_q)).scalar() or 0
 
     prev_ioc_q = select(func.count()).select_from(IntelItem).where(
-        and_(IntelItem.confidence_score >= 0.7, IntelItem.fetched_at >= prev_cutoff, IntelItem.fetched_at < cutoff)
+        and_(IntelItem.workspace_id == wid, IntelItem.confidence_score >= 0.7,
+             IntelItem.fetched_at >= prev_cutoff, IntelItem.fetched_at < cutoff)
     )
     prev_ioc = (await db.execute(prev_ioc_q)).scalar() or 0
     ioc_delta = round(((ioc_count - prev_ioc) / max(prev_ioc, 1)) * 100)
 
     asset_q = select(func.count()).select_from(IntelItem).where(
-        and_(IntelItem.asset_match == True, IntelItem.fetched_at >= cutoff)
+        and_(IntelItem.workspace_id == wid, IntelItem.asset_match == True, IntelItem.fetched_at >= cutoff)
     )
     assets_affected = (await db.execute(asset_q)).scalar() or 0
 
-    campaign_q = select(func.count()).select_from(Entity).where(Entity.type == "campaign")
+    campaign_q = select(func.count()).select_from(Entity).where(
+        and_(Entity.workspace_id == wid, Entity.type == "campaign")
+    )
     campaigns = (await db.execute(campaign_q)).scalar() or 0
 
     return {
@@ -77,9 +82,9 @@ async def dashboard_kpis(range: str = "24h", db: AsyncSession = Depends(get_db),
 @dashboard_router.get("/live-feed")
 async def dashboard_live_feed(range: str = "24h", severity: Optional[str] = None,
                               limit: int = 50, db: AsyncSession = Depends(get_db),
-                              user=Depends(get_current_user)):
+                              user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
-    q = select(IntelItem).where(IntelItem.fetched_at >= cutoff)
+    q = select(IntelItem).where(and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff))
     if severity:
         q = q.where(IntelItem.severity == severity)
     q = q.order_by(IntelItem.fetched_at.desc()).limit(limit)
@@ -100,16 +105,15 @@ async def dashboard_live_feed(range: str = "24h", severity: Optional[str] = None
     return {"items": items}
 
 
-# ── NEW: 8 Dashboard Widget Endpoints ──
+# ── Dashboard Widget Endpoints ──
 
 @dashboard_router.get("/severity")
 async def dashboard_severity(range: str = "24h", db: AsyncSession = Depends(get_db),
-                             user=Depends(get_current_user)):
-    """Severity distribution counts for the pie chart."""
+                             user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
     q = (
         select(IntelItem.severity, func.count().label("cnt"))
-        .where(IntelItem.fetched_at >= cutoff)
+        .where(and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff))
         .group_by(IntelItem.severity)
     )
     rows = (await db.execute(q)).all()
@@ -122,8 +126,7 @@ async def dashboard_severity(range: str = "24h", db: AsyncSession = Depends(get_
 
 @dashboard_router.get("/timeline")
 async def dashboard_timeline(range: str = "24h", db: AsyncSession = Depends(get_db),
-                             user=Depends(get_current_user)):
-    """Threat timeline: time-bucketed severity counts for line chart."""
+                             user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
     now = datetime.now(timezone.utc)
     span = now - cutoff
@@ -136,11 +139,13 @@ async def dashboard_timeline(range: str = "24h", db: AsyncSession = Depends(get_
         b_end = b_start + bucket_size
         q = (
             select(IntelItem.severity, func.count().label("cnt"))
-            .where(and_(IntelItem.fetched_at >= b_start, IntelItem.fetched_at < b_end))
+            .where(and_(IntelItem.workspace_id == wid,
+                        IntelItem.fetched_at >= b_start, IntelItem.fetched_at < b_end))
             .group_by(IntelItem.severity)
         )
         rows = (await db.execute(q)).all()
-        point = {"time": b_start.strftime("%H:%M" if span.days < 2 else "%b %d"), "critical": 0, "high": 0, "medium": 0, "low": 0}
+        point = {"time": b_start.strftime("%H:%M" if span.days < 2 else "%b %d"),
+                 "critical": 0, "high": 0, "medium": 0, "low": 0}
         for sev, cnt in rows:
             if sev in point:
                 point[sev] = cnt
@@ -148,14 +153,9 @@ async def dashboard_timeline(range: str = "24h", db: AsyncSession = Depends(get_
     return timeline
 
 
-
-
-
-
 @dashboard_router.get("/top-iocs")
 async def dashboard_top_iocs(range: str = "24h", limit: int = 10, db: AsyncSession = Depends(get_db),
-                             user=Depends(get_current_user)):
-    """Top IOCs by frequency."""
+                             user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
     q = (
         select(
@@ -164,7 +164,8 @@ async def dashboard_top_iocs(range: str = "24h", limit: int = 10, db: AsyncSessi
             func.count().label("cnt"),
             func.max(IntelItem.severity).label("max_sev"),
         )
-        .where(and_(IntelItem.fetched_at >= cutoff, IntelItem.observable_value.isnot(None), IntelItem.observable_value != ""))
+        .where(and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff,
+                     IntelItem.observable_value.isnot(None), IntelItem.observable_value != ""))
         .group_by(IntelItem.observable_value, IntelItem.observable_type)
         .order_by(func.count().desc())
         .limit(limit)
@@ -178,31 +179,31 @@ async def dashboard_top_iocs(range: str = "24h", limit: int = 10, db: AsyncSessi
 
 @dashboard_router.get("/risk-score")
 async def dashboard_risk_score(range: str = "24h", db: AsyncSession = Depends(get_db),
-                               user=Depends(get_current_user)):
-    """Overall risk score with contributing factors."""
+                               user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
-    # Average risk score
-    avg_q = select(func.avg(IntelItem.risk_score)).where(IntelItem.fetched_at >= cutoff)
+    avg_q = select(func.avg(IntelItem.risk_score)).where(
+        and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff))
     avg_risk = (await db.execute(avg_q)).scalar() or 0
     overall = round(float(avg_risk) * 100)
 
-    # Factor breakdown
     crit_q = select(func.count()).select_from(IntelItem).where(
-        and_(IntelItem.severity == "critical", IntelItem.fetched_at >= cutoff))
+        and_(IntelItem.workspace_id == wid, IntelItem.severity == "critical", IntelItem.fetched_at >= cutoff))
     crit_count = (await db.execute(crit_q)).scalar() or 0
 
     match_q = select(func.count()).select_from(IntelItem).where(
-        and_(IntelItem.asset_match == True, IntelItem.fetched_at >= cutoff))
+        and_(IntelItem.workspace_id == wid, IntelItem.asset_match == True, IntelItem.fetched_at >= cutoff))
     match_count = (await db.execute(match_q)).scalar() or 0
 
-    total_q = select(func.count()).select_from(IntelItem).where(IntelItem.fetched_at >= cutoff)
+    total_q = select(func.count()).select_from(IntelItem).where(
+        and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff))
     total = (await db.execute(total_q)).scalar() or 1
 
-    # Determine trend
     now = datetime.now(timezone.utc)
     mid = cutoff + (now - cutoff) / 2
-    first_half = select(func.avg(IntelItem.risk_score)).where(and_(IntelItem.fetched_at >= cutoff, IntelItem.fetched_at < mid))
-    second_half = select(func.avg(IntelItem.risk_score)).where(and_(IntelItem.fetched_at >= mid, IntelItem.fetched_at <= now))
+    first_half = select(func.avg(IntelItem.risk_score)).where(
+        and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff, IntelItem.fetched_at < mid))
+    second_half = select(func.avg(IntelItem.risk_score)).where(
+        and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= mid, IntelItem.fetched_at <= now))
     fh = (await db.execute(first_half)).scalar() or 0
     sh = (await db.execute(second_half)).scalar() or 0
     trend = "up" if sh > fh * 1.05 else ("down" if sh < fh * 0.95 else "stable")
@@ -221,12 +222,11 @@ async def dashboard_risk_score(range: str = "24h", db: AsyncSession = Depends(ge
 
 @dashboard_router.get("/recent-alerts")
 async def dashboard_recent_alerts(range: str = "24h", limit: int = 20, db: AsyncSession = Depends(get_db),
-                                  user=Depends(get_current_user)):
-    """Recent alerts for the sidebar widget."""
+                                  user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
     q = (
         select(Alert)
-        .where(Alert.triggered_at >= cutoff)
+        .where(and_(Alert.workspace_id == wid, Alert.triggered_at >= cutoff))
         .order_by(Alert.triggered_at.desc())
         .limit(limit)
     )
@@ -242,18 +242,16 @@ async def dashboard_recent_alerts(range: str = "24h", limit: int = 20, db: Async
 
 @dashboard_router.get("/feed-status")
 async def dashboard_feed_status(range: str = "24h", db: AsyncSession = Depends(get_db),
-                                user=Depends(get_current_user)):
-    """Status of all configured feeds/sources."""
+                                user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
-    q = select(Source)
+    q = select(Source).where(Source.workspace_id == wid)
     result = await db.execute(q)
     sources = result.scalars().all()
 
     items = []
     for s in sources:
-        # Count items fetched today for this source
         cnt_q = select(func.count()).select_from(IntelItem).where(
-            and_(IntelItem.source_id == s.id, IntelItem.fetched_at >= cutoff)
+            and_(IntelItem.workspace_id == wid, IntelItem.source_id == s.id, IntelItem.fetched_at >= cutoff)
         )
         cnt = (await db.execute(cnt_q)).scalar() or 0
         items.append({
@@ -266,10 +264,8 @@ async def dashboard_feed_status(range: str = "24h", db: AsyncSession = Depends(g
 
 @dashboard_router.get("/mitre")
 async def dashboard_mitre(range: str = "24h", db: AsyncSession = Depends(get_db),
-                          user=Depends(get_current_user)):
-    """MITRE ATT&CK tactic heatmap from tags."""
+                          user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
-    # Extract MITRE tactics from intel item tags
     MITRE_TACTICS = [
         ("TA0001", "Initial Access"), ("TA0002", "Execution"), ("TA0003", "Persistence"),
         ("TA0004", "Privilege Escalation"), ("TA0005", "Defense Evasion"), ("TA0006", "Credential Access"),
@@ -279,9 +275,8 @@ async def dashboard_mitre(range: str = "24h", db: AsyncSession = Depends(get_db)
 
     results = []
     for tid, tname in MITRE_TACTICS:
-        # Count items with this tactic tag
         q = select(func.count()).select_from(IntelItem).where(
-            and_(IntelItem.fetched_at >= cutoff, IntelItem.tags.any(tid))
+            and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff, IntelItem.tags.any(tid))
         )
         cnt = (await db.execute(q)).scalar() or 0
         sev = "critical" if cnt > 20 else "high" if cnt > 10 else "medium" if cnt > 5 else "low" if cnt > 0 else "none"
@@ -291,8 +286,7 @@ async def dashboard_mitre(range: str = "24h", db: AsyncSession = Depends(get_db)
 
 @dashboard_router.get("/attacked-assets")
 async def dashboard_attacked_assets(range: str = "24h", limit: int = 10, db: AsyncSession = Depends(get_db),
-                                    user=Depends(get_current_user)):
-    """Top attacked assets bar chart."""
+                                    user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     cutoff = _parse_range(range)
     q = (
         select(
@@ -300,8 +294,8 @@ async def dashboard_attacked_assets(range: str = "24h", limit: int = 10, db: Asy
             func.count().label("cnt"),
             func.max(IntelItem.severity).label("max_sev"),
         )
-        .where(and_(IntelItem.fetched_at >= cutoff, IntelItem.asset_match == True,
-                     IntelItem.observable_value.isnot(None)))
+        .where(and_(IntelItem.workspace_id == wid, IntelItem.fetched_at >= cutoff,
+                     IntelItem.asset_match == True, IntelItem.observable_value.isnot(None)))
         .group_by(IntelItem.observable_value)
         .order_by(func.count().desc())
         .limit(limit)
@@ -314,13 +308,13 @@ async def dashboard_attacked_assets(range: str = "24h", limit: int = 10, db: Asy
 
 @map_router.get("/summary")
 async def map_summary(range: str = "24h", db: AsyncSession = Depends(get_db),
-                      user=Depends(get_current_user)):
+                      user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     return {"events": [], "hotlist": [], "topThreats": [], "topCountries": [], "topCves": []}
 
 
 @map_router.get("/country/{code}")
 async def map_country_detail(code: str, range: str = "24h", db: AsyncSession = Depends(get_db),
-                             user=Depends(get_current_user)):
+                             user=Depends(get_current_user), wid: str = Depends(get_workspace_id)):
     return {
         "code": code, "name": code,
         "threats": {"critical": 0, "high": 0, "medium": 0, "low": 0},
@@ -331,5 +325,6 @@ async def map_country_detail(code: str, range: str = "24h", db: AsyncSession = D
 @map_router.get("/events")
 async def map_events(range: str = "24h", country: Optional[str] = None,
                      severity: Optional[str] = None, limit: int = 100,
-                     db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
+                     db: AsyncSession = Depends(get_db), user=Depends(get_current_user),
+                     wid: str = Depends(get_workspace_id)):
     return []

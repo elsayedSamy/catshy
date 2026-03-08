@@ -1,6 +1,6 @@
 """System-level models — AuditLog, FeatureFlag, PendingOwnerRequest, SystemAuditLog."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from app.database import Base
@@ -8,6 +8,10 @@ from app.database import Base
 
 def gen_uuid():
     return str(uuid.uuid4())
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 
 class AuditLog(Base):
@@ -23,10 +27,10 @@ class AuditLog(Base):
     details = Column(JSONB, default={})
     ip_address = Column(String(45))
     user_agent = Column(Text, nullable=True)
-    outcome = Column(String(20), default="success")  # success | failure
+    outcome = Column(String(20), default="success")
     failure_reason = Column(Text, nullable=True)
     correlation_id = Column(String(100), nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
 class SystemAuditLog(Base):
@@ -41,7 +45,7 @@ class SystemAuditLog(Base):
     ip_address = Column(String(45))
     user_agent = Column(Text, nullable=True)
     outcome = Column(String(20), default="success")
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
 class PendingOwnerRequest(Base):
@@ -51,11 +55,11 @@ class PendingOwnerRequest(Base):
     requester_user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=False)
     requester_email = Column(String(255), nullable=False)
     reason = Column(Text, nullable=True)
-    status = Column(String(20), default="pending")  # pending | approved | rejected
+    status = Column(String(20), default="pending")
     reviewed_by = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=True)
-    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
     review_notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class FeatureFlag(Base):
@@ -63,4 +67,4 @@ class FeatureFlag(Base):
     key = Column(String(100), primary_key=True)
     enabled = Column(Boolean, default=False)
     updated_by = Column(UUID(as_uuid=False), ForeignKey("users.id"))
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
