@@ -351,7 +351,6 @@ export default function Feed() {
           </PopoverTrigger>
           <PopoverContent className="w-56 p-3 space-y-2" align="start">
             {[
-              { label: 'Contains CVE', checked: containsCve, set: setContainsCve },
               { label: 'Contains IOC', checked: containsIoc, set: setContainsIoc },
               { label: 'Government Sources', checked: govSourcesOnly, set: setGovSourcesOnly },
               { label: 'High Confidence Only', checked: highConfOnly, set: setHighConfOnly },
