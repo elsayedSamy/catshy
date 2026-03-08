@@ -75,7 +75,7 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="executive" element={<ExecutiveDashboard />} />
+                
                 <Route path="assets" element={<Assets />} />
                 <Route path="sources" element={<Sources />} />
                 <Route path="feed" element={<Feed />} />
