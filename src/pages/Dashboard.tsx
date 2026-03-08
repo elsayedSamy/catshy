@@ -14,7 +14,21 @@ import { TopThreats } from '@/components/dashboard/TopThreats';
 import { LiveFeedWidget } from '@/components/dashboard/LiveFeedWidget';
 import { TopCountries } from '@/components/dashboard/TopCountries';
 import { TopCves } from '@/components/dashboard/TopCves';
-import { useDashboardKpis, useDashboardFeed, useDashboardMapEvents, useDashboardPulse, useDashboardChanges } from '@/hooks/useApi';
+import { SeverityDistribution } from '@/components/dashboard/SeverityDistribution';
+import { ThreatTimeline } from '@/components/dashboard/ThreatTimeline';
+import { TopIOCs } from '@/components/dashboard/TopIOCs';
+import { RiskScoreOverview } from '@/components/dashboard/RiskScoreOverview';
+import { RecentAlerts } from '@/components/dashboard/RecentAlerts';
+import { FeedStatus } from '@/components/dashboard/FeedStatus';
+import { MitreHeatmap } from '@/components/dashboard/MitreHeatmap';
+import { AttackedAssets } from '@/components/dashboard/AttackedAssets';
+import {
+  useDashboardKpis, useDashboardFeed, useDashboardMapEvents,
+  useDashboardPulse, useDashboardChanges,
+  useDashboardSeverity, useDashboardTimeline, useDashboardTopIOCs,
+  useDashboardRiskScore, useDashboardRecentAlerts, useDashboardFeedStatus,
+  useDashboardMitre, useDashboardAttackedAssets,
+} from '@/hooks/useApi';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function Dashboard() {
@@ -27,6 +41,14 @@ export default function Dashboard() {
   const { data: mapData, isLoading: mapLoading, refetch: refetchMap } = useDashboardMapEvents(timeRange);
   const { data: pulseData, isLoading: pulseLoading } = useDashboardPulse(timeRange);
   const { data: changesData, isLoading: changesLoading } = useDashboardChanges(timeRange);
+  const { data: severityData, isLoading: severityLoading } = useDashboardSeverity(timeRange);
+  const { data: timelineData, isLoading: timelineLoading } = useDashboardTimeline(timeRange);
+  const { data: topIOCs, isLoading: iocsLoading } = useDashboardTopIOCs(timeRange);
+  const { data: riskData, isLoading: riskLoading } = useDashboardRiskScore(timeRange);
+  const { data: recentAlerts, isLoading: alertsLoading } = useDashboardRecentAlerts(timeRange);
+  const { data: feedStatus, isLoading: feedStatusLoading } = useDashboardFeedStatus(timeRange);
+  const { data: mitreData, isLoading: mitreLoading } = useDashboardMitre(timeRange);
+  const { data: attackedAssets, isLoading: attackedLoading } = useDashboardAttackedAssets(timeRange);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,12 +70,7 @@ export default function Dashboard() {
         <form onSubmit={handleSearch} className="flex-1 w-full">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search IOC, IP, Domain, CVE..."
-              className="pl-10 bg-secondary/50 border-border h-9 text-sm"
-            />
+            <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search IOC, IP, Domain, CVE..." className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
           </div>
         </form>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -83,7 +100,7 @@ export default function Dashboard() {
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleRefreshAll}>
             <RefreshCw className="h-3 w-3 mr-1" />Refresh
           </Button>
-          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/feed')}>
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/reports')}>
             <FileText className="h-3 w-3 mr-1" />Report
           </Button>
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => navigate('/history')}>
@@ -98,23 +115,35 @@ export default function Dashboard() {
       {/* Threat Pulse */}
       <ThreatPulse data={pulseData} isLoading={pulseLoading} />
 
-      {/* Main Content: Triage + Map/Globe + Side Panels */}
+      {/* Charts Row: Severity Dist + Threat Timeline + Risk Score */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <SeverityDistribution data={severityData} isLoading={severityLoading} />
+        <ThreatTimeline data={timelineData} isLoading={timelineLoading} />
+        <RiskScoreOverview data={riskData} isLoading={riskLoading} />
+      </div>
+
+      {/* MITRE ATT&CK Heatmap */}
+      <MitreHeatmap data={mitreData} isLoading={mitreLoading} />
+
+      {/* Main Content: Triage + Side Panels */}
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4 min-w-0">
-          {/* Triage Queue */}
           <TriageQueue items={feedData?.items ?? []} isLoading={feedLoading} />
+          <AttackedAssets items={attackedAssets} isLoading={attackedLoading} />
         </div>
-
         <div className="space-y-4">
           <WhatChanged data={changesData} isLoading={changesLoading} />
+          <RecentAlerts items={recentAlerts} isLoading={alertsLoading} />
+          <FeedStatus items={feedStatus} isLoading={feedStatusLoading} />
           <AssetHotlist items={mapData?.hotlist ?? []} isLoading={mapLoading} />
           <TopThreats items={mapData?.topThreats ?? []} isLoading={mapLoading} />
         </div>
       </div>
 
-      {/* Feed + Countries + CVEs */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* Feed + IOCs + Countries + CVEs */}
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <LiveFeedWidget items={feedData?.items ?? []} isLoading={feedLoading} onRefresh={() => refetchFeed()} />
+        <TopIOCs items={topIOCs} isLoading={iocsLoading} />
         <TopCountries items={mapData?.topCountries ?? []} isLoading={mapLoading} />
         <TopCves items={mapData?.topCves ?? []} isLoading={mapLoading} />
       </div>
