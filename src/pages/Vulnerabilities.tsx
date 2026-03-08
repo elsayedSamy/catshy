@@ -237,6 +237,29 @@ export default function Vulnerabilities() {
                           </a>
                         </Button>
                       </TooltipTrigger><TooltipContent>View on NVD</TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
+                          <a href={`https://www.cvedetails.com/cve/${selected.cve_id}/`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="mr-1 h-3 w-3" />CVE Details
+                          </a>
+                        </Button>
+                      </TooltipTrigger><TooltipContent>View on CVE Details</TooltipContent></Tooltip>
+                      {selected.is_kev && (
+                        <Tooltip><TooltipTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
+                            <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="mr-1 h-3 w-3" />CISA KEV
+                            </a>
+                          </Button>
+                        </TooltipTrigger><TooltipContent>View CISA KEV Catalog</TooltipContent></Tooltip>
+                      )}
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
+                          <a href={`https://www.google.com/search?q=${selected.cve_id}+exploit+advisory`} target="_blank" rel="noopener noreferrer">
+                            <Search className="mr-1 h-3 w-3" />Search
+                          </a>
+                        </Button>
+                      </TooltipTrigger><TooltipContent>Search for advisories & exploits</TooltipContent></Tooltip>
                     </TooltipProvider>
                   </div>
                 </div>
