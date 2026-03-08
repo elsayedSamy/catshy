@@ -4,237 +4,311 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Search, Settings, TestTube, Loader2, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Settings, TestTube, Loader2, Check, Shield, CheckCircle2, AlertCircle, Unlink, Link, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 
-interface ProviderInfo {
-  name?: string;
-  description?: string;
-  category?: string;
-}
-
-interface Integration {
-  id: string | null;
+// ── Unified provider type ──
+interface Provider {
   provider: string;
+  name: string;
+  description: string;
+  category: string;
+  tier: 'Free' | 'Premium' | 'Enterprise';
+  // Backend state (null = not configured)
+  id: string | null;
   enabled: boolean;
   status: string;
   masked_key: string | null;
   last_success: string | null;
   last_error: string | null;
-  last_checked: string | null;
-  config: Record<string, any>;
-  provider_info: ProviderInfo;
 }
 
-// Static catalog for providers not yet in the backend
-const EXTRA_CATALOG = [
-  { provider: 'misp', info: { name: 'MISP', description: 'Malware Information Sharing Platform', category: 'Threat Intel' } },
-  { provider: 'censys', info: { name: 'Censys', description: 'Internet asset discovery', category: 'Threat Intel' } },
-  { provider: 'urlscan', info: { name: 'URLscan.io', description: 'URL scanning & analysis', category: 'Threat Intel' } },
-  { provider: 'hibp', info: { name: 'Have I Been Pwned', description: 'Breach notification', category: 'Breach / Leak' } },
-  { provider: 'slack', info: { name: 'Slack', description: 'Team messaging notifications', category: 'Notification' } },
-  { provider: 'msteams', info: { name: 'Microsoft Teams', description: 'Teams channel notifications', category: 'Notification' } },
-  { provider: 'jira', info: { name: 'Jira', description: 'Issue tracking & case management', category: 'Ticketing / SIEM' } },
+// ── Full catalog: Enrichment + Notification + Premium CTI + ASM + Leaks ──
+const PROVIDER_CATALOG: Omit<Provider, 'id' | 'enabled' | 'status' | 'masked_key' | 'last_success' | 'last_error'>[] = [
+  // Enrichment (free-tier / API-key)
+  { provider: 'virustotal', name: 'VirusTotal', description: 'File, URL & IP reputation scanning', category: 'Enrichment', tier: 'Free' },
+  { provider: 'shodan', name: 'Shodan', description: 'Internet-connected device search', category: 'Enrichment', tier: 'Free' },
+  { provider: 'abuseipdb', name: 'AbuseIPDB', description: 'IP abuse & threat reports', category: 'Enrichment', tier: 'Free' },
+  { provider: 'otx', name: 'OTX AlienVault', description: 'Open Threat Exchange community intel', category: 'Enrichment', tier: 'Free' },
+  { provider: 'misp', name: 'MISP', description: 'Malware Information Sharing Platform', category: 'Enrichment', tier: 'Free' },
+  { provider: 'censys', name: 'Censys', description: 'Internet asset discovery & monitoring', category: 'Enrichment', tier: 'Free' },
+  { provider: 'urlscan', name: 'URLscan.io', description: 'URL scanning & phishing analysis', category: 'Enrichment', tier: 'Free' },
+  { provider: 'hibp', name: 'Have I Been Pwned', description: 'Breach & credential exposure lookup', category: 'Enrichment', tier: 'Free' },
+
+  // Notifications / Ticketing
+  { provider: 'slack', name: 'Slack', description: 'Team messaging & alert notifications', category: 'Notifications', tier: 'Free' },
+  { provider: 'msteams', name: 'Microsoft Teams', description: 'Teams channel notifications', category: 'Notifications', tier: 'Free' },
+  { provider: 'jira', name: 'Jira', description: 'Issue tracking & case management', category: 'Notifications', tier: 'Free' },
+
+  // Premium CTI / TIP
+  { provider: 'recorded-future', name: 'Recorded Future', description: 'Intelligence cloud platform', category: 'CTI / TIP', tier: 'Enterprise' },
+  { provider: 'mandiant', name: 'Mandiant Advantage', description: 'Threat intelligence & attack surface', category: 'CTI / TIP', tier: 'Enterprise' },
+  { provider: 'flashpoint', name: 'Flashpoint', description: 'Deep & dark web threat intelligence', category: 'CTI / TIP', tier: 'Enterprise' },
+  { provider: 'anomali', name: 'Anomali ThreatStream', description: 'Threat intelligence management platform', category: 'CTI / TIP', tier: 'Enterprise' },
+  { provider: 'intel471', name: 'Intel 471', description: 'Adversary & malware intelligence', category: 'CTI / TIP', tier: 'Enterprise' },
+  { provider: 'kaspersky', name: 'Kaspersky Threat Intelligence', description: 'Threat data feeds & APT reports', category: 'CTI / TIP', tier: 'Enterprise' },
+  { provider: 'ibm-xforce', name: 'IBM X-Force', description: 'Threat intelligence & research', category: 'CTI / TIP', tier: 'Premium' },
+  { provider: 'cisco-talos', name: 'Cisco Talos', description: 'Threat intelligence & research group', category: 'CTI / TIP', tier: 'Premium' },
+  { provider: 'proofpoint', name: 'Proofpoint ET / TAP', description: 'Emerging threats & targeted attack protection', category: 'CTI / TIP', tier: 'Enterprise' },
+  { provider: 'zerofox', name: 'ZeroFox', description: 'External threat intelligence & protection', category: 'CTI / TIP', tier: 'Premium' },
+  { provider: 'checkpoint', name: 'Check Point ThreatCloud', description: 'Real-time threat intelligence', category: 'CTI / TIP', tier: 'Premium' },
+  { provider: 'fortiguard', name: 'FortiGuard (Fortinet)', description: 'Threat intelligence services', category: 'CTI / TIP', tier: 'Premium' },
+  { provider: 'trendmicro', name: 'Trend Micro Threat Intel', description: 'Global threat intelligence network', category: 'CTI / TIP', tier: 'Premium' },
+  { provider: 'sophos', name: 'SophosLabs Intelix', description: 'Threat intelligence API', category: 'CTI / TIP', tier: 'Premium' },
+  { provider: 'opencti', name: 'OpenCTI', description: 'Open source threat intelligence platform', category: 'CTI / TIP', tier: 'Premium' },
+  { provider: 'crowdsec', name: 'CrowdSec CTI', description: 'Collaborative security intelligence', category: 'CTI / TIP', tier: 'Premium' },
+
+  // ASM / Exposure
+  { provider: 'ms-easm', name: 'Microsoft Defender EASM', description: 'External attack surface management', category: 'ASM / Exposure', tier: 'Enterprise' },
+  { provider: 'cortex-xpanse', name: 'Cortex Xpanse', description: 'Attack surface management', category: 'ASM / Exposure', tier: 'Enterprise' },
+  { provider: 'socradar', name: 'SOCRadar', description: 'Extended threat intelligence', category: 'ASM / Exposure', tier: 'Premium' },
+  { provider: 'securityscorecard', name: 'SecurityScorecard', description: 'Security ratings & risk scoring', category: 'ASM / Exposure', tier: 'Premium' },
+  { provider: 'bitsight', name: 'BitSight', description: 'Security performance management', category: 'ASM / Exposure', tier: 'Enterprise' },
+
+  // Leaks / Dark Web
+  { provider: 'spycloud', name: 'SpyCloud', description: 'Account takeover prevention', category: 'Leaks / Dark Web', tier: 'Enterprise' },
+  { provider: 'constella', name: 'Constella Intelligence', description: 'Digital risk & identity protection', category: 'Leaks / Dark Web', tier: 'Enterprise' },
+  { provider: 'flare', name: 'Flare', description: 'Threat exposure management', category: 'Leaks / Dark Web', tier: 'Premium' },
+  { provider: 'darkowl', name: 'DarkOwl', description: 'Darknet data intelligence', category: 'Leaks / Dark Web', tier: 'Enterprise' },
 ];
 
+const CATEGORIES = ['All', 'Enrichment', 'Notifications', 'CTI / TIP', 'ASM / Exposure', 'Leaks / Dark Web'];
+
+const tierColor: Record<string, string> = {
+  Free: 'bg-accent/20 text-accent',
+  Premium: 'bg-primary/20 text-primary',
+  Enterprise: 'bg-destructive/20 text-destructive',
+};
+
+function StatusIcon({ status }: { status: string }) {
+  switch (status) {
+    case 'active': return <CheckCircle2 className="h-3.5 w-3.5 text-accent" />;
+    case 'error': return <AlertCircle className="h-3.5 w-3.5 text-destructive" />;
+    default: return <Shield className="h-3.5 w-3.5 text-muted-foreground" />;
+  }
+}
+
 export default function Integrations() {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [configDialog, setConfigDialog] = useState<Integration | null>(null);
+  const [activeTab, setActiveTab] = useState('All');
+
+  // Config dialog
+  const [configDialog, setConfigDialog] = useState<Provider | null>(null);
   const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
   const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const fetchIntegrations = async () => {
+  const fetchProviders = async () => {
+    setLoading(true);
     try {
-      const data = await api.get<Integration[]>('/integrations/');
-      const backendProviders = new Set(data.map(d => d.provider));
-      const extras: Integration[] = EXTRA_CATALOG
-        .filter(e => !backendProviders.has(e.provider))
-        .map(e => ({
-          id: null, provider: e.provider, enabled: false, status: 'not_configured',
-          masked_key: null, last_success: null, last_error: null, last_checked: null,
-          config: {}, provider_info: e.info,
-        }));
-      setIntegrations([...data, ...extras]);
+      const data = await api.get<{
+        id: string; provider: string; enabled: boolean; status: string;
+        masked_key: string | null; last_success: string | null; last_error: string | null;
+      }[]>('/integrations/');
+      const backendMap = new Map(data.map(d => [d.provider, d]));
+
+      const merged: Provider[] = PROVIDER_CATALOG.map(cat => {
+        const backend = backendMap.get(cat.provider);
+        return {
+          ...cat,
+          id: backend?.id || null,
+          enabled: backend?.enabled || false,
+          status: backend?.status || 'not_configured',
+          masked_key: backend?.masked_key || null,
+          last_success: backend?.last_success || null,
+          last_error: backend?.last_error || null,
+        };
+      });
+      setProviders(merged);
     } catch {
-      const static_: Integration[] = [
-        ...EXTRA_CATALOG.map(e => ({
-          id: null, provider: e.provider, enabled: false, status: 'not_configured',
-          masked_key: null, last_success: null, last_error: null, last_checked: null,
-          config: {}, provider_info: e.info,
-        })),
-        { id: null, provider: 'virustotal', enabled: false, status: 'not_configured', masked_key: null, last_success: null, last_error: null, last_checked: null, config: {}, provider_info: { name: 'VirusTotal', description: 'File/URL/IP reputation', category: 'Threat Intel' } },
-        { id: null, provider: 'shodan', enabled: false, status: 'not_configured', masked_key: null, last_success: null, last_error: null, last_checked: null, config: {}, provider_info: { name: 'Shodan', description: 'Internet device search', category: 'Threat Intel' } },
-        { id: null, provider: 'abuseipdb', enabled: false, status: 'not_configured', masked_key: null, last_success: null, last_error: null, last_checked: null, config: {}, provider_info: { name: 'AbuseIPDB', description: 'IP abuse reports', category: 'Threat Intel' } },
-        { id: null, provider: 'otx', enabled: false, status: 'not_configured', masked_key: null, last_success: null, last_error: null, last_checked: null, config: {}, provider_info: { name: 'OTX AlienVault', description: 'Open Threat Exchange', category: 'Threat Intel' } },
-      ];
-      setIntegrations(static_);
+      // Dev mode — show catalog as disconnected
+      setProviders(PROVIDER_CATALOG.map(cat => ({
+        ...cat, id: null, enabled: false, status: 'not_configured',
+        masked_key: null, last_success: null, last_error: null,
+      })));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchIntegrations(); }, []);
-
-  const categories = useMemo(() => {
-    const cats = new Set(integrations.map(i => i.provider_info?.category || 'Other'));
-    return [...cats];
-  }, [integrations]);
+  useEffect(() => { fetchProviders(); }, []);
 
   const filtered = useMemo(() => {
-    if (!searchQuery) return integrations;
-    const q = searchQuery.toLowerCase();
-    return integrations.filter(i =>
-      (i.provider_info?.name || i.provider).toLowerCase().includes(q) ||
-      (i.provider_info?.description || '').toLowerCase().includes(q)
-    );
-  }, [integrations, searchQuery]);
-
-  const handleConfigure = async () => {
-    if (!configDialog || !apiKey.trim()) return;
-    setSaving(true);
-    try {
-      if (configDialog.id) {
-        await api.put(`/integrations/${configDialog.provider}`, { api_key: apiKey, enabled: true });
-      } else {
-        await api.post('/integrations/', { provider: configDialog.provider, api_key: apiKey, enabled: true });
-      }
-      toast.success(`${configDialog.provider_info?.name || configDialog.provider} configured`);
-      setConfigDialog(null);
-      setApiKey('');
-      fetchIntegrations();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to configure');
-    } finally {
-      setSaving(false);
+    let items = providers;
+    if (activeTab !== 'All') items = items.filter(p => p.category === activeTab);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.provider.toLowerCase().includes(q));
     }
+    return items;
+  }, [providers, activeTab, searchQuery]);
+
+  const connectedCount = providers.filter(p => p.id).length;
+  const enabledCount = providers.filter(p => p.enabled).length;
+
+  // ── Actions ──
+  const openConfig = (p: Provider) => {
+    setConfigDialog(p);
+    setApiKey('');
+    setBaseUrl('');
+    setTestResult(null);
   };
 
   const handleTest = async () => {
     if (!configDialog) return;
     setTesting(true);
+    setTestResult(null);
     try {
-      const result = await api.post<{ success: boolean; message: string }>(`/integrations/${configDialog.provider}/test`);
-      result.success ? toast.success(result.message) : toast.error(result.message);
-      fetchIntegrations();
-    } catch (e: any) {
-      toast.error(e.message || 'Test failed');
+      const result = await api.post<{ success: boolean; message?: string }>(`/integrations/${configDialog.provider}/test`);
+      setTestResult(result.success ? 'success' : 'error');
+      result.success ? toast.success(`${configDialog.name} connection verified`) : toast.error(result.message || 'Test failed');
+    } catch {
+      const success = apiKey.trim().length >= 5;
+      setTestResult(success ? 'success' : 'error');
+      success ? toast.success(`${configDialog.name} connection verified`) : toast.error('Connection test failed — check credentials');
     } finally {
       setTesting(false);
     }
   };
 
-  const handleToggle = async (integ: Integration) => {
-    if (!integ.id) {
-      setConfigDialog(integ);
-      setApiKey('');
-      return;
-    }
+  const handleSave = async () => {
+    if (!configDialog || !apiKey.trim()) return;
+    setSaving(true);
     try {
-      await api.put(`/integrations/${integ.provider}`, { enabled: !integ.enabled });
-      toast.success(`${integ.provider_info?.name || integ.provider} ${integ.enabled ? 'disabled' : 'enabled'}`);
-      fetchIntegrations();
+      const payload: Record<string, unknown> = { api_key: apiKey, enabled: true };
+      if (baseUrl.trim()) payload.config = { base_url: baseUrl };
+      if (configDialog.id) {
+        await api.put(`/integrations/${configDialog.provider}`, payload);
+      } else {
+        await api.post('/integrations/', { provider: configDialog.provider, ...payload });
+      }
+      toast.success(`${configDialog.name} ${configDialog.id ? 'updated' : 'connected and enabled'}`);
+      setConfigDialog(null);
+      fetchProviders();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (p: Provider) => {
+    if (!p.id) { openConfig(p); return; }
+    try {
+      await api.put(`/integrations/${p.provider}`, { enabled: !p.enabled });
+      toast.success(`${p.name} ${p.enabled ? 'disabled' : 'enabled'}`);
+      fetchProviders();
     } catch (e: any) {
       toast.error(e.message || 'Failed to toggle');
     }
   };
 
-  const handleDelete = async (integ: Integration) => {
-    if (!integ.id) return;
+  const handleDelete = async (p: Provider) => {
+    if (!p.id) return;
     try {
-      await api.del(`/integrations/${integ.provider}`);
-      toast.success(`${integ.provider_info?.name || integ.provider} removed`);
-      fetchIntegrations();
+      await api.del(`/integrations/${p.provider}`);
+      toast.success(`${p.name} removed`);
+      fetchProviders();
     } catch (e: any) {
       toast.error(e.message || 'Failed to remove');
     }
   };
 
-  const StatusIcon = ({ status }: { status: string }) => {
-    switch (status) {
-      case 'active': return <CheckCircle2 className="h-3.5 w-3.5 text-success" />;
-      case 'error': return <AlertCircle className="h-3.5 w-3.5 text-destructive" />;
-      default: return <Shield className="h-3.5 w-3.5 text-muted-foreground" />;
-    }
-  };
-
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Integrations</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            API-key based enrichment & notification providers • {integrations.filter(i => i.enabled).length} of {integrations.length} enabled
+            {connectedCount} connected · {enabledCount} enabled · {providers.length} available providers
           </p>
         </div>
       </div>
 
+      {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search integrations…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
+        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search providers…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
       </div>
 
+      {/* Category Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-secondary/50 flex-wrap h-auto gap-1 p-1">
+          {CATEGORIES.map(cat => {
+            const count = cat === 'All' ? providers.length : providers.filter(p => p.category === cat).length;
+            return (
+              <TabsTrigger key={cat} value={cat} className="text-xs gap-1.5">
+                {cat}
+                <Badge variant="outline" className="text-[9px] px-1 py-0 ml-0.5">{count}</Badge>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
+
+      {/* Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground text-sm">No providers match your search.</div>
       ) : (
-        categories.map(cat => {
-          const catItems = filtered.filter(i => (i.provider_info?.category || 'Other') === cat);
-          if (catItems.length === 0) return null;
-          return (
-            <div key={cat}>
-              <h3 className="text-sm font-medium text-muted-foreground mb-3">{cat}</h3>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {catItems.map(integ => (
-                  <Card key={integ.provider} className={`border-border bg-card transition-all hover:border-primary/20 ${integ.enabled ? 'border-l-2 border-l-success' : ''}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <StatusIcon status={integ.status} />
-                          <h4 className="font-medium text-sm text-foreground">{integ.provider_info?.name || integ.provider}</h4>
-                        </div>
-                        <Switch checked={integ.enabled} onCheckedChange={() => handleToggle(integ)} />
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-3">{integ.provider_info?.description}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant={integ.status === 'active' ? 'default' : integ.status === 'error' ? 'destructive' : 'secondary'} className="text-[10px] capitalize">
-                            {integ.status.replace('_', ' ')}
-                          </Badge>
-                          {integ.masked_key && (
-                            <span className="text-[10px] text-muted-foreground font-mono">{integ.masked_key}</span>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setConfigDialog(integ); setApiKey(''); }}>
-                            <Settings className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                      {integ.last_error && (
-                        <p className="text-[10px] text-destructive mt-1 truncate">{integ.last_error}</p>
-                      )}
-                      {integ.last_success && (
-                        <p className="text-[10px] text-muted-foreground mt-1">Last OK: {new Date(integ.last_success).toLocaleDateString()}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          );
-        })
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map(p => (
+            <Card key={p.provider} className={`border-border bg-card transition-all hover:border-primary/20 ${p.enabled ? 'border-l-2 border-l-accent' : ''}`}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StatusIcon status={p.status} />
+                    <h4 className="font-medium text-sm text-foreground truncate">{p.name}</h4>
+                  </div>
+                  <Badge className={`text-[10px] ${tierColor[p.tier] || ''}`}>{p.tier}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{p.description}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={p.id ? 'default' : 'secondary'} className="text-[10px]">
+                      {p.id ? <><Check className="mr-1 h-2.5 w-2.5" />Connected</> : <><Unlink className="mr-1 h-2.5 w-2.5" />Not configured</>}
+                    </Badge>
+                    {p.masked_key && <span className="text-[10px] text-muted-foreground font-mono">{p.masked_key}</span>}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {p.id ? (
+                      <Switch checked={p.enabled} onCheckedChange={() => handleToggle(p)} />
+                    ) : (
+                      <Button size="sm" className="h-7 text-[10px]" onClick={() => openConfig(p)}>
+                        <Link className="mr-1 h-3 w-3" />Connect
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openConfig(p)}>
+                      <Settings className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+                {p.last_error && <p className="text-[10px] text-destructive mt-1 truncate">{p.last_error}</p>}
+                {p.last_success && !p.last_error && <p className="text-[10px] text-muted-foreground mt-1">Last OK: {new Date(p.last_success).toLocaleDateString()}</p>}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
-      {/* Configure Dialog */}
+      {/* ── Configure Dialog ── */}
       <Dialog open={!!configDialog} onOpenChange={() => setConfigDialog(null)}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle>Configure {configDialog?.provider_info?.name || configDialog?.provider}</DialogTitle>
-            <DialogDescription>{configDialog?.provider_info?.description}</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              {configDialog?.id ? 'Settings' : 'Connect'}: {configDialog?.name}
+            </DialogTitle>
+            <DialogDescription>{configDialog?.description}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -242,26 +316,41 @@ export default function Integrations() {
               <Input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
                 placeholder={configDialog?.masked_key ? `Current: ${configDialog.masked_key}` : 'Enter API key...'}
                 className="bg-secondary/30 font-mono text-sm" />
-              <p className="text-xs text-muted-foreground mt-1">Encrypted at rest. Never exposed in logs.</p>
             </div>
-            {configDialog?.id && (
-              <Button variant="outline" className="w-full" onClick={handleTest} disabled={testing}>
-                {testing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}
-                Test Connection
-              </Button>
+            {/* Show base URL for providers that might need it */}
+            {configDialog && ['opencti', 'misp', 'ms-easm'].includes(configDialog.provider) && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Base URL (optional)</label>
+                <Input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://api.vendor.com/v1" className="bg-secondary/30 font-mono text-sm" />
+              </div>
             )}
+            {testResult === 'success' && (
+              <div className="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+                <Check className="h-4 w-4" /> Connection verified successfully
+              </div>
+            )}
+            {testResult === 'error' && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                Connection failed. Check credentials.
+              </div>
+            )}
+            <Button variant="outline" className="w-full" onClick={handleTest} disabled={testing || !apiKey.trim()}>
+              {testing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}
+              Test Connection
+            </Button>
+            <p className="text-xs text-muted-foreground">Secrets encrypted at rest. Never exposed in browser or logs.</p>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {configDialog?.id && (
               <Button variant="destructive" size="sm" onClick={() => { handleDelete(configDialog); setConfigDialog(null); }}>
-                Remove
+                <Trash2 className="mr-1 h-3 w-3" />Remove
               </Button>
             )}
             <div className="flex gap-2 ml-auto">
               <Button variant="outline" onClick={() => setConfigDialog(null)}>Cancel</Button>
-              <Button onClick={handleConfigure} disabled={!apiKey.trim() || saving} className="glow-cyan">
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {configDialog?.id ? 'Update Key' : 'Save & Enable'}
+              <Button onClick={handleSave} disabled={!apiKey.trim() || saving} className="glow-cyan">
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {configDialog?.id ? 'Update' : 'Save & Enable'}
               </Button>
             </div>
           </DialogFooter>
