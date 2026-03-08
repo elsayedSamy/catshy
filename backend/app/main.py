@@ -23,6 +23,7 @@ from app.routers.workspaces import router as workspaces_router
 from app.routers.integrations import router as integrations_router
 from app.routers.settings import router as settings_router
 from app.routers.source_health import router as source_health_router
+from app.routers.lifecycle import router as lifecycle_router
 from app.middleware.audit import AuditMiddleware
 from app.middleware.csrf import CSRFMiddleware
 from app.services.admin_seed import seed_admin
