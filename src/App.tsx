@@ -22,7 +22,7 @@ import SearchPage from "./pages/SearchPage";
 import Graph from "./pages/Graph";
 import Alerts from "./pages/Alerts";
 import Investigations from "./pages/Investigations";
-import Cases from "./pages/Cases";
+
 import Reports from "./pages/Reports";
 import Leaks from "./pages/Leaks";
 import Playbooks from "./pages/Playbooks";
@@ -31,7 +31,7 @@ import Settings from "./pages/Settings";
 import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 import Vulnerabilities from "./pages/Vulnerabilities";
-import Outputs from "./pages/Outputs";
+
 
 import NotFound from "./pages/NotFound";
 
@@ -84,7 +84,7 @@ const App = () => (
                 <Route path="graph" element={<Graph />} />
                 <Route path="alerts" element={<Alerts />} />
                 <Route path="investigations" element={<Investigations />} />
-                <Route path="cases" element={<Cases />} />
+                <Route path="cases" element={<Navigate to="/investigations" replace />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="leaks" element={<Leaks />} />
                 <Route path="vulnerabilities" element={<Vulnerabilities />} />
@@ -95,7 +95,7 @@ const App = () => (
                 <Route path="playbooks" element={<Playbooks />} />
                 <Route path="integrations" element={<Integrations />} />
                 <Route path="connectors" element={<Navigate to="/integrations" replace />} />
-                <Route path="outputs" element={<Outputs />} />
+                <Route path="outputs" element={<Navigate to="/settings" replace />} />
                 <Route path="admin" element={<Admin />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="ai" element={<AICenter />} />

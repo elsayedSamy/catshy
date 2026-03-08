@@ -40,7 +40,6 @@ const navSections = [
     items: [
       { label: 'Alerts', path: '/alerts', icon: Bell },
       { label: 'Investigations', path: '/investigations', icon: FileSearch },
-      { label: 'Cases', path: '/cases', icon: Briefcase },
       { label: 'Reports', path: '/reports', icon: FileText },
       { label: 'Playbooks', path: '/playbooks', icon: Workflow },
     ],
@@ -49,7 +48,6 @@ const navSections = [
     title: 'System',
     items: [
       { label: 'Integrations', path: '/integrations', icon: Plug },
-      { label: 'Outputs', path: '/outputs', icon: Webhook },
       { label: 'Admin Panel', path: '/admin', icon: Shield },
       { label: 'Settings', path: '/settings', icon: Settings },
     ],
