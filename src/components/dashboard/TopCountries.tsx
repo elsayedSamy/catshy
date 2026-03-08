@@ -40,4 +40,4 @@ export const TopCountries = forwardRef<HTMLDivElement, { items?: CountryRank[]; 
       </CardContent>
     </Card>
   );
-}
+});

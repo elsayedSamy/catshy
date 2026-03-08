@@ -43,4 +43,4 @@ export const TopCves = forwardRef<HTMLDivElement, { items?: CveItem[]; isLoading
       </CardContent>
     </Card>
   );
-}
+});
