@@ -254,6 +254,8 @@ export const useMapIncidents = (params: {
     }>(`/map/incidents?${sp.toString()}`);
   },
   enabled: enabled(), retry: 1,
+});
+
 // Enrichment
 export const useEnrichmentProviders = () => useQuery({
   queryKey: ['enrichment-providers'],
