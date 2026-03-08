@@ -10,7 +10,7 @@ from app.models.intel import (
 )
 from app.models.operations import (
     Asset, Source, AlertRule, Alert, Investigation, Case,
-    Report, LeakItem, Playbook, PlaybookRun,
+    Report, LeakItem, Playbook, PlaybookRun, FailedIngestion,
 )
 from app.models.integrations import WorkspaceIntegration, WorkspaceSettings
 
@@ -22,6 +22,6 @@ __all__ = [
     "SourceStats", "UserFeedback",
     "Entity", "EntityRelationship",
     "Asset", "Source", "AlertRule", "Alert", "Investigation", "Case",
-    "Report", "LeakItem", "Playbook", "PlaybookRun",
+    "Report", "LeakItem", "Playbook", "PlaybookRun", "FailedIngestion",
     "WorkspaceIntegration", "WorkspaceSettings",
 ]

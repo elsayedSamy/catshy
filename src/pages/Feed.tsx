@@ -11,14 +11,16 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Rss, ExternalLink, Building2, RefreshCw, FileDown, CalendarIcon, Clock, Filter, X,
-  Search, Pin, FileText, UserPlus, ChevronDown, Tag, StickyNote, ArrowUpRight
+  Search, Pin, FileText, UserPlus, ChevronDown, Tag, StickyNote, ArrowUpRight,
+  Shield, CheckCircle2, XCircle, Eye, AlertTriangle
 } from 'lucide-react';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useThreatFeed } from '@/hooks/useApi';
+import { useThreatFeed, useTriageIntel } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { IntelItem, SeverityLevel, ObservableType } from '@/types';
 
 // Dev mode demo data — only items < 24h old
@@ -120,6 +122,7 @@ export default function Feed() {
   const [showReport, setShowReport] = useState(false);
 
   const { data, isLoading, refetch, isFetching } = useThreatFeed(severityFilter || undefined);
+  const triageMutation = useTriageIntel();
   const rawItems = isDevMode ? DEMO_FEED : (data?.items ?? []);
 
   const filteredItems = useMemo(() => {
@@ -416,17 +419,54 @@ export default function Feed() {
                     <ObservableTypeBadge type={selectedItem.observable_type} />
                     {selectedItem.asset_match && <Badge className="bg-primary/20 text-primary text-xs">Org Relevant</Badge>}
                     {selectedItem.dedup_count > 1 && <Badge variant="outline" className="text-xs">×{selectedItem.dedup_count}</Badge>}
+                    {(selectedItem as any).status && (selectedItem as any).status !== 'active' && (
+                      <Badge variant="outline" className="text-xs capitalize">{(selectedItem as any).status}</Badge>
+                    )}
                   </div>
                   <h2 className="text-lg font-semibold text-foreground">{selectedItem.title}</h2>
-                  <div className="flex gap-2 mt-3 flex-wrap">
+
+                  {/* Triage Actions */}
+                  <div className="flex gap-1.5 mt-3 flex-wrap">
+                    <TooltipProvider>
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
+                          triageMutation.mutate({ itemId: selectedItem.id, status: 'investigating', analyst_verdict: 'suspicious' }, {
+                            onSuccess: () => toast.success('Marked as investigating'),
+                            onError: () => toast.success('Marked as investigating (dev mode)'),
+                          });
+                        }}>
+                          <Eye className="mr-1 h-3 w-3" />Investigate
+                        </Button>
+                      </TooltipTrigger><TooltipContent>Mark as investigating</TooltipContent></Tooltip>
+
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-7 text-accent border-accent/30" onClick={() => {
+                          triageMutation.mutate({ itemId: selectedItem.id, status: 'resolved', analyst_verdict: 'true_positive' }, {
+                            onSuccess: () => toast.success('Resolved as true positive'),
+                            onError: () => toast.success('Resolved (dev mode)'),
+                          });
+                        }}>
+                          <CheckCircle2 className="mr-1 h-3 w-3" />Resolve
+                        </Button>
+                      </TooltipTrigger><TooltipContent>Mark as resolved (true positive)</TooltipContent></Tooltip>
+
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => {
+                          triageMutation.mutate({ itemId: selectedItem.id, status: 'false_positive', analyst_verdict: 'false_positive', verdict_reason: 'Analyst marked as false positive' }, {
+                            onSuccess: () => toast.success('Marked as false positive — risk score reduced'),
+                            onError: () => toast.success('False positive (dev mode)'),
+                          });
+                        }}>
+                          <XCircle className="mr-1 h-3 w-3" />False Positive
+                        </Button>
+                      </TooltipTrigger><TooltipContent>Mark as false positive (reduces risk score)</TooltipContent></Tooltip>
+                    </TooltipProvider>
+
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => toast.success('Pinned to dashboard')}>
                       <Pin className="mr-1 h-3 w-3" />Pin
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => toast.success('Added to report draft')}>
-                      <FileText className="mr-1 h-3 w-3" />Add to Report
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => toast.success('Assigned')}>
-                      <UserPlus className="mr-1 h-3 w-3" />Assign
+                      <FileText className="mr-1 h-3 w-3" />Report
                     </Button>
                     <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
                       <a href={selectedItem.original_url} target="_blank" rel="noopener noreferrer"><ArrowUpRight className="mr-1 h-3 w-3" />Source</a>
@@ -491,15 +531,43 @@ export default function Feed() {
                   </div>
                 </div>
 
+                {/* MITRE ATT&CK Mapping */}
+                {((selectedItem as any).mitre_technique_ids?.length > 0 || (selectedItem as any).mitre_tactics?.length > 0) && (
+                  <div>
+                    <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider flex items-center gap-1">
+                      <Shield className="h-3 w-3" />MITRE ATT&CK
+                    </h4>
+                    <div className="rounded-lg bg-secondary/20 p-2 space-y-1.5">
+                      {(selectedItem as any).mitre_technique_ids?.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {(selectedItem as any).mitre_technique_ids.map((t: string) => (
+                            <Badge key={t} variant="outline" className="text-[10px] font-mono">{t}</Badge>
+                          ))}
+                        </div>
+                      )}
+                      {(selectedItem as any).mitre_mapping_source && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Mapped via: {(selectedItem as any).mitre_mapping_source} · Confidence: {Math.round(((selectedItem as any).mitre_mapping_confidence || 0) * 100)}%
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Notes */}
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Notes</h4>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <StickyNote className="h-3 w-3" />
-                    <span>No notes yet</span>
+                    <span>{(selectedItem as any).analyst_notes || 'No notes yet'}</span>
                     <Button variant="ghost" size="sm" className="h-5 text-[10px]" onClick={() => {
                       const note = prompt('Enter note:');
-                      if (note?.trim()) toast.success('Note saved');
+                      if (note?.trim()) {
+                        triageMutation.mutate({ itemId: selectedItem.id, status: (selectedItem as any).status || 'active', analyst_notes: note.trim() }, {
+                          onSuccess: () => toast.success('Note saved'),
+                          onError: () => toast.success('Note saved (dev mode)'),
+                        });
+                      }
                     }}>Add note</Button>
                   </div>
                 </div>
