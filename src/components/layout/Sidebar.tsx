@@ -100,6 +100,7 @@ export function Sidebar({ collapsed, onToggle, isMobile, onNavigate }: SidebarPr
             onToggle={onToggle}
             location={location}
             user={user}
+            badges={badges}
           />
         </motion.aside>
       )}
