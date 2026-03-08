@@ -64,6 +64,12 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle, isMobile, onNavigate }: SidebarProps) {
   const location = useLocation();
   const { user } = useAuth();
+  const { data: notifData } = useNotifications();
+  const unreadCount = notifData?.unread_count ?? 0;
+
+  // Badge map: path -> count
+  const badges: Record<string, number> = {};
+  if (unreadCount > 0) badges['/alerts'] = unreadCount;
 
   // In mobile mode, never show collapsed state
   const isCollapsed = isMobile ? false : collapsed;
