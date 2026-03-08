@@ -447,7 +447,7 @@ export default function Feed() {
                         <Button variant="outline" size="sm" className="text-xs h-7 text-accent border-accent/30" onClick={() => {
                           triageMutation.mutate({ itemId: selectedItem.id, status: 'resolved', analyst_verdict: 'true_positive' }, {
                             onSuccess: () => toast.success('Resolved as true positive'),
-                            onError: () => toast.success('Resolved (dev mode)'),
+                            onError: (e: any) => toast.error(e.message || 'Failed to update'),
                           });
                         }}>
                           <CheckCircle2 className="mr-1 h-3 w-3" />Resolve
