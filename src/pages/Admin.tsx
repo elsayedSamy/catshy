@@ -46,29 +46,27 @@ function InviteUserDialog() {
   const [role, setRole] = useState<UserRole>('user');
   const [loading, setLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
-  const { } = useAuth();
 
   const handleInvite = async () => {
     if (!email) { toast.error('Email is required'); return; }
     setLoading(true);
     setInviteLink('');
     try {
-      if (isDevMode) {
-        const fakeToken = btoa(`invite-${email}-${Date.now()}`).replace(/=/g, '');
-        const link = `${window.location.origin}/auth/accept-invite?token=${fakeToken}`;
-        setInviteLink(link);
-        toast.success(`Dev Mode: Invite generated for ${email}`, { description: 'In production, an email would be sent automatically.' });
+      const res = await fetch(`${API_BASE}/auth/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, name: name || undefined, role }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Failed to send invite');
+      }
+      const result = await res.json().catch(() => ({}));
+      if (result.invite_link) {
+        setInviteLink(result.invite_link);
+        toast.success(`Invite generated for ${email}`);
       } else {
-        const res = await fetch(`${API_BASE}/auth/invite`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ email, name: name || undefined, role }),
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.detail || 'Failed to send invite');
-        }
         toast.success(`Invite sent to ${email}`);
         setOpen(false);
         setEmail(''); setName(''); setRole('user');
