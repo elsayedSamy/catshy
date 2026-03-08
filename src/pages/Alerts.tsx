@@ -17,18 +17,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Plus, Bell, Code, Trash2, MessageSquare, Mail, Webhook, TestTube, Loader2, MoreVertical, Pencil, Power } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAlertRules, useCreateAlertRule, useAlerts } from '@/hooks/useApi';
+import {
+  useAlertRules, useCreateAlertRule, useAlerts,
+  useNotificationChannels, useCreateNotificationChannel, useUpdateNotificationChannel,
+  useDeleteNotificationChannel, useTestNotificationChannel,
+  type NotificationChannel,
+} from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import type { AlertRule, Alert, SeverityLevel } from '@/types';
-
-interface NotificationChannel {
-  id: string;
-  name: string;
-  type: 'slack' | 'teams' | 'email' | 'webhook';
-  enabled: boolean;
-  config: Record<string, string>;
-  lastTriggered?: string;
-}
 
 const CHANNEL_ICONS = { slack: MessageSquare, teams: MessageSquare, email: Mail, webhook: Webhook };
 const CHANNEL_LABELS = { slack: 'Slack', teams: 'Microsoft Teams', email: 'Email', webhook: 'Webhook' };
