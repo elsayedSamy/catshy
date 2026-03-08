@@ -31,7 +31,7 @@ import Settings from "./pages/Settings";
 import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 import Vulnerabilities from "./pages/Vulnerabilities";
-import Outputs from "./pages/Outputs";
+
 
 import NotFound from "./pages/NotFound";
 
