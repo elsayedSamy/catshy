@@ -348,7 +348,20 @@ export default function Integrations() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWebhookDialog(false)}>Cancel</Button>
-            <Button onClick={() => { setWebhookDialog(false); toast.success('Webhook saved'); }} disabled={!webhookName.trim() || !webhookUrl.trim()} className="glow-cyan">Save & Enable</Button>
+            <Button onClick={async () => {
+              if (!webhookName.trim() || !webhookUrl.trim()) return;
+              try {
+                await api.post('/outputs/webhooks', {
+                  name: webhookName, url: webhookUrl, auth_type: webhookAuthType,
+                  secret: webhookAuthValue || undefined, event_types: webhookEventTypes,
+                });
+                toast.success('Webhook saved');
+                setWebhookDialog(false);
+                setWebhookName(''); setWebhookUrl(''); setWebhookAuthType('none'); setWebhookAuthValue(''); setWebhookEventTypes([]);
+              } catch (e: any) {
+                toast.error(e.message || 'Failed to save webhook');
+              }
+            }} disabled={!webhookName.trim() || !webhookUrl.trim()} className="glow-cyan">Save & Enable</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
