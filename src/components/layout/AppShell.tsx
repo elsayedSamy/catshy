@@ -4,7 +4,8 @@ import { TopBar } from './TopBar';
 import { CommandPalette } from '@/components/CommandPalette';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 import { PageTransition } from '@/components/PageTransition';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -14,6 +15,12 @@ export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
+
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
+  }, []);
+
+  useKeyboardShortcuts({ onToggleSidebar: handleToggleSidebar });
 
   // Close mobile sidebar on route change
   useEffect(() => {

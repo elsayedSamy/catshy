@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/hooks/useApi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navSections = [
@@ -63,6 +64,12 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle, isMobile, onNavigate }: SidebarProps) {
   const location = useLocation();
   const { user } = useAuth();
+  const { data: notifData } = useNotifications();
+  const unreadCount = notifData?.unread_count ?? 0;
+
+  // Badge map: path -> count
+  const badges: Record<string, number> = {};
+  if (unreadCount > 0) badges['/alerts'] = unreadCount;
 
   // In mobile mode, never show collapsed state
   const isCollapsed = isMobile ? false : collapsed;
@@ -79,6 +86,7 @@ export function Sidebar({ collapsed, onToggle, isMobile, onNavigate }: SidebarPr
             user={user}
             isMobile
             onNavigate={onNavigate}
+            badges={badges}
           />
         </div>
       ) : (
@@ -92,6 +100,7 @@ export function Sidebar({ collapsed, onToggle, isMobile, onNavigate }: SidebarPr
             onToggle={onToggle}
             location={location}
             user={user}
+            badges={badges}
           />
         </motion.aside>
       )}
@@ -106,9 +115,10 @@ interface SidebarContentProps {
   user: any;
   isMobile?: boolean;
   onNavigate?: () => void;
+  badges?: Record<string, number>;
 }
 
-function SidebarContent({ isCollapsed, onToggle, location, user, isMobile, onNavigate }: SidebarContentProps) {
+function SidebarContent({ isCollapsed, onToggle, location, user, isMobile, onNavigate, badges = {} }: SidebarContentProps) {
   return (
     <>
       {/* Logo */}
@@ -178,6 +188,7 @@ function SidebarContent({ isCollapsed, onToggle, location, user, isMobile, onNav
             )}
             {section.items.map(item => {
               const isActive = location.pathname === item.path;
+              const badgeCount = badges[item.path];
               const linkContent = (
                 <NavLink
                   key={item.path}
@@ -209,10 +220,19 @@ function SidebarContent({ isCollapsed, onToggle, location, user, isMobile, onNav
                     <motion.span
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="truncate"
+                      className="truncate flex-1"
                     >
                       {item.label}
                     </motion.span>
+                  )}
+                  {/* Badge count */}
+                  {badgeCount && badgeCount > 0 && (
+                    <span className={cn(
+                      'flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground',
+                      isCollapsed && 'absolute -top-1 -right-1 h-4 min-w-4 text-[8px]'
+                    )}>
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
                   )}
                   {/* Hover glow for active */}
                   {isActive && (
