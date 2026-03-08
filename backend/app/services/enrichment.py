@@ -218,6 +218,7 @@ async def test_provider_connection(provider: str, api_key: str) -> Tuple[bool, s
 class EnrichmentOrchestrator:
     """Runs all available enrichment providers in parallel.
     Accepts per-workspace keys dict: {"virustotal": "key", "shodan": "key", ...}
+    Now includes WHOIS, DNS, GreyNoise, and reverse DNS lookups.
     """
 
     def __init__(self, keys: Optional[dict] = None):
@@ -227,9 +228,15 @@ class EnrichmentOrchestrator:
         self.abuseipdb = AbuseIPDBEnrichment(keys.get("abuseipdb", ""))
         self.otx = AlienVaultOTXEnrichment(keys.get("otx", ""))
 
+        # New enrichment providers (no API key required for basic usage)
+        from app.services.whois_dns import whois_enrichment, dns_enrichment, greynoise_enrichment
+        self.whois = whois_enrichment
+        self.dns = dns_enrichment
+        self.greynoise = greynoise_enrichment
+
     @property
     def available_providers(self) -> list[str]:
-        providers = []
+        providers = ["whois", "dns", "greynoise"]  # Always available (free APIs)
         if self.vt.available: providers.append("virustotal")
         if self.shodan.available: providers.append("shodan")
         if self.abuseipdb.available: providers.append("abuseipdb")
@@ -239,10 +246,22 @@ class EnrichmentOrchestrator:
     async def enrich(self, ioc_type: str, value: str) -> dict:
         tasks = []
         if ioc_type == "ip":
-            tasks = [self.vt.lookup_ioc("ip", value), self.shodan.lookup_ip(value),
-                     self.abuseipdb.check_ip(value), self.otx.lookup_indicator("ip", value)]
+            tasks = [
+                self.vt.lookup_ioc("ip", value),
+                self.shodan.lookup_ip(value),
+                self.abuseipdb.check_ip(value),
+                self.otx.lookup_indicator("ip", value),
+                self.whois.lookup("ip", value),
+                self.dns.reverse_dns(value),
+                self.greynoise.classify_ip(value),
+            ]
         elif ioc_type == "domain":
-            tasks = [self.vt.lookup_ioc("domain", value), self.otx.lookup_indicator("domain", value)]
+            tasks = [
+                self.vt.lookup_ioc("domain", value),
+                self.otx.lookup_indicator("domain", value),
+                self.whois.lookup("domain", value),
+                self.dns.lookup_domain(value),
+            ]
         elif ioc_type in ("hash", "md5", "sha1", "sha256"):
             tasks = [self.vt.lookup_ioc("hash", value), self.otx.lookup_indicator("hash", value)]
         elif ioc_type == "url":

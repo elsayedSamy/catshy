@@ -4,7 +4,7 @@ import {
   Home, Database, Radio, Rss, Search, Globe, Bell,
   FileSearch, Briefcase, FileText, AlertTriangle,
   Map as MapIcon, Workflow, Shield, Settings, ChevronLeft, Cat, History,
-  Plug, ShieldAlert, Webhook, Brain, ChevronRight, GitMerge
+  Plug, ShieldAlert, Webhook, Brain, ChevronRight, GitMerge, VolumeX
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +29,7 @@ const navSections = [
     items: [
       { label: 'AI Analysis', path: '/ai', icon: Brain },
       { label: 'Correlations', path: '/correlations', icon: GitMerge },
+      { label: 'Noise Reduction', path: '/noise-reduction', icon: VolumeX },
       { label: 'Leak Hub', path: '/leaks', icon: AlertTriangle },
       { label: 'Graph Explorer', path: '/graph', icon: Globe },
       { label: 'Global Threats', path: '/global-threat-monitoring', icon: MapIcon },

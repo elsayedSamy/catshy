@@ -32,6 +32,7 @@ import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 import Vulnerabilities from "./pages/Vulnerabilities";
 import Correlations from "./pages/Correlations";
+import NoiseReduction from "./pages/NoiseReduction";
 import Outputs from "./pages/Outputs";
 import NotFound from "./pages/NotFound";
 
@@ -88,6 +89,7 @@ const App = () => (
                 <Route path="leaks" element={<Leaks />} />
                 <Route path="vulnerabilities" element={<Vulnerabilities />} />
                 <Route path="correlations" element={<Correlations />} />
+                <Route path="noise-reduction" element={<NoiseReduction />} />
                 <Route path="global-threat-monitoring" element={<Suspense fallback={<LazyFallback />}><GlobalThreats /></Suspense>} />
                 <Route path="3d-global-threats" element={<Navigate to="/global-threat-monitoring" replace />} />
                 <Route path="global-threats" element={<Navigate to="/global-threat-monitoring" replace />} />
