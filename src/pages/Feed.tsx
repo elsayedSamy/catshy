@@ -81,13 +81,6 @@ function generateJsonFromItems(items: IntelItem[], title: string, period: string
   }, null, 2);
 }
 
-// Extended demo data for reports
-const DEMO_HISTORY: IntelItem[] = [
-  { id: 'h1', title: 'CVE-2024-1709 — ConnectWise ScreenConnect Auth Bypass', description: 'Authentication bypass allowing admin access.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-1709', source_id: 'nvd-cve', source_name: 'NVD', fetched_at: new Date(Date.now() - 86400000 * 2).toISOString(), published_at: new Date(Date.now() - 86400000 * 2).toISOString(), original_url: 'https://nvd.nist.gov', excerpt: 'Critical auth bypass', dedup_count: 6, asset_match: true, matched_assets: ['remote.company.com'], confidence_score: 98, risk_score: 99, tags: ['rce'] },
-  { id: 'h2', title: 'APT28 spear-phishing campaign', description: 'Russian state-sponsored phishing.', severity: 'high' as SeverityLevel, observable_type: 'actor' as ObservableType, observable_value: 'APT28', source_id: 'hackernews-sec', source_name: 'The Hacker News', fetched_at: new Date(Date.now() - 86400000 * 3).toISOString(), published_at: new Date(Date.now() - 86400000 * 3).toISOString(), original_url: 'https://thehackernews.com', excerpt: 'APT28 phishing', dedup_count: 3, asset_match: false, matched_assets: [], confidence_score: 85, risk_score: 78, tags: ['apt'] },
-  { id: 'h3', title: 'CVE-2024-0204 — GoAnywhere MFT RCE', description: 'Remote code execution in Fortra GoAnywhere.', severity: 'critical' as SeverityLevel, observable_type: 'cve' as ObservableType, observable_value: 'CVE-2024-0204', source_id: 'cisa-kev', source_name: 'CISA KEV', fetched_at: new Date(Date.now() - 86400000 * 8).toISOString(), published_at: new Date(Date.now() - 86400000 * 8).toISOString(), original_url: 'https://www.cisa.gov', excerpt: 'GoAnywhere RCE', dedup_count: 10, asset_match: true, matched_assets: ['filetransfer.company.com'], confidence_score: 99, risk_score: 97, tags: ['rce'] },
-];
-
 export default function Feed() {
   const navigate = useNavigate();
   const { isDevMode } = useAuth();
