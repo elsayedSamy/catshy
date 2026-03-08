@@ -151,7 +151,20 @@ export default function Playbooks() {
 }
 
 function PlaybooksContent() {
-  const [playbooks, setPlaybooks] = useState<ExtendedPlaybook[]>(DEFAULT_TEMPLATES);
+  const { data: apiPlaybooks = [], isLoading } = usePlaybooks();
+  const createPlaybook = useCreatePlaybook();
+  const updatePlaybook = useUpdatePlaybook();
+  const deletePlaybookMut = useDeletePlaybook();
+  const runPlaybook = useRunPlaybook();
+
+  // Merge API data with templates for dev/fallback
+  const playbooks: ExtendedPlaybook[] = useMemo(() => {
+    if (apiPlaybooks.length > 0) {
+      return apiPlaybooks.map(p => ({ ...p, status: p.enabled ? 'active' as const : 'draft' as const }));
+    }
+    return DEFAULT_TEMPLATES;
+  }, [apiPlaybooks]);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -192,17 +205,22 @@ function PlaybooksContent() {
       },
     };
     if (editing) {
-      setPlaybooks(prev => prev.map(p => p.id === editing.id ? { ...p, name, description, steps, trigger, version: p.version + 1 } : p));
-      toast.success('Playbook updated');
+      updatePlaybook.mutate(
+        { id: editing.id, name, description, steps, trigger },
+        {
+          onSuccess: () => { setDialogOpen(false); resetForm(); toast.success('Playbook updated'); },
+          onError: (e: any) => toast.error(e.message || 'Failed to update'),
+        },
+      );
     } else {
-      setPlaybooks(prev => [...prev, {
-        id: crypto.randomUUID(), name, description, steps, trigger, version: 1, enabled: false,
-        created_by: 'current_user', created_at: new Date().toISOString(), run_count: 0, status: 'draft',
-      }]);
-      toast.success('Playbook created');
+      createPlaybook.mutate(
+        { name, description, steps, trigger },
+        {
+          onSuccess: () => { setDialogOpen(false); resetForm(); toast.success('Playbook created'); },
+          onError: (e: any) => toast.error(e.message || 'Failed to create'),
+        },
+      );
     }
-    setDialogOpen(false);
-    resetForm();
   };
 
   const resetForm = () => {
@@ -222,28 +240,20 @@ function PlaybooksContent() {
   };
 
   const toggleEnabled = (id: string) => {
-    setPlaybooks(prev => prev.map(p => p.id === id ? {
-      ...p,
-      enabled: !p.enabled,
-      status: !p.enabled ? 'active' : 'disabled',
-    } : p));
     const pb = playbooks.find(p => p.id === id);
-    toast.success(`${pb?.name} ${pb?.enabled ? 'disabled' : 'enabled'}`);
+    if (pb) {
+      updatePlaybook.mutate(
+        { id, enabled: !pb.enabled },
+        { onSuccess: () => toast.success(`${pb.name} ${pb.enabled ? 'disabled' : 'enabled'}`) },
+      );
+    }
   };
 
   const duplicatePlaybook = (p: ExtendedPlaybook) => {
-    const dup: ExtendedPlaybook = {
-      ...p,
-      id: crypto.randomUUID(),
-      name: `${p.name} (Copy)`,
-      status: 'draft',
-      enabled: false,
-      version: 1,
-      run_count: 0,
-      created_at: new Date().toISOString(),
-    };
-    setPlaybooks(prev => [...prev, dup]);
-    toast.success('Playbook duplicated');
+    createPlaybook.mutate(
+      { name: `${p.name} (Copy)`, description: p.description, steps: p.steps, trigger: p.trigger },
+      { onSuccess: () => toast.success('Playbook duplicated') },
+    );
   };
 
   const filteredPlaybooks = activeTab === 'all' ? playbooks
