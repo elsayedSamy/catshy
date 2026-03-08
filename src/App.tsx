@@ -84,7 +84,7 @@ const App = () => (
                 <Route path="graph" element={<Graph />} />
                 <Route path="alerts" element={<Alerts />} />
                 <Route path="investigations" element={<Investigations />} />
-                <Route path="cases" element={<Cases />} />
+                <Route path="cases" element={<Navigate to="/investigations" replace />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="leaks" element={<Leaks />} />
                 <Route path="vulnerabilities" element={<Vulnerabilities />} />
