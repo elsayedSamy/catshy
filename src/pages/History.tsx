@@ -56,12 +56,8 @@ export default function History() {
   const clearFilters = useCallback(() => setSearchParams({}), [setSearchParams]);
 
   const handleRefresh = useCallback(() => {
-    if (!isDevMode) {
-      refetch();
-    } else {
-      toast('History refreshed (Dev Mode)');
-    }
-  }, [isDevMode, refetch]);
+    refetch();
+  }, [refetch]);
 
   return (
     <div className="space-y-6">
