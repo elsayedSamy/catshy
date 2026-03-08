@@ -21,7 +21,7 @@ class IntelItem(Base):
     title = Column(String(500), nullable=False)
     description = Column(Text)
     severity = Column(String(20), default="info")
-    # Observable columns (Bug #1 fix)
+    # Observable columns
     observable_type = Column(String(50), nullable=True, index=True)
     observable_value = Column(String(500), nullable=True)
     source_id = Column(String(100), ForeignKey("sources.id"))
@@ -51,6 +51,18 @@ class IntelItem(Base):
     campaign_name = Column(String(255), nullable=True)
     # Feedback-adjusted score
     feedback_adjustment = Column(Float, default=0.0)
+    # ── Lifecycle fields ──
+    status = Column(String(30), default="active", index=True)  # active, resolved, expired, false_positive, investigating
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    analyst_verdict = Column(String(30), nullable=True)  # true_positive, false_positive, benign, suspicious
+    verdict_reason = Column(Text, nullable=True)
+    analyst_notes = Column(Text, nullable=True)
+    # ── MITRE ATT&CK mapping ──
+    mitre_technique_ids = Column(ARRAY(String), default=list)  # e.g. ['T1059', 'T1566.001']
+    mitre_tactics = Column(ARRAY(String), default=list)  # e.g. ['TA0001', 'TA0002']
+    mitre_mapping_confidence = Column(Float, default=0.0)  # 0-1
+    mitre_mapping_source = Column(String(30), nullable=True)  # auto, manual, tag, enrichment
+
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     __table_args__ = (
