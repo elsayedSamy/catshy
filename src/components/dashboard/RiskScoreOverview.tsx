@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Gauge } from 'lucide-react';
+import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
 
 export interface RiskOverviewData {
   overallScore: number;
@@ -15,6 +16,20 @@ function riskColor(score: number): string {
   return 'text-accent';
 }
 
+function riskStroke(score: number): string {
+  if (score >= 80) return 'hsl(0, 72%, 51%)';
+  if (score >= 60) return 'hsl(25, 95%, 53%)';
+  if (score >= 40) return 'hsl(45, 93%, 47%)';
+  return 'hsl(160, 70%, 40%)';
+}
+
+function riskGlow(score: number): string {
+  if (score >= 80) return 'drop-shadow(0 0 6px hsl(0 72% 51% / 0.4))';
+  if (score >= 60) return 'drop-shadow(0 0 6px hsl(25 95% 53% / 0.4))';
+  if (score >= 40) return 'drop-shadow(0 0 6px hsl(45 93% 47% / 0.3))';
+  return 'drop-shadow(0 0 6px hsl(160 70% 40% / 0.3))';
+}
+
 function riskLabel(score: number): string {
   if (score >= 80) return 'Critical';
   if (score >= 60) return 'High';
@@ -25,11 +40,12 @@ function riskLabel(score: number): string {
 
 export function RiskScoreOverview({ data, isLoading }: { data?: RiskOverviewData; isLoading: boolean }) {
   const score = data?.overallScore ?? 0;
+  const animatedScore = useAnimatedCounter(score);
   const circumference = 2 * Math.PI * 45;
-  const progress = (score / 100) * circumference;
+  const progress = (animatedScore / 100) * circumference;
 
   return (
-    <Card className="border-border bg-card h-full">
+    <Card className="border-border bg-card/60 backdrop-blur-sm h-full card-hover">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <Gauge className="h-4 w-4 text-primary" />Risk Score
@@ -41,21 +57,39 @@ export function RiskScoreOverview({ data, isLoading }: { data?: RiskOverviewData
         ) : (
           <div className="flex flex-col items-center">
             <div className="relative w-28 h-28">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="hsl(220, 15%, 16%)" strokeWidth="6" />
-                <circle cx="50" cy="50" r="45" fill="none" stroke={score >= 80 ? 'hsl(0, 72%, 51%)' : score >= 60 ? 'hsl(25, 95%, 53%)' : score >= 40 ? 'hsl(45, 93%, 47%)' : 'hsl(160, 70%, 40%)'} strokeWidth="6" strokeDasharray={`${progress} ${circumference}`} strokeLinecap="round" className="transition-all duration-1000" />
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90" style={{ filter: riskGlow(score) }}>
+                <circle cx="50" cy="50" r="45" fill="none" stroke="hsl(220, 15%, 14%)" strokeWidth="6" />
+                <circle
+                  cx="50" cy="50" r="45" fill="none"
+                  stroke={riskStroke(score)}
+                  strokeWidth="6"
+                  strokeDasharray={`${progress} ${circumference}`}
+                  strokeLinecap="round"
+                  style={{ transition: 'stroke-dasharray 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-2xl font-bold font-mono ${riskColor(score)}`}>{score}</span>
+                <span className={`text-2xl font-bold font-mono tabular-nums ${riskColor(score)}`}>{animatedScore}</span>
                 <span className="text-[10px] text-muted-foreground">{riskLabel(score)}</span>
               </div>
             </div>
             {data?.factors && data.factors.length > 0 && (
-              <div className="w-full mt-3 space-y-1">
+              <div className="w-full mt-3 space-y-1.5">
                 {data.factors.slice(0, 4).map((f, i) => (
                   <div key={i} className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{f.label}</span>
-                    <span className={`font-mono ${riskColor(f.score)}`}>{f.score}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1 w-12 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${f.score}%`,
+                            background: riskStroke(f.score),
+                          }}
+                        />
+                      </div>
+                      <span className={`font-mono tabular-nums ${riskColor(f.score)}`}>{f.score}</span>
+                    </div>
                   </div>
                 ))}
               </div>
