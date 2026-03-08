@@ -4,16 +4,21 @@ import { GlobeView } from '@/components/global-threats/GlobeView';
 import { FlatMapView } from '@/components/global-threats/FlatMapView';
 import { ThreatDetailPanel } from '@/components/global-threats/ThreatDetailPanel';
 import { AnalyticsPanel } from '@/components/global-threats/AnalyticsPanel';
+import { LiveFeed } from '@/components/global-threats/LiveFeed';
+import { StatsHUD } from '@/components/global-threats/StatsHUD';
 
 function PageContent() {
   const { viewMode, selectedEvent } = useThreatContext();
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] -m-4 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] -m-4 overflow-hidden bg-background">
       <ControlBar />
-      <div className="flex flex-1 min-h-0">
-        <div className="flex-1 min-w-0">
+      <div className="flex flex-1 min-h-0 relative">
+        <div className="flex-1 min-w-0 relative">
           {viewMode === '3d' ? <GlobeView /> : <FlatMapView />}
+          {/* Floating overlays */}
+          <LiveFeed />
+          {viewMode === '3d' && <StatsHUD />}
         </div>
         {selectedEvent && <ThreatDetailPanel />}
       </div>
