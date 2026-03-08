@@ -1,4 +1,4 @@
-"""Threat Feed & History endpoints — time-window based item retrieval + report generation"""
+"""Threat Feed & History endpoints — workspace-scoped + report generation."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ import io, csv, json, uuid
 from app.database import get_db
 from app.models import IntelItem
 from app.services.report_generator import generate_csv_report, generate_html_report, generate_json_report
-from app.core.deps import get_current_user, RequireRole
+from app.core.deps import get_current_user, get_workspace_id, RequireRole
 
 threats_router = APIRouter()
 reports_gen_router = APIRouter()
@@ -66,6 +66,7 @@ async def threat_feed(
     limit: int = Query(50, le=200),
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user),
+    wid: str = Depends(get_workspace_id),
 ):
     now = datetime.now(timezone.utc)
     cutoff_24h = now - timedelta(hours=24)
@@ -73,7 +74,7 @@ async def threat_feed(
 
     effective = func.coalesce(IntelItem.published_at, IntelItem.fetched_at)
     q = select(IntelItem).where(
-        and_(effective >= cutoff_24h, effective >= max_age)
+        and_(IntelItem.workspace_id == wid, effective >= cutoff_24h, effective >= max_age)
     )
     if severity:
         q = q.where(IntelItem.severity == severity)
@@ -109,6 +110,7 @@ async def threat_history(
     limit: int = Query(50, le=200),
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user),
+    wid: str = Depends(get_workspace_id),
 ):
     now = datetime.now(timezone.utc)
     max_age = now - timedelta(days=30)
@@ -125,14 +127,17 @@ async def threat_history(
         if (dt_end - dt_start).days > 30:
             raise HTTPException(400, "Custom range cannot exceed 30 days (retention policy)")
         dt_start = max(dt_start, max_age)
-        q = select(IntelItem).where(and_(effective >= dt_start, effective <= dt_end))
+        q = select(IntelItem).where(
+            and_(IntelItem.workspace_id == wid, effective >= dt_start, effective <= dt_end))
     elif range:
         cutoff = _cutoff_from_range(range)
         cutoff = max(cutoff, max_age)
-        q = select(IntelItem).where(and_(effective >= cutoff, effective <= now))
+        q = select(IntelItem).where(
+            and_(IntelItem.workspace_id == wid, effective >= cutoff, effective <= now))
     else:
         cutoff_24h = now - timedelta(hours=24)
-        q = select(IntelItem).where(and_(effective >= max_age, effective < cutoff_24h))
+        q = select(IntelItem).where(
+            and_(IntelItem.workspace_id == wid, effective >= max_age, effective < cutoff_24h))
 
     if severity:
         q = q.where(IntelItem.severity == severity)
@@ -171,7 +176,8 @@ class ReportRequest(BaseModel):
 
 @reports_gen_router.post("/generate")
 async def generate_threat_report(req: ReportRequest, db: AsyncSession = Depends(get_db),
-                                 user=Depends(require_write)):
+                                 user=Depends(require_write),
+                                 wid: str = Depends(get_workspace_id)):
     now = datetime.now(timezone.utc)
     max_age = now - timedelta(days=30)
     effective = func.coalesce(IntelItem.published_at, IntelItem.fetched_at)
@@ -200,7 +206,8 @@ async def generate_threat_report(req: ReportRequest, db: AsyncSession = Depends(
         dt_start = now - timedelta(hours=24)
         dt_end = now
 
-    q = select(IntelItem).where(and_(effective >= dt_start, effective <= dt_end))
+    q = select(IntelItem).where(
+        and_(IntelItem.workspace_id == wid, effective >= dt_start, effective <= dt_end))
     if req.severity:
         q = q.where(IntelItem.severity == req.severity)
     q = q.order_by(effective.desc()).limit(5000)

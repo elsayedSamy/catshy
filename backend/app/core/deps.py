@@ -54,6 +54,16 @@ async def get_current_user_optional(request: Request, db: AsyncSession = Depends
         return None
 
 
+# ── Workspace ID Extraction ──
+
+async def get_workspace_id(request: Request, user=Depends(get_current_user)) -> str:
+    """Extract workspace_id from JWT. Every tenant-scoped endpoint must depend on this."""
+    wid = getattr(request.state, "workspace_id", None)
+    if not wid:
+        raise AuthorizationError("No workspace context. Re-login or select a workspace.")
+    return wid
+
+
 # ── Role Enforcement ──
 
 class RequireRole:

@@ -1,4 +1,4 @@
-"""WebSocket endpoint for real-time threat streaming (Issue #6)."""
+"""WebSocket endpoint for real-time threat streaming — workspace-scoped."""
 import asyncio
 import json
 import logging
@@ -17,16 +17,19 @@ from app.models import IntelItem
 logger = logging.getLogger("catshy.ws_threats")
 router = APIRouter()
 
-# Connected clients
-_clients: set[WebSocket] = set()
+# Connected clients keyed by workspace_id
+_clients: dict[str, set[WebSocket]] = {}
 
 
 async def _authenticate_ws(token: Optional[str]) -> Optional[dict]:
-    """Validate JWT token from WebSocket query param."""
+    """Validate JWT token from WebSocket query param. Returns payload with 'sub' and 'wid'."""
     if not token:
         return None
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        # Require workspace_id in token
+        if not payload.get("wid"):
+            return None
         return payload
     except JWTError:
         return None
@@ -36,28 +39,36 @@ async def _authenticate_ws(token: Optional[str]) -> Optional[dict]:
 async def threat_stream(websocket: WebSocket, token: Optional[str] = Query(None)):
     """WebSocket endpoint for real-time threat events.
     Connect: ws://host/api/threats/stream?token=<jwt>
-    Sends new IntelItems as they arrive, polled every 5 seconds.
+    Token MUST contain workspace_id (wid) claim.
+    Only streams events belonging to the authenticated user's workspace.
     """
-    # Authenticate
     payload = await _authenticate_ws(token)
     if not payload:
-        await websocket.close(code=4001, reason="Authentication required")
+        await websocket.close(code=4001, reason="Authentication required (valid JWT with workspace)")
         return
 
+    workspace_id = payload["wid"]
     await websocket.accept()
-    _clients.add(websocket)
-    logger.info("WebSocket client connected (user=%s)", payload.get("sub"))
+
+    # Register client under workspace
+    if workspace_id not in _clients:
+        _clients[workspace_id] = set()
+    _clients[workspace_id].add(websocket)
+
+    logger.info("WebSocket client connected (user=%s, workspace=%s)", payload.get("sub"), workspace_id)
 
     last_check = datetime.now(timezone.utc)
 
     try:
         while True:
-            # Poll for new items since last check
             try:
                 async with async_session() as db:
                     result = await db.execute(
                         select(IntelItem)
-                        .where(IntelItem.fetched_at >= last_check)
+                        .where(and_(
+                            IntelItem.workspace_id == workspace_id,
+                            IntelItem.fetched_at >= last_check,
+                        ))
                         .order_by(IntelItem.fetched_at.desc())
                         .limit(50)
                     )
@@ -91,38 +102,38 @@ async def threat_stream(websocket: WebSocket, token: Optional[str] = Query(None)
             except Exception as e:
                 logger.error("Error polling for new threats: %s", e)
 
-            # Check for client messages (pause/resume/filters)
             try:
                 msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
                 data = json.loads(msg)
                 if data.get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
                 elif data.get("type") == "pause":
-                    # Wait until resume
                     while True:
                         msg = await websocket.receive_text()
                         data = json.loads(msg)
                         if data.get("type") == "resume":
                             break
             except asyncio.TimeoutError:
-                # Normal — no message from client, continue polling
                 pass
 
     except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected (user=%s)", payload.get("sub"))
+        logger.info("WebSocket client disconnected (user=%s, workspace=%s)", payload.get("sub"), workspace_id)
     except Exception as e:
         logger.error("WebSocket error: %s", e)
     finally:
-        _clients.discard(websocket)
+        if workspace_id in _clients:
+            _clients[workspace_id].discard(websocket)
+            if not _clients[workspace_id]:
+                del _clients[workspace_id]
 
 
-async def broadcast_threat_event(event: dict):
-    """Broadcast a threat event to all connected WebSocket clients.
-    Call this from the ingestion pipeline when new items are created."""
+async def broadcast_threat_event(event: dict, workspace_id: str):
+    """Broadcast a threat event to all connected WebSocket clients in a specific workspace."""
+    clients = _clients.get(workspace_id, set())
     dead = set()
-    for ws in _clients:
+    for ws in clients:
         try:
             await ws.send_json({"type": "threat_event", "event": event})
         except Exception:
             dead.add(ws)
-    _clients -= dead
+    clients -= dead

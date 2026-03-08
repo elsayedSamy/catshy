@@ -1,48 +1,37 @@
-"""Map incidents endpoint — geo-filtered intel for threat map visualization."""
+"""Map incidents endpoint — geo-filtered intel for threat map visualization.
+Workspace-scoped + auth required."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.models.intel import IntelItem
+from app.core.deps import get_current_user, get_workspace_id
 
 router = APIRouter()
 
 
 @router.get("/incidents")
 async def map_incidents(
-    # Bounding box
     min_lat: Optional[float] = Query(None),
     max_lat: Optional[float] = Query(None),
     min_lon: Optional[float] = Query(None),
     max_lon: Optional[float] = Query(None),
-    # Time range
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
     range: str = Query("24h"),
-    # Filters
     threat_type: Optional[str] = Query(None),
     severity: Optional[str] = Query(None),
     relevant_only: bool = Query(False),
-    # Clustering
     cluster: bool = Query(True),
-    cluster_precision: int = Query(3, ge=1, le=6),  # Geohash precision
-    # Pagination
+    cluster_precision: int = Query(3, ge=1, le=6),
     limit: int = Query(500, le=2000),
     db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+    wid: str = Depends(get_workspace_id),
 ):
-    """Get geo-located intel incidents for map rendering.
-
-    Supports:
-    - bbox filtering (min/max lat/lon)
-    - time range (preset or custom ISO dates)
-    - threat type / severity filtering
-    - relevant_only (asset-matched items only)
-    - clustering by geohash precision
-    """
-    # Time range
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if start and end:
         try:
             dt_start = datetime.fromisoformat(start.replace("Z", ""))
@@ -56,9 +45,9 @@ async def map_incidents(
         dt_start = now - timedelta(hours=hours)
         dt_end = now
 
-    # Base query: only items with geo data
     q = select(IntelItem).where(
         and_(
+            IntelItem.workspace_id == wid,
             IntelItem.geo_lat.isnot(None),
             IntelItem.geo_lon.isnot(None),
             func.coalesce(IntelItem.published_at, IntelItem.fetched_at) >= dt_start,
@@ -66,21 +55,14 @@ async def map_incidents(
         )
     )
 
-    # Bbox filter
     if min_lat is not None and max_lat is not None:
         q = q.where(and_(IntelItem.geo_lat >= min_lat, IntelItem.geo_lat <= max_lat))
     if min_lon is not None and max_lon is not None:
         q = q.where(and_(IntelItem.geo_lon >= min_lon, IntelItem.geo_lon <= max_lon))
-
-    # Threat type filter
     if threat_type:
-        q = q.where(IntelItem.severity == threat_type)  # or campaign_name/tags
-
-    # Severity filter
+        q = q.where(IntelItem.severity == threat_type)
     if severity:
         q = q.where(IntelItem.severity == severity)
-
-    # Asset-matched only
     if relevant_only:
         q = q.where(IntelItem.asset_match == True)
 
@@ -113,12 +95,11 @@ def _incident_to_dict(item: IntelItem) -> dict:
         "risk": item.risk_score or 0,
         "source_name": item.source_name,
         "campaign": item.campaign_name,
-        "timestamp": (item.published_at or item.fetched_at or datetime.utcnow()).isoformat() + "Z",
+        "timestamp": (item.published_at or item.fetched_at or datetime.now(timezone.utc)).isoformat() + "Z",
     }
 
 
 def _cluster_incidents(items: list, precision: int) -> dict:
-    """Cluster incidents by truncated lat/lon (simple grid clustering)."""
     clusters = {}
     factor = 10 ** precision
 
@@ -129,13 +110,9 @@ def _cluster_incidents(items: list, precision: int) -> dict:
 
         if key not in clusters:
             clusters[key] = {
-                "lat": lat_key,
-                "lon": lon_key,
-                "count": 0,
-                "severity_max": "info",
-                "has_asset_match": False,
-                "countries": set(),
-                "sample_titles": [],
+                "lat": lat_key, "lon": lon_key, "count": 0,
+                "severity_max": "info", "has_asset_match": False,
+                "countries": set(), "sample_titles": [],
             }
 
         c = clusters[key]
@@ -154,13 +131,9 @@ def _cluster_incidents(items: list, precision: int) -> dict:
         "count": sum(c["count"] for c in clusters.values()),
         "clusters": [
             {
-                "lat": c["lat"],
-                "lon": c["lon"],
-                "count": c["count"],
-                "severity_max": c["severity_max"],
-                "has_asset_match": c["has_asset_match"],
-                "countries": list(c["countries"]),
-                "sample_titles": c["sample_titles"],
+                "lat": c["lat"], "lon": c["lon"], "count": c["count"],
+                "severity_max": c["severity_max"], "has_asset_match": c["has_asset_match"],
+                "countries": list(c["countries"]), "sample_titles": c["sample_titles"],
             }
             for c in clusters.values()
         ],
