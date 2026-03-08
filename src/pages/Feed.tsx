@@ -207,43 +207,23 @@ export default function Feed() {
         return;
       }
 
-      if (isDevMode) {
-        const fullPool = [...DEMO_FEED, ...DEMO_HISTORY];
-        let cutoffStart: number, cutoffEnd = now, periodLabel: string;
-        if (reportPreset === 'today') { cutoffStart = now - 86400000; periodLabel = 'Last 24 hours'; }
-        else if (reportPreset === '7d') { cutoffStart = now - 86400000 * 7; periodLabel = 'Last 7 days'; }
-        else if (reportPreset === '30d') { cutoffStart = now - 86400000 * 30; periodLabel = 'Last 30 days'; }
-        else if (reportPreset === 'custom' && reportStartDate && reportEndDate) { cutoffStart = reportStartDate.getTime(); cutoffEnd = reportEndDate.getTime(); periodLabel = `${format(reportStartDate, 'MMM d, yyyy')} to ${format(reportEndDate, 'MMM d, yyyy')}`; }
-        else { cutoffStart = now - 86400000; periodLabel = 'Last 24 hours'; }
-        const reportItems = fullPool.filter(i => { const t = new Date(i.published_at).getTime(); return t >= cutoffStart && t <= cutoffEnd; });
-        const reportTitle = `CATSHY Threat Report — ${periodLabel}`;
-        let content: string, mimeType: string, fileExt: string;
-        if (reportFormat === 'html') { content = generateHtmlFromItems(reportItems, reportTitle, periodLabel); mimeType = 'text/html'; fileExt = 'html'; }
-        else if (reportFormat === 'json') { content = generateJsonFromItems(reportItems, reportTitle, periodLabel); mimeType = 'application/json'; fileExt = 'json'; }
-        else { content = generateCsvFromItems(reportItems); mimeType = 'text/csv'; fileExt = 'csv'; }
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `catshy-report-${reportPreset}.${fileExt}`; a.click(); URL.revokeObjectURL(url);
-        toast.success(`Report downloaded — ${reportItems.length} items (${periodLabel})`);
-      } else {
-        const body: Record<string, unknown> = { scope: 'feed', format: reportFormat };
-        if (reportPreset === 'custom' && reportStartDate && reportEndDate) { body.start = reportStartDate.toISOString(); body.end = reportEndDate.toISOString(); }
-        else body.preset = reportPreset;
-        const res = await fetch(`${API_BASE}/threats/reports/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'Report generation failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `catshy-report.${reportFormat === 'html' ? 'html' : reportFormat === 'json' ? 'json' : reportFormat === 'pdf' ? 'pdf' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
-        toast.success('Report downloaded successfully');
-      }
+      const body: Record<string, unknown> = { scope: 'feed', format: reportFormat };
+      if (reportPreset === 'custom' && reportStartDate && reportEndDate) { body.start = reportStartDate.toISOString(); body.end = reportEndDate.toISOString(); }
+      else body.preset = reportPreset;
+      const res = await fetch(`${API_BASE}/threats/reports/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'Report generation failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `catshy-report.${reportFormat === 'html' ? 'html' : reportFormat === 'json' ? 'json' : reportFormat === 'pdf' ? 'pdf' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
+      toast.success('Report downloaded successfully');
     } catch (e: any) { toast.error(e.message || 'Failed to generate report'); }
     finally { setGenerating(false); }
-  }, [isDevMode, reportPreset, reportFormat, reportStartDate, reportEndDate, customRangeValid, customRangeError]);
+  }, [reportPreset, reportFormat, reportStartDate, reportEndDate, customRangeValid, customRangeError]);
 
   const activeFilterCount = [severityFilter, assetMatchOnly, containsCve, containsIoc, govSourcesOnly, highConfOnly].filter(Boolean).length;
 
