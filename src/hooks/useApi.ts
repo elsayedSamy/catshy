@@ -306,7 +306,7 @@ export const useDashboardChanges = (range: string) => useQuery({
 export const useDashboardSeverity = (range: string) => useQuery({
   queryKey: ['dashboard-severity', range],
   queryFn: () => api.get<{ critical: number; high: number; medium: number; low: number; info: number }>(`/dashboard/severity?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
 
 // Dashboard Threat Timeline
