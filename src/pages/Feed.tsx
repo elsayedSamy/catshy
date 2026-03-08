@@ -327,7 +327,7 @@ export default function Feed() {
       {/* Search bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search CVE, domain, keyword…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
+        <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search IP, domain, hash, keyword…" className="pl-10 bg-secondary/50 border-border h-9 text-sm" />
       </div>
 
       {/* Filters row */}
