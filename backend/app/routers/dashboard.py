@@ -131,7 +131,7 @@ async def dashboard_timeline(range: str = "24h", db: AsyncSession = Depends(get_
     bucket_size = span / buckets
 
     timeline = []
-    for i in range_iter(buckets):
+    for i in builtins.range(buckets):
         b_start = cutoff + bucket_size * i
         b_end = b_start + bucket_size
         q = (
