@@ -4,7 +4,7 @@ import {
   Home, Database, Radio, Rss, Search, Globe, Bell,
   FileSearch, Briefcase, FileText, AlertTriangle,
   Map as MapIcon, Workflow, Shield, Settings, ChevronLeft, Cat, History,
-  Plug, Link2
+  Plug, Link2, ShieldAlert
 } from 'lucide-react';
 
 const navSections = [
@@ -22,6 +22,7 @@ const navSections = [
   {
     title: 'Intelligence',
     items: [
+      { label: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert },
       { label: 'Graph Explorer', path: '/graph', icon: Globe },
       { label: 'Alerts', path: '/alerts', icon: Bell },
       { label: 'Investigations', path: '/investigations', icon: FileSearch },

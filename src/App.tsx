@@ -29,6 +29,7 @@ import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import Integrations from "./pages/Integrations";
 import Connectors from "./pages/Connectors";
+import Vulnerabilities from "./pages/Vulnerabilities";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="cases" element={<Cases />} />
               <Route path="reports" element={<Reports />} />
               <Route path="leaks" element={<Leaks />} />
+              <Route path="vulnerabilities" element={<Vulnerabilities />} />
               <Route path="global-threat-monitoring" element={<GlobalThreats />} />
               <Route path="3d-global-threats" element={<Navigate to="/global-threat-monitoring" replace />} />
               <Route path="global-threats" element={<Navigate to="/global-threat-monitoring" replace />} />
