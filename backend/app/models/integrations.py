@@ -33,6 +33,7 @@ class WorkspaceIntegration(Base):
 
     __table_args__ = (
         {"extend_existing": True},
+        sa.UniqueConstraint("workspace_id", "provider", name="uq_workspace_provider"),
     )
 
 

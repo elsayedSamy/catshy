@@ -21,3 +21,4 @@ python-dateutil==2.9.0
 dnspython==2.6.1
 ipaddress==1.0.23
 geoip2==4.8.0
+cryptography==43.0.0
