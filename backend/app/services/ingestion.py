@@ -1,13 +1,14 @@
-"""Unified Ingestion Pipeline — fetch → normalize → dedup → enrich → correlate → score → explain → campaign → stats."""
+"""Unified Ingestion Pipeline — fetch → normalize → dedup → enrich → correlate → score → explain → campaign → stats.
+
+Supports both sync (Celery workers) and async (API) execution."""
 import hashlib
 import logging
-import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional, Tuple
 
-from sqlalchemy.orm import Session
 from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.intel import IntelItem, Observable, IntelObservable, IntelMatch, SourceStats
 from app.models.operations import Asset, Source
@@ -23,10 +24,14 @@ def gen_uuid():
     return str(uuid.uuid4())
 
 
-class IngestionPipeline:
-    """Stateful pipeline for processing raw intel entries from a single source fetch."""
+def _utcnow():
+    return datetime.now(timezone.utc)
 
-    def __init__(self, db: Session, source: Source, workspace_id: Optional[str] = None):
+
+class IngestionPipeline:
+    """Async pipeline for processing raw intel entries from a single source fetch."""
+
+    def __init__(self, db: AsyncSession, source: Source, workspace_id: Optional[str] = None):
         self.db = db
         self.source = source
         self.workspace_id = workspace_id or source.workspace_id
@@ -40,25 +45,24 @@ class IngestionPipeline:
         }
         self._assets: Optional[List[dict]] = None
         self._matcher: Optional[AssetMatcher] = None
-        # Load source reliability from latest stats
-        self._source_reliability = self._get_source_reliability()
+        self._source_reliability: float = 0.5
 
-    def _get_source_reliability(self) -> float:
+    async def _load_source_reliability(self):
         """Get latest reliability score for this source."""
-        result = self.db.execute(
+        result = await self.db.execute(
             select(SourceStats)
             .where(SourceStats.source_id == self.source.id)
             .order_by(SourceStats.date.desc())
             .limit(1)
         )
         stats = result.scalar_one_or_none()
-        return stats.reliability_score if stats else 0.5
+        self._source_reliability = stats.reliability_score if stats else 0.5
 
-    def _load_assets(self):
+    async def _load_assets(self):
         """Load workspace assets for correlation."""
         if self._assets is not None:
             return
-        result = self.db.execute(
+        result = await self.db.execute(
             select(Asset).where(Asset.workspace_id == self.workspace_id)
         )
         assets = result.scalars().all()
@@ -68,25 +72,26 @@ class IngestionPipeline:
         ]
         self._matcher = AssetMatcher(self._assets)
 
-    def process_entries(self, raw_entries: List[dict]) -> List[IntelItem]:
+    async def process_entries(self, raw_entries: List[dict]) -> List[IntelItem]:
         """Process a batch of raw entries through the full pipeline."""
-        self._load_assets()
+        await self._load_source_reliability()
+        await self._load_assets()
         self.stats["items_fetched"] = len(raw_entries)
         created_items = []
 
         for entry in raw_entries:
-            item = self._process_single(entry)
+            item = await self._process_single(entry)
             if item:
                 created_items.append(item)
 
         # Update source stats
-        self._update_source_stats(created_items)
+        await self._update_source_stats(created_items)
 
         return created_items
 
-    def _process_single(self, entry: dict) -> Optional[IntelItem]:
+    async def _process_single(self, entry: dict) -> Optional[IntelItem]:
         """Process a single raw entry through all pipeline stages."""
-        # 1. Normalize — extract title, description, observables
+        # 1. Normalize
         title = str(entry.get("title", "Untitled"))[:500]
         description = str(entry.get("description", ""))[:2000]
         link = entry.get("link", entry.get("url", ""))
@@ -94,18 +99,16 @@ class IngestionPipeline:
 
         # 2. Extract observables
         observables = extract_observables(raw_text)
-
-        # Pick primary observable (most specific)
         primary_obs = observables[0] if observables else {"type": "other", "value": link or title[:100], "canonical": link or title[:100]}
 
         # 3. Deduplicate
         dedup_hash = compute_dedup_hash(self.source.id, primary_obs["canonical"], title)
-        existing = self.db.execute(
+        existing = (await self.db.execute(
             select(IntelItem).where(
                 IntelItem.dedup_hash == dedup_hash,
                 IntelItem.workspace_id == self.workspace_id
             )
-        ).scalar_one_or_none()
+        )).scalar_one_or_none()
 
         if existing:
             existing.dedup_count = (existing.dedup_count or 1) + 1
@@ -122,13 +125,15 @@ class IngestionPipeline:
             title=title,
             description=description[:1000],
             severity=severity,
+            observable_type=primary_obs["type"],
+            observable_value=primary_obs["canonical"],
             source_id=self.source.id,
             source_name=self.source.name,
             original_url=link,
             excerpt=description[:500],
             dedup_hash=dedup_hash,
-            published_at=entry.get("published_at") or datetime.utcnow(),
-            fetched_at=datetime.utcnow(),
+            published_at=entry.get("published_at") or _utcnow(),
+            fetched_at=_utcnow(),
             raw_data=entry if isinstance(entry, dict) else {},
             tags=entry.get("tags", []),
         )
@@ -150,10 +155,8 @@ class IngestionPipeline:
             item.geo_city = best_geo.get("city")
 
         # 7. Store observables and link M2M
-        obs_ids = []
         for obs in observables:
-            obs_record = self._upsert_observable(obs, best_geo if obs == observables[0] and best_geo else None)
-            obs_ids.append(obs_record.id)
+            obs_record = await self._upsert_observable(obs, best_geo if obs == observables[0] and best_geo else None)
             link_record = IntelObservable(
                 id=gen_uuid(),
                 intel_item_id=item.id,
@@ -180,7 +183,6 @@ class IngestionPipeline:
             item.matched_asset_ids = list(set(m["asset_id"] for m in all_matches))
             self.stats["items_matched_assets"] += 1
 
-            # Store match records
             for m in all_matches:
                 match_record = IntelMatch(
                     id=gen_uuid(),
@@ -206,11 +208,11 @@ class IngestionPipeline:
         ) if all_matches and self._matcher else "info"
 
         asset_relevance = 1.0 if all_matches else 0.0
-        corroboration = self.db.execute(
+        corroboration = (await self.db.execute(
             select(func.count()).select_from(IntelItem).where(
                 IntelItem.dedup_hash == dedup_hash,
             )
-        ).scalar() or 0
+        )).scalar() or 0
 
         conf_result = calculate_confidence_score(
             {"excerpt": item.excerpt, "original_url": item.original_url, "published_at": item.published_at},
@@ -246,20 +248,19 @@ class IngestionPipeline:
 
         return item
 
-    def _upsert_observable(self, obs: dict, geo: Optional[dict] = None) -> Observable:
+    async def _upsert_observable(self, obs: dict, geo: Optional[dict] = None) -> Observable:
         """Create or update an observable record."""
-        existing = self.db.execute(
+        existing = (await self.db.execute(
             select(Observable).where(
                 Observable.workspace_id == self.workspace_id,
                 Observable.type == obs["type"],
                 Observable.normalized_value == obs["canonical"],
             )
-        ).scalar_one_or_none()
+        )).scalar_one_or_none()
 
         if existing:
-            existing.last_seen = datetime.utcnow()
+            existing.last_seen = _utcnow()
             existing.sighting_count = (existing.sighting_count or 1) + 1
-            # Update geo if we have new data and existing doesn't
             if geo and not existing.geo_lat:
                 existing.geo_lat = geo.get("lat")
                 existing.geo_lon = geo.get("lon")
@@ -276,8 +277,8 @@ class IngestionPipeline:
             type=obs["type"],
             value=obs["value"],
             normalized_value=obs["canonical"],
-            first_seen=datetime.utcnow(),
-            last_seen=datetime.utcnow(),
+            first_seen=_utcnow(),
+            last_seen=_utcnow(),
         )
         if geo:
             record.geo_lat = geo.get("lat")
@@ -292,7 +293,6 @@ class IngestionPipeline:
         return record
 
     def _determine_match_type(self, obs: dict, asset_value: str) -> str:
-        """Determine match type: exact, subdomain, cidr, fuzzy."""
         if obs["canonical"].lower() == asset_value.lower():
             return "exact"
         if obs["type"] == "domain" and obs["canonical"].endswith(f".{asset_value.lower()}"):
@@ -302,7 +302,6 @@ class IngestionPipeline:
         return "fuzzy"
 
     def _detect_campaign(self, title: str, observables: list) -> Optional[dict]:
-        """Simple campaign detection based on title keywords and observable clustering."""
         campaign_keywords = {
             "apt": "APT Campaign",
             "lazarus": "Lazarus Group",
@@ -323,9 +322,8 @@ class IngestionPipeline:
                 }
         return None
 
-    def _update_source_stats(self, created_items: List[IntelItem]):
-        """Update source reliability stats after ingestion."""
-        now = datetime.utcnow()
+    async def _update_source_stats(self, created_items: List[IntelItem]):
+        now = _utcnow()
         n = self.stats["items_new"] or 1
 
         stats = SourceStats(
@@ -343,7 +341,6 @@ class IngestionPipeline:
         )
         self.db.add(stats)
 
-        # Update source counters
         self.source.last_fetch_at = now
         self.source.item_count = (self.source.item_count or 0) + self.stats["items_new"]
         self.source.health = "healthy"

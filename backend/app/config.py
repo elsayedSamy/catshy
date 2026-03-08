@@ -12,8 +12,15 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:8080", "http://localhost:3000", "http://127.0.0.1:8080"]
+    # CORS — configurable via .env, includes common dev origins
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:8080",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:5173",
+    ]
+    CORS_EXTRA_ORIGINS: List[str] = []  # Add Lovable preview URLs or custom domains via .env
     # SSRF Protection
     SSRF_DENY_PRIVATE: bool = True
     SSRF_TIMEOUT: int = 15
@@ -55,6 +62,11 @@ class Settings(BaseSettings):
     TOKEN_SECRET: str = "CHANGE_ME_USE_openssl_rand_hex_64"
     INVITE_TOKEN_TTL_MIN: int = 1440
     RESET_TOKEN_TTL_MIN: int = 30
+
+    @property
+    def all_cors_origins(self) -> List[str]:
+        """Merge default + extra CORS origins."""
+        return list(set(self.CORS_ORIGINS + self.CORS_EXTRA_ORIGINS))
 
     class Config:
         env_file = ".env"

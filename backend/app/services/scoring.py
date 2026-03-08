@@ -14,6 +14,7 @@ RISK SCORE (0–100):
     asset_criticality  × 25  — Highest criticality of matched asset (same scale as severity)
     prevalence         × 15  — dedup_count / 10, capped at 1.0
 """
+from datetime import datetime, timezone
 
 
 def calculate_confidence_score(item: dict, source_reputation: float = 0.5, corroboration_count: int = 1) -> dict:
@@ -30,11 +31,15 @@ def calculate_confidence_score(item: dict, source_reputation: float = 0.5, corro
     evidence_score = (0.5 if has_excerpt else 0) + (0.5 if has_url else 0)
     factors["evidence_quality"] = {"value": evidence_score, "weight": 0.25, "description": f"Evidence: {'excerpt' if has_excerpt else 'no excerpt'}, {'URL' if has_url else 'no URL'}"}
     # Recency
-    from datetime import datetime
     age_hours = 1  # default
     if item.get("published_at"):
         try:
-            age_hours = (datetime.utcnow() - datetime.fromisoformat(str(item["published_at"]))).total_seconds() / 3600
+            pub = item["published_at"]
+            if isinstance(pub, str):
+                pub = datetime.fromisoformat(pub.replace("Z", "+00:00"))
+            if pub.tzinfo is None:
+                pub = pub.replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - pub).total_seconds() / 3600
         except Exception:
             pass
     age_score = max(0, 1 - (age_hours / 720))  # Decays over 30 days

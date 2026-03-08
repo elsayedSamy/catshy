@@ -5,26 +5,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import io, csv, json, uuid
 
 from app.database import get_db
 from app.models import IntelItem
 from app.services.report_generator import generate_csv_report, generate_html_report, generate_json_report
+from app.core.deps import get_current_user, RequireRole
 
 threats_router = APIRouter()
 reports_gen_router = APIRouter()
 
+require_write = RequireRole("system_owner", "team_admin", "team_member")
+
 # ── Helpers ──
 
 def _effective_date(item: IntelItem) -> datetime:
-    """Return published_at if available, else fetched_at (UTC)."""
-    return item.published_at or item.fetched_at or datetime.utcnow()
+    return item.published_at or item.fetched_at or datetime.now(timezone.utc)
 
 
 def _cutoff_from_range(range_str: str) -> datetime:
-    """Convert range string to UTC cutoff datetime."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     mapping = {"24h": 24, "7d": 168, "30d": 720}
     hours = mapping.get(range_str, 24)
     return now - timedelta(hours=hours)
@@ -36,8 +37,8 @@ def _item_to_dict(i: IntelItem) -> dict:
         "title": i.title,
         "description": i.description or "",
         "severity": i.severity,
-        "observable_type": i.observable_type,
-        "observable_value": i.observable_value,
+        "observable_type": i.observable_type or "other",
+        "observable_value": i.observable_value or "",
         "source_id": i.source_id,
         "source_name": i.source_name,
         "fetched_at": i.fetched_at.isoformat() + "Z" if i.fetched_at else None,
@@ -64,13 +65,12 @@ async def threat_feed(
     offset: int = 0,
     limit: int = Query(50, le=200),
     db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
 ):
-    """Return items younger than 24 hours (fresh feed)."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     cutoff_24h = now - timedelta(hours=24)
     max_age = now - timedelta(days=30)
 
-    # Use COALESCE(published_at, fetched_at) for effective date
     effective = func.coalesce(IntelItem.published_at, IntelItem.fetched_at)
     q = select(IntelItem).where(
         and_(effective >= cutoff_24h, effective >= max_age)
@@ -82,11 +82,9 @@ async def threat_feed(
     if asset_match_only:
         q = q.where(IntelItem.asset_match == True)
 
-    # Count
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
 
-    # Sort
     order = effective.desc() if sort == "newest" else effective.asc()
     q = q.order_by(order).offset(offset).limit(limit)
     result = await db.execute(q)
@@ -110,16 +108,13 @@ async def threat_history(
     offset: int = 0,
     limit: int = Query(50, le=200),
     db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
 ):
-    """Return items older than 24h but within 30d retention window.
-    Supports preset ranges (24h, 7d, 30d) or custom start/end ISO dates.
-    """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     max_age = now - timedelta(days=30)
     effective = func.coalesce(IntelItem.published_at, IntelItem.fetched_at)
 
     if start and end:
-        # Custom range
         try:
             dt_start = datetime.fromisoformat(start.replace("Z", "+00:00").replace("+00:00", ""))
             dt_end = datetime.fromisoformat(end.replace("Z", "+00:00").replace("+00:00", ""))
@@ -129,7 +124,6 @@ async def threat_history(
             raise HTTPException(400, "end must be >= start")
         if (dt_end - dt_start).days > 30:
             raise HTTPException(400, "Custom range cannot exceed 30 days (retention policy)")
-        # Clamp to retention window
         dt_start = max(dt_start, max_age)
         q = select(IntelItem).where(and_(effective >= dt_start, effective <= dt_end))
     elif range:
@@ -137,7 +131,6 @@ async def threat_history(
         cutoff = max(cutoff, max_age)
         q = select(IntelItem).where(and_(effective >= cutoff, effective <= now))
     else:
-        # Default: show history (>= 24h old, <= 30d)
         cutoff_24h = now - timedelta(hours=24)
         q = select(IntelItem).where(and_(effective >= max_age, effective < cutoff_24h))
 
@@ -160,33 +153,29 @@ async def threat_history(
     items = [_item_to_dict(i) for i in result.scalars().all()]
 
     return {
-        "items": items,
-        "total": total,
-        "offset": offset,
-        "limit": limit,
-        "queried_at": now.isoformat() + "Z",
+        "items": items, "total": total, "offset": offset,
+        "limit": limit, "queried_at": now.isoformat() + "Z",
     }
 
 
 # ── Report Generation ──
 
 class ReportRequest(BaseModel):
-    scope: str = "feed"  # "feed" or "history"
-    preset: Optional[str] = None  # "today", "7d", "30d"
+    scope: str = "feed"
+    preset: Optional[str] = None
     start: Optional[str] = None
     end: Optional[str] = None
-    format: str = "csv"  # "csv", "html", "json"
+    format: str = "csv"
     severity: Optional[str] = None
 
 
 @reports_gen_router.post("/generate")
-async def generate_threat_report(req: ReportRequest, db: AsyncSession = Depends(get_db)):
-    """Generate a downloadable report from threat feed or history data."""
-    now = datetime.utcnow()
+async def generate_threat_report(req: ReportRequest, db: AsyncSession = Depends(get_db),
+                                 user=Depends(require_write)):
+    now = datetime.now(timezone.utc)
     max_age = now - timedelta(days=30)
     effective = func.coalesce(IntelItem.published_at, IntelItem.fetched_at)
 
-    # Determine time window
     if req.start and req.end:
         try:
             dt_start = datetime.fromisoformat(req.start.replace("Z", "").replace("+00:00", ""))
@@ -208,7 +197,6 @@ async def generate_threat_report(req: ReportRequest, db: AsyncSession = Depends(
         dt_start = max_age
         dt_end = now
     else:
-        # Default: last 24h
         dt_start = now - timedelta(hours=24)
         dt_end = now
 
@@ -225,7 +213,7 @@ async def generate_threat_report(req: ReportRequest, db: AsyncSession = Depends(
     metadata = {
         "company_name": "CATSHY",
         "report_id": str(uuid.uuid4())[:8],
-        "generated_by": "System",
+        "generated_by": user.email if user else "System",
         "format": req.format.upper(),
         "classification": "TLP:AMBER",
     }

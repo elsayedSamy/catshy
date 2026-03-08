@@ -1,0 +1,88 @@
+# CATSHY — Threat Intelligence Platform
+# Cursor AI Project Rules
+
+## Project Overview
+Self-hosted Threat Intelligence Platform (TIP) for cybersecurity analysts.
+Production target: Kali Linux (native systemd) or Docker.
+
+## Tech Stack
+### Frontend
+- React 18 + TypeScript + Vite
+- Tailwind CSS + shadcn/ui components
+- TanStack Query for data fetching
+- React Router v6 for routing
+- Recharts for analytics/charts
+- @react-three/fiber + drei for 3D globe visualization
+- Framer Motion for animations
+
+### Backend
+- FastAPI (async) + Python 3.12
+- PostgreSQL 16 (asyncpg) with full-text search
+- Redis 7 for caching + Celery broker
+- Celery for background task processing
+- SQLAlchemy 2.0 (async) + Alembic for migrations
+- JWT auth with bcrypt password hashing
+
+## Architecture
+```
+src/                    # React frontend
+├── components/         # Reusable UI components
+│   ├── ui/            # shadcn/ui primitives
+│   ├── layout/        # AppShell, Sidebar, TopBar
+│   ├── dashboard/     # Dashboard widgets
+│   └── global-threats/ # Threat map components
+├── contexts/          # React contexts (Auth)
+├── hooks/             # Custom hooks (useApi, useAuth, useFilters)
+├── lib/               # Utilities (api client, cn helper)
+├── pages/             # Route pages
+└── types/             # TypeScript interfaces
+
+backend/               # FastAPI backend
+├── app/
+│   ├── core/          # Security, dependencies, exceptions
+│   ├── models/        # SQLAlchemy models (user, intel, operations, system)
+│   ├── routers/       # API endpoints
+│   ├── services/      # Business logic (ingestion, scoring, matching)
+│   ├── middleware/     # Audit logging
+│   └── tasks/         # Celery background tasks
+├── alembic/           # Database migrations
+└── tests/             # Test suites
+```
+
+## Role System
+Roles: system_owner | team_admin | team_member | user
+- Roles stored in `user_roles` table (NOT on users table)
+- `RequireRole` dependency for endpoint protection
+- Frontend checks via `useAuth().hasRole()`
+
+## Key Conventions
+- All datetime values use `datetime.now(timezone.utc)` (never `datetime.utcnow()`)
+- SQLAlchemy models use `default=list` / `default=dict` (not `default=[]` / `default={}`)
+- All CRUD endpoints require authentication via `get_current_user` dependency
+- Frontend uses semantic Tailwind tokens from CSS variables (--primary, --background, etc.)
+- API client at `src/lib/api.ts` handles dev-mode fallback when no backend detected
+- Intel pipeline: fetch → normalize → dedup → enrich → correlate → score → explain → campaign → stats
+
+## Database
+- Workspace-scoped multi-tenancy on all data tables
+- Dedup via SHA-256 hash per workspace
+- Full-text search via PostgreSQL tsvector columns
+- Observable normalization (IP, domain, URL, hash, CVE)
+
+## Security
+- JWT tokens with short TTL (30 min access, 7 day refresh)
+- Rate limiting (Redis-backed for multi-worker)
+- Brute-force detection with lockout
+- SSRF protection on source fetching
+- Audit logging on all state-changing actions
+- No secrets in frontend code
+
+## Testing
+- Backend: pytest with async support
+- Frontend: Vitest
+- E2E: Python requests-based test suite
+
+## Deployment
+- Primary: Kali Linux with systemd services + Nginx
+- Alternative: Docker Compose (postgres + redis + api + celery + nginx)
+- Config via .env file (see deploy/.env.example)

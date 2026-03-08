@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import engine, Base, async_session
-from app.routers import auth, health
+from app.routers.auth import router as auth_router
 from app.routers.all_routers import (
     assets_router, sources_router, feed_router, search_router,
     entities_router, alerts_router, cases_router, reports_router,
@@ -17,6 +17,7 @@ from app.routers.system import router as system_router
 from app.routers.map_incidents import router as map_incidents_router
 from app.routers.feedback import router as feedback_router
 from app.routers.dashboard_extended import router as dashboard_extended_router
+from app.routers.ws_threats import router as ws_threats_router
 from app.middleware.audit import AuditMiddleware
 from app.services.admin_seed import seed_admin
 from app.services.mail import validate_smtp_config
@@ -44,10 +45,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS — uses merged origins from config
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.all_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,9 +57,9 @@ app.add_middleware(
 # Audit logging middleware
 app.add_middleware(AuditMiddleware)
 
-# Register routers
-app.include_router(health.router, prefix="/api", tags=["health"])
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+# Register routers (Bug #2 fix: single health router, no duplicates)
+app.include_router(health_router, prefix="/api", tags=["health"])
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(system_router, prefix="/api/system", tags=["system"])
 app.include_router(assets_router, prefix="/api/assets", tags=["assets"])
 app.include_router(sources_router, prefix="/api/sources", tags=["sources"])
@@ -77,3 +78,4 @@ app.include_router(reports_gen_router, prefix="/api/threats/reports", tags=["thr
 app.include_router(map_incidents_router, prefix="/api/map", tags=["map-incidents"])
 app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
 app.include_router(dashboard_extended_router, prefix="/api/dashboard", tags=["dashboard-extended"])
+app.include_router(ws_threats_router, prefix="/api/threats", tags=["threats-ws"])
