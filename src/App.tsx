@@ -27,6 +27,7 @@ import GlobalThreats from "./pages/GlobalThreats";
 import Playbooks from "./pages/Playbooks";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
+import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 
 import Vulnerabilities from "./pages/Vulnerabilities";
@@ -82,6 +83,7 @@ const App = () => (
               <Route path="outputs" element={<Outputs />} />
               <Route path="admin" element={<Admin />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="ai" element={<AICenter />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
