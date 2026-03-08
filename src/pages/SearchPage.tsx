@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { SeverityBadge, ObservableTypeBadge } from '@/components/StatusBadge';
 import { motion } from 'framer-motion';
 import { useSearch } from '@/hooks/useApi';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { toast } from 'sonner';
 import type { SeverityLevel, ObservableType, IntelItem, Entity } from '@/types';
 

@@ -12,7 +12,7 @@ import {
   CheckCircle2, Bug, ExternalLink, X, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';

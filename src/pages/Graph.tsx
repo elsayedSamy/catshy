@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ZoomIn, ZoomOut, Maximize2, Loader2 } from 'lucide-react';
 import { useEntities, useEntityRelationships } from '@/hooks/useApi';
-import { useAuth } from '@/contexts/AuthContext';
+
 import type { Entity, EntityType } from '@/types';
 
 const TYPE_COLORS: Record<string, string> = {
