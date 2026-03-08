@@ -258,6 +258,32 @@ async def generate_threat_report(req: ReportRequest, db: AsyncSession = Depends(
             media_type="text/html",
             headers={"Content-Disposition": f'attachment; filename="catshy-report-{metadata["report_id"]}.html"'},
         )
+    elif req.format == "pdf":
+        sections = [
+            {"heading": "Report Period", "type": "narrative", "content": period_str},
+            {"heading": "Summary", "type": "narrative",
+             "content": f"Total items: {len(items_dicts)}. "
+                        f"Critical: {sum(1 for i in items_dicts if i['severity']=='critical')}. "
+                        f"High: {sum(1 for i in items_dicts if i['severity']=='high')}. "
+                        f"Medium: {sum(1 for i in items_dicts if i['severity']=='medium')}."},
+            {"heading": "Items", "type": "evidence",
+             "content": "\n".join(f"[{i['severity'].upper()}] {i['title']} — {i['observable_value']} (via {i['source_name']})" for i in items_dicts[:100])},
+        ]
+        try:
+            pdf_bytes = generate_pdf_report(report_title, sections, metadata)
+            return StreamingResponse(
+                io.BytesIO(pdf_bytes),
+                media_type="application/pdf",
+                headers={"Content-Disposition": f'attachment; filename="catshy-report-{metadata["report_id"]}.pdf"'},
+            )
+        except RuntimeError:
+            # WeasyPrint not installed — fall back to HTML
+            html = generate_html_report(report_title, sections, metadata)
+            return StreamingResponse(
+                io.BytesIO(html.encode("utf-8")),
+                media_type="text/html",
+                headers={"Content-Disposition": f'attachment; filename="catshy-report-{metadata["report_id"]}.html"'},
+            )
     elif req.format == "json":
         json_str = generate_json_report(report_title, [], metadata, items_dicts)
         return StreamingResponse(
@@ -266,4 +292,4 @@ async def generate_threat_report(req: ReportRequest, db: AsyncSession = Depends(
             headers={"Content-Disposition": f'attachment; filename="catshy-report-{metadata["report_id"]}.json"'},
         )
     else:
-        raise HTTPException(400, f"Unsupported format: {req.format}. Use csv, html, or json.")
+        raise HTTPException(400, f"Unsupported format: {req.format}. Use csv, html, json, or pdf.")
