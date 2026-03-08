@@ -266,7 +266,7 @@ async def review_owner_request(
 
     owner_req.status = review.status
     owner_req.reviewed_by = owner.id
-    owner_req.reviewed_at = datetime.utcnow()
+    owner_req.reviewed_at = datetime.now(timezone.utc)
     owner_req.review_notes = review.notes
 
     if review.status == "approved":
