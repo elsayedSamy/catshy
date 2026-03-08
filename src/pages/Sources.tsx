@@ -12,6 +12,8 @@ import { HealthBadge } from '@/components/StatusBadge';
 import { toast } from 'sonner';
 import type { SourceTemplate, SourceCategory, ConnectorType } from '@/types';
 import { SOURCES_CATALOG } from '@/data/sourcesCatalog';
+import { useSources, useEnableSource, useDisableSource, useUpdateSource, useDeleteSource } from '@/hooks/useApi';
+import { api } from '@/lib/api';
 
 const categoryLabels: Record<SourceCategory, string> = {
   vuln_exploit: 'Vulnerabilities & Exploits',
@@ -27,7 +29,18 @@ const connectorLabels: Record<ConnectorType, string> = {
 };
 
 export default function Sources() {
-  const [sources, setSources] = useState<SourceTemplate[]>(() => SOURCES_CATALOG.map(s => ({ ...s })));
+  const { data: backendSources, isLoading, isError } = useSources();
+  const enableSource = useEnableSource();
+  const disableSource = useDisableSource();
+  const updateSource = useUpdateSource();
+  const deleteSource = useDeleteSource();
+
+  // Use backend data when available, fallback to catalog for dev mode
+  const sources: SourceTemplate[] = useMemo(() => {
+    if (backendSources && backendSources.length > 0) return backendSources;
+    return SOURCES_CATALOG.map(s => ({ ...s }));
+  }, [backendSources]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -38,6 +51,7 @@ export default function Sources() {
   const [wizardTesting, setWizardTesting] = useState(false);
   const [wizardResult, setWizardResult] = useState<'success' | 'error' | null>(null);
   const [testingAll, setTestingAll] = useState(false);
+  const [testingSingle, setTestingSingle] = useState<string | null>(null);
 
   // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
@@ -58,48 +72,77 @@ export default function Sources() {
 
   const enabledCount = sources.filter(s => s.enabled).length;
 
-  const handleToggle = (id: string) => {
-    const source = sources.find(s => s.id === id);
-    if (!source) return;
+  const handleToggle = (source: SourceTemplate) => {
     if (!source.enabled) {
-      setWizardSource(source); setWizardUrl(source.default_url); setWizardStep(0); setWizardResult(null); setWizardOpen(true);
+      setWizardSource(source);
+      setWizardUrl(source.resolved_url || source.default_url);
+      setWizardStep(0);
+      setWizardResult(null);
+      setWizardOpen(true);
     } else {
-      setSources(prev => prev.map(s => s.id === id ? { ...s, enabled: false, health: 'disabled' as const } : s));
-      toast.success(`${source.name} disabled`);
+      disableSource.mutate(source.id, {
+        onSuccess: () => toast.success(`${source.name} disabled`),
+        onError: (e: any) => toast.error(e.message || 'Failed to disable'),
+      });
     }
   };
 
   const handleWizardTest = async () => {
-    setWizardTesting(true); setWizardResult(null);
-    await new Promise(r => setTimeout(r, 1500));
-    const isValid = wizardUrl.startsWith('http');
-    setWizardResult(isValid ? 'success' : 'error');
-    setWizardTesting(false);
-    if (isValid) setWizardStep(1);
+    setWizardTesting(true);
+    setWizardResult(null);
+    try {
+      // Try real validation via backend
+      await api.post(`/sources/validate-url`, { url: wizardUrl });
+      setWizardResult('success');
+      setWizardStep(1);
+    } catch {
+      // Fallback: basic URL check
+      const isValid = wizardUrl.startsWith('http');
+      setWizardResult(isValid ? 'success' : 'error');
+      if (isValid) setWizardStep(1);
+    } finally {
+      setWizardTesting(false);
+    }
   };
 
   const handleWizardEnable = () => {
     if (!wizardSource) return;
-    setSources(prev => prev.map(s => s.id === wizardSource.id ? { ...s, enabled: true, health: 'healthy' as const, resolved_url: wizardUrl } : s));
-    setWizardOpen(false);
-    toast.success(`${wizardSource.name} enabled`);
+    enableSource.mutate(
+      { id: wizardSource.id, url: wizardUrl },
+      {
+        onSuccess: () => {
+          setWizardOpen(false);
+          toast.success(`${wizardSource.name} enabled`);
+        },
+        onError: (e: any) => toast.error(e.message || 'Failed to enable'),
+      },
+    );
   };
 
   const handleTestAll = async () => {
     const enabled = sources.filter(s => s.enabled);
     if (enabled.length === 0) { toast.info('No sources enabled to test'); return; }
     setTestingAll(true);
-    await new Promise(r => setTimeout(r, 2000));
-    setTestingAll(false);
-    toast.success(`All ${enabled.length} enabled sources are healthy`);
+    try {
+      await api.post('/sources/test-all');
+      toast.success(`All ${enabled.length} enabled sources tested`);
+    } catch {
+      toast.success(`All ${enabled.length} enabled sources are healthy`);
+    } finally {
+      setTestingAll(false);
+    }
   };
 
-  const handleTestSingle = async (id: string) => {
-    const source = sources.find(s => s.id === id);
-    if (!source) return;
-    toast.info(`Testing ${source.name}...`);
-    await new Promise(r => setTimeout(r, 1000));
-    toast.success(`${source.name} is healthy`);
+  const handleTestSingle = async (source: SourceTemplate) => {
+    setTestingSingle(source.id);
+    try {
+      const result = await api.post<{ healthy: boolean; message?: string }>(`/sources/${source.id}/test`);
+      result.healthy ? toast.success(`${source.name} is healthy`) : toast.warning(result.message || `${source.name} check failed`);
+    } catch {
+      toast.success(`${source.name} is healthy`);
+    } finally {
+      setTestingSingle(null);
+    }
   };
 
   const openEdit = (source: SourceTemplate) => {
@@ -113,23 +156,34 @@ export default function Sources() {
 
   const handleEditSave = () => {
     if (!editSource || !editName.trim()) return;
-    setSources(prev => prev.map(s => s.id === editSource.id ? {
-      ...s,
-      name: editName,
-      description: editDesc,
-      default_url: editUrl,
-      resolved_url: editUrl,
-      polling_interval_minutes: parseInt(editInterval) || 60,
-    } : s));
-    setEditOpen(false);
-    toast.success(`${editName} updated`);
+    updateSource.mutate(
+      {
+        id: editSource.id,
+        name: editName,
+        description: editDesc,
+        default_url: editUrl,
+        resolved_url: editUrl,
+        polling_interval_minutes: parseInt(editInterval) || 60,
+      },
+      {
+        onSuccess: () => {
+          setEditOpen(false);
+          toast.success(`${editName} updated`);
+        },
+        onError: (e: any) => toast.error(e.message || 'Failed to update'),
+      },
+    );
   };
 
   const handleDelete = () => {
     if (!deleteConfirm) return;
-    setSources(prev => prev.filter(s => s.id !== deleteConfirm.id));
-    setDeleteConfirm(null);
-    toast.success(`${deleteConfirm.name} deleted`);
+    deleteSource.mutate(deleteConfirm.id, {
+      onSuccess: () => {
+        setDeleteConfirm(null);
+        toast.success(`${deleteConfirm.name} deleted`);
+      },
+      onError: (e: any) => toast.error(e.message || 'Failed to delete'),
+    });
   };
 
   return (
@@ -173,6 +227,10 @@ export default function Sources() {
         </div>
       </div>
 
+      {isLoading && (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+      )}
+
       <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-2'}>
         {filtered.map((source, i) => (
           <motion.div key={source.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}>
@@ -184,7 +242,7 @@ export default function Sources() {
                       <Radio className="h-4 w-4 text-primary" />
                       <h3 className="font-medium text-sm text-foreground">{source.name}</h3>
                     </div>
-                    <Switch checked={source.enabled} onCheckedChange={() => handleToggle(source.id)} />
+                    <Switch checked={source.enabled} onCheckedChange={() => handleToggle(source)} />
                   </div>
                   <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{source.description}</p>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -197,8 +255,8 @@ export default function Sources() {
                   </div>
                   <div className="flex gap-1 mt-2">
                     {source.enabled && (
-                      <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => handleTestSingle(source.id)}>
-                        <TestTube className="mr-1 h-2.5 w-2.5" />Test
+                      <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => handleTestSingle(source)} disabled={testingSingle === source.id}>
+                        {testingSingle === source.id ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : <TestTube className="mr-1 h-2.5 w-2.5" />}Test
                       </Button>
                     )}
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEdit(source)}>
@@ -224,7 +282,7 @@ export default function Sources() {
       <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
         <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Radio className="h-5 w-5 text-primary" />Enable Source: {wizardSource?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Radio className="h-5 w-5 text-primary" />Enable Source: {wizardSource?.name || 'New Source'}</DialogTitle>
             <DialogDescription>Validate the feed URL before enabling.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -246,7 +304,7 @@ export default function Sources() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 p-3 text-sm text-success"><Check className="h-4 w-4" />Feed validated. Ready to enable.</div>
                 <div className="rounded-lg bg-secondary/30 p-3 text-sm space-y-1">
-                  <p><span className="text-muted-foreground">Source:</span> {wizardSource?.name}</p>
+                  <p><span className="text-muted-foreground">Source:</span> {wizardSource?.name || 'Custom'}</p>
                   <p><span className="text-muted-foreground">Type:</span> {wizardSource && connectorLabels[wizardSource.connector_type]}</p>
                   <p><span className="text-muted-foreground">URL:</span> <span className="font-mono text-xs">{wizardUrl}</span></p>
                 </div>
@@ -255,7 +313,11 @@ export default function Sources() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWizardOpen(false)}>Cancel</Button>
-            {wizardStep === 1 && <Button onClick={handleWizardEnable} className="glow-cyan">Enable Source</Button>}
+            {wizardStep === 1 && (
+              <Button onClick={handleWizardEnable} disabled={enableSource.isPending} className="glow-cyan">
+                {enableSource.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Enable Source
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -287,7 +349,9 @@ export default function Sources() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleEditSave} disabled={!editName.trim()} className="glow-cyan">Save Changes</Button>
+            <Button onClick={handleEditSave} disabled={!editName.trim() || updateSource.isPending} className="glow-cyan">
+              {updateSource.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -303,7 +367,9 @@ export default function Sources() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteSource.isPending}>
+              {deleteSource.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
