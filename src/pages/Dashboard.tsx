@@ -54,6 +54,11 @@ export default function Dashboard() {
   const { data: feedStatus, isLoading: feedStatusLoading } = useDashboardFeedStatus(timeRange);
   const { data: mitreData, isLoading: mitreLoading } = useDashboardMitre(timeRange);
   const { data: attackedAssets, isLoading: attackedLoading } = useDashboardAttackedAssets(timeRange);
+  const { data: sourceHealth, isLoading: sourceHealthLoading } = useSourceHealth(timeRange);
+  const { data: ingestionRate, isLoading: ingestionLoading } = useIngestionRate(timeRange);
+  const { data: failedData, isLoading: failedLoading } = useFailedIngestions('failed');
+  const retryMutation = useRetryFailure();
+  const resolveMutation = useResolveFailure();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
