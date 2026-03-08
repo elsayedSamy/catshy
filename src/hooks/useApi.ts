@@ -327,7 +327,7 @@ export const useDashboardTopIOCs = (range: string) => useQuery({
 export const useDashboardRiskScore = (range: string) => useQuery({
   queryKey: ['dashboard-risk', range],
   queryFn: () => api.get<{ overallScore: number; trend: 'up' | 'down' | 'stable'; factors: { label: string; score: number }[] }>(`/dashboard/risk-score?range=${range}`),
-  enabled: enabled(), retry: 1,
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
 
 // Dashboard Recent Alerts
