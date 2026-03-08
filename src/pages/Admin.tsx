@@ -346,7 +346,7 @@ function AuditLogTab({ logs }: { logs: AuditEntry[] }) {
 
 // ── Sessions Tab ──
 function SessionsTab() {
-  const [sessions, setSessions] = useState(DEMO_SESSIONS);
+  const [sessions, setSessions] = useState<{ id: string; user_email: string; user_name: string; role: string; login_at: string; last_activity: string; ip: string; ua: string; current: boolean }[]>([]);
 
   const revokeSession = (id: string) => {
     setSessions(prev => prev.filter(s => s.id !== id));
