@@ -255,7 +255,7 @@ function AlertsContent() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Bell className="h-4 w-4 text-destructive" />
-                      <span className="font-medium text-sm">{alert.title}</span>
+                      <span className="font-medium text-sm">{alert.rule_name}</span>
                       <SeverityBadge severity={alert.severity} />
                     </div>
                     <p className="text-xs text-muted-foreground">{new Date(alert.triggered_at).toLocaleString()}</p>
