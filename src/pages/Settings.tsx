@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Key, Shield, Moon, Sun, Settings2, Bell, Clock, Zap, Loader2, Save } from 'lucide-react';
+import { User, Key, Shield, Moon, Sun, Settings2, Bell, Clock, Zap, Loader2, Save, Volume2, VolumeX, Smartphone, Monitor, RefreshCw, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import AIConfigPanel from '@/components/ai/AIConfigPanel';
+import { isSoundEnabled, setSoundEnabled, useSoundAlert } from '@/hooks/useSoundAlert';
 
 interface WsSettings {
   retention_days: number;
