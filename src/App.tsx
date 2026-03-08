@@ -32,7 +32,6 @@ import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 import Vulnerabilities from "./pages/Vulnerabilities";
 import Correlations from "./pages/Correlations";
-import NoiseReduction from "./pages/NoiseReduction";
 import Outputs from "./pages/Outputs";
 import NotFound from "./pages/NotFound";
 
