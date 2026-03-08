@@ -208,11 +208,12 @@ export default function Feed() {
 
       // STIX export — always goes to backend
       if (reportFormat === 'stix') {
-        const token = localStorage.getItem('catshy_token');
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token && token !== 'dev-token') headers['Authorization'] = `Bearer ${token}`;
-        const params = new URLSearchParams({ preset: reportPreset });
-        const res = await fetch(`${API_BASE}/stix/export?${params.toString()}`, { method: 'POST', headers, body: JSON.stringify(null) });
+        const res = await fetch(`${API_BASE}/stix/export`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ preset: reportPreset }),
+        });
         if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'STIX export failed' })); throw new Error(err.detail || `HTTP ${res.status}`); }
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
