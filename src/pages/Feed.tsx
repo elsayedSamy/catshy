@@ -569,7 +569,7 @@ export default function Feed() {
                       if (note?.trim()) {
                         triageMutation.mutate({ itemId: selectedItem.id, status: (selectedItem as any).status || 'active', analyst_notes: note.trim() }, {
                           onSuccess: () => toast.success('Note saved'),
-                          onError: () => toast.success('Note saved (dev mode)'),
+                          onError: (e: any) => toast.error(e.message || 'Failed to save note'),
                         });
                       }
                     }}>Add note</Button>
