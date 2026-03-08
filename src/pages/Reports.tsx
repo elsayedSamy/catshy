@@ -138,7 +138,7 @@ export default function Reports() {
           { heading: 'Threat Landscape', content: 'Analysis of current threat actors, campaigns, and TTPs observed during the reporting period. Key trends include increased phishing activity and ransomware campaigns targeting critical infrastructure.', type: 'narrative' },
           { heading: 'Key Indicators', content: 'Top IOCs identified: Malicious IPs, suspicious domains, and file hashes associated with active campaigns. See detailed IOC table in appendix.', type: 'evidence' },
           { heading: 'Risk Assessment', content: 'Overall risk level: MODERATE. Asset exposure has increased by 12% compared to the previous period. 3 critical vulnerabilities require immediate patching.', type: 'narrative' },
-          { heading: 'Recommendations', content: '1. Update firewall rules with latest IOC blocklist\n2. Patch CVE-2024-XXXX on exposed systems\n3. Review access logs for anomalous activity\n4. Conduct phishing awareness training', type: 'recommendation' },
+          { heading: 'Recommendations', content: '1. Update firewall rules with latest IOC blocklist\n2. Patch CVE-2024-XXXX on exposed systems\n3. Review access logs for anomalous activity\n4. Conduct phishing awareness training', type: 'recommendations' },
         ],
       };
 

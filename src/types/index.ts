@@ -220,7 +220,7 @@ export interface CaseTask {
 }
 
 // ── Reports ──
-export type ReportFormat = 'executive_pdf' | 'technical_pdf' | 'html' | 'csv' | 'json';
+export type ReportFormat = 'pdf' | 'executive_pdf' | 'technical_pdf' | 'html' | 'csv' | 'json';
 
 export interface Report {
   id: string;
