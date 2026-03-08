@@ -80,4 +80,4 @@ export const LiveFeedWidget = forwardRef<HTMLDivElement, {
       </CardContent>
     </Card>
   );
-}
+});
