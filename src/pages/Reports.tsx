@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, Download, Plus, Loader2, Clock, CalendarIcon, BarChart3, Briefcase, AlertTriangle, Bug } from 'lucide-react';
+import { FileText, Download, Plus, Loader2, Clock, CalendarIcon, BarChart3, Briefcase, AlertTriangle, Bug, FileDown } from 'lucide-react';
+import { downloadCSV, downloadJSON } from '@/lib/export';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
