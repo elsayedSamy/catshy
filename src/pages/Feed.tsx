@@ -122,6 +122,7 @@ export default function Feed() {
   const [showReport, setShowReport] = useState(false);
 
   const { data, isLoading, refetch, isFetching } = useThreatFeed(severityFilter || undefined);
+  const triageMutation = useTriageIntel();
   const rawItems = isDevMode ? DEMO_FEED : (data?.items ?? []);
 
   const filteredItems = useMemo(() => {
