@@ -372,7 +372,7 @@ export default function Feed() {
       </div>
 
       {/* Main split layout */}
-      {isLoading && !isDevMode ? (
+      {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-20 rounded-lg bg-secondary/20 animate-pulse" />)}</div>
       ) : filteredItems.length === 0 ? (
         <EmptyState icon="radio" title="No fresh intel items" description={activeFilterCount > 0 ? 'No items match filters.' : 'Enable sources to start collecting intelligence.'} actionLabel={activeFilterCount > 0 ? 'Clear Filters' : 'Enable Sources'} onAction={activeFilterCount > 0 ? clearFilters : () => navigate('/sources')} />
