@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/hooks/useTheme';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +41,7 @@ const DEFAULT_SETTINGS: WsSettings = {
 export default function Settings() {
   const { user, canAccess } = useAuth();
   const isAdmin = canAccess(['system_owner', 'team_admin']);
-  const [darkMode, setDarkMode] = useState(!document.documentElement.classList.contains('light'));
+  const { isDark, toggleTheme } = useTheme();
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -64,13 +65,7 @@ export default function Settings() {
     loadSettings();
   }, []);
 
-  const toggleTheme = () => {
-    const newDark = !darkMode;
-    setDarkMode(newDark);
-    document.documentElement.classList.toggle('light', !newDark);
-    document.documentElement.classList.toggle('dark', newDark);
-    localStorage.setItem('catshy_theme', newDark ? 'dark' : 'light');
-  };
+  // toggleTheme is from useTheme hook — no local state needed
 
   const handlePasswordChange = async () => {
     if (newPw !== confirmPw) { toast.error('Passwords do not match'); return; }
@@ -128,9 +123,9 @@ export default function Settings() {
 
       {/* Appearance */}
       <Card className="border-border bg-card">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base">{darkMode ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}Appearance</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base">{isDark ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}Appearance</CardTitle></CardHeader>
         <CardContent>
-          <Button variant="outline" size="sm" onClick={toggleTheme}>Switch to {darkMode ? 'Light' : 'Dark'} Mode</Button>
+          <Button variant="outline" size="sm" onClick={toggleTheme}>Switch to {isDark ? 'Light' : 'Dark'} Mode</Button>
         </CardContent>
       </Card>
 

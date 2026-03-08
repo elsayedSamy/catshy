@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Bell, Moon, Sun, User, LogOut, Command, Check, Trash2, AlertTriangle, CheckCircle2, Info, RefreshCw, Building2, ChevronRight, Settings, Menu } from 'lucide-react';
@@ -62,7 +63,7 @@ interface TopBarProps {
 export function TopBar({ onMenuClick, isMobile }: TopBarProps) {
   const { user, logout, workspaceId, switchWorkspace, isDevMode } = useAuth();
   const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState(true);
+  const { isDark, toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -78,10 +79,7 @@ export function TopBar({ onMenuClick, isMobile }: TopBarProps) {
   const currentWorkspace = workspaces?.find(w => w.id === workspaceId);
   const allWorkspaces = workspaces || [];
 
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle('light', darkMode);
-  };
+  // toggleTheme is from useTheme hook
 
   const handleMarkAsRead = (id: string) => markRead.mutate(id);
   const handleMarkAllRead = () => markAllRead.mutate(undefined);
@@ -160,7 +158,7 @@ export function TopBar({ onMenuClick, isMobile }: TopBarProps) {
 
         {/* Theme */}
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={toggleTheme}>
-          {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
         {/* User */}
