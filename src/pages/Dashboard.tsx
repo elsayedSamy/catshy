@@ -149,7 +149,8 @@ export default function Dashboard() {
         <RiskScoreOverview data={riskData} isLoading={riskLoading} />
       </div>
 
-      {/* MITRE ATT&CK Heatmap */}
+      {/* ── MITRE ATT&CK ── */}
+      <SectionHeader icon={Shield} title="MITRE ATT&CK" subtitle="Technique coverage heatmap" />
       <MitreHeatmap data={mitreData} isLoading={mitreLoading} />
 
       {/* Source Health + Ingestion Rate — operational streaming section */}
