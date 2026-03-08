@@ -59,27 +59,15 @@ export function TopBar() {
   };
 
   const handleMarkAsRead = (id: string) => {
-    if (isDevMode) {
-      setDevNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } else {
-      markRead.mutate(id);
-    }
+    markRead.mutate(id);
   };
 
   const handleMarkAllRead = () => {
-    if (isDevMode) {
-      setDevNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } else {
-      markAllRead.mutate(undefined);
-    }
+    markAllRead.mutate(undefined);
   };
 
   const handleClearAll = () => {
-    if (isDevMode) {
-      setDevNotifications([]);
-    } else {
-      clearAll.mutate(undefined);
-    }
+    clearAll.mutate(undefined);
   };
 
   const handleSwitchWorkspace = async (wsId: string) => {
