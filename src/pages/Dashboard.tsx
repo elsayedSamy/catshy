@@ -26,6 +26,7 @@ import { AttackedAssets } from '@/components/dashboard/AttackedAssets';
 import { SourceHealthWidget } from '@/components/dashboard/SourceHealth';
 import { IngestionRateWidget } from '@/components/dashboard/IngestionRate';
 import { FailedIngestions } from '@/components/dashboard/FailedIngestions';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import {
   useDashboardKpis, useDashboardFeed, useDashboardMapEvents,
   useDashboardPulse, useDashboardChanges,
