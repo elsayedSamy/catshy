@@ -33,7 +33,7 @@ export default function Reports() {
   const { data: apiReports = [], isLoading } = useReports();
   const generateReport = useGenerateReport();
 
-  const [localReports, setLocalReports] = useState<Report[]>([]);
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('daily_brief');
   const [title, setTitle] = useState('');
