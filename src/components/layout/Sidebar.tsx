@@ -29,6 +29,7 @@ const navSections = [
     items: [
       { label: 'AI Analysis', path: '/ai', icon: Brain },
       { label: 'Correlations', path: '/correlations', icon: GitMerge },
+      { label: 'Noise Reduction', path: '/noise-reduction', icon: VolumeX },
       { label: 'Leak Hub', path: '/leaks', icon: AlertTriangle },
       { label: 'Graph Explorer', path: '/graph', icon: Globe },
       { label: 'Global Threats', path: '/global-threat-monitoring', icon: MapIcon },
