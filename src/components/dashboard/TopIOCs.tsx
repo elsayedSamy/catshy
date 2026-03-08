@@ -1,4 +1,3 @@
-import { forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,7 +18,7 @@ const typeColors: Record<string, string> = {
   cve: 'border-accent/30 text-accent',
 };
 
-export const TopIOCs = forwardRef<HTMLDivElement, { items?: IOCItem[]; isLoading: boolean }>(function TopIOCs({ items = [], isLoading }, ref) {
+export function TopIOCs({ items = [], isLoading }: { items?: IOCItem[]; isLoading: boolean }) {
   return (
     <Card className="border-border bg-card h-full">
       <CardHeader className="pb-2">
@@ -47,4 +46,4 @@ export const TopIOCs = forwardRef<HTMLDivElement, { items?: IOCItem[]; isLoading
       </CardContent>
     </Card>
   );
-});
+}

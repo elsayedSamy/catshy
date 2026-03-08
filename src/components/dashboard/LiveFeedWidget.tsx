@@ -1,4 +1,4 @@
-import { useState, forwardRef } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,11 +15,11 @@ const severityStyle: Record<string, string> = {
   info: 'bg-muted text-muted-foreground border-border',
 };
 
-export const LiveFeedWidget = forwardRef<HTMLDivElement, {
+export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
   items?: IntelItem[];
   isLoading: boolean;
   onRefresh?: () => void;
-}>(function LiveFeedWidget({ items = [], isLoading, onRefresh }, ref) {
+}) {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<SeverityLevel | 'all'>('all');
   const filtered = filter === 'all' ? items : items.filter(i => i.severity === filter);
@@ -80,4 +80,4 @@ export const LiveFeedWidget = forwardRef<HTMLDivElement, {
       </CardContent>
     </Card>
   );
-});
+}
