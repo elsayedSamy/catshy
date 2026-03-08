@@ -236,7 +236,18 @@ class IngestionPipeline:
             "geo_enriched": best_geo is not None,
         }
 
-        # 10. Campaign auto-grouping
+        # 10. MITRE ATT&CK mapping
+        mitre = extract_mitre_from_text(
+            f"{title} {description}",
+            tags=entry.get("tags", []),
+        )
+        if mitre["technique_ids"]:
+            item.mitre_technique_ids = mitre["technique_ids"]
+            item.mitre_tactics = mitre["tactics"]
+            item.mitre_mapping_confidence = mitre["confidence"]
+            item.mitre_mapping_source = mitre["source"]
+
+        # 11. Campaign auto-grouping
         campaign = self._detect_campaign(title, observables)
         if campaign:
             item.campaign_id = campaign["id"]

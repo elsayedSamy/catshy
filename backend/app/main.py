@@ -91,3 +91,4 @@ app.include_router(workspaces_router, prefix="/api/workspaces", tags=["workspace
 app.include_router(integrations_router, prefix="/api/integrations", tags=["integrations"])
 app.include_router(settings_router, prefix="/api/settings", tags=["settings"])
 app.include_router(source_health_router, prefix="/api/sources", tags=["source-health"])
+app.include_router(lifecycle_router, prefix="/api/intel", tags=["lifecycle"])

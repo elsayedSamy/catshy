@@ -51,6 +51,12 @@ def _item_to_dict(i: IntelItem) -> dict:
         "confidence_score": i.confidence_score or 0,
         "risk_score": i.risk_score or 0,
         "tags": i.tags or [],
+        # Lifecycle
+        "status": i.status or "active",
+        "analyst_verdict": i.analyst_verdict,
+        # MITRE
+        "mitre_technique_ids": i.mitre_technique_ids or [],
+        "mitre_tactics": i.mitre_tactics or [],
     }
 
 
