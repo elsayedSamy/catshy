@@ -62,7 +62,7 @@ interface TopBarProps {
 export function TopBar({ onMenuClick, isMobile }: TopBarProps) {
   const { user, logout, workspaceId, switchWorkspace, isDevMode } = useAuth();
   const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState(true);
+  const { isDark, toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const queryClient = useQueryClient();
 
