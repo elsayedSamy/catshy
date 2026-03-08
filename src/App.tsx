@@ -78,7 +78,7 @@ const App = () => (
               <Route path="global-threats" element={<Navigate to="/global-threat-monitoring" replace />} />
               <Route path="playbooks" element={<Playbooks />} />
               <Route path="integrations" element={<Integrations />} />
-              <Route path="connectors" element={<Connectors />} />
+              <Route path="connectors" element={<Navigate to="/integrations" replace />} />
               <Route path="outputs" element={<Outputs />} />
               <Route path="admin" element={<Admin />} />
               <Route path="settings" element={<Settings />} />
