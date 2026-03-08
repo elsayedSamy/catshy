@@ -84,6 +84,14 @@ export default function Dashboard() {
           </div>
         </form>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Live indicator */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-accent" />
+            </span>
+            <span className="text-[10px] font-medium text-accent uppercase tracking-wider">Live</span>
+          </div>
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-[120px] h-9 text-xs bg-secondary/50 border-border">
               <Clock className="h-3 w-3 mr-1" /><SelectValue />
