@@ -124,4 +124,22 @@
     background: hsl(var(--border));
     border-radius: 3px;
   }
+
+  /* Shimmer skeleton animation */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.08) 40%,
+      hsl(var(--muted-foreground) / 0.12) 50%,
+      hsl(var(--muted-foreground) / 0.08) 60%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
 }

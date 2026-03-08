@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Clock, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History } from 'lucide-react';
+import { Search, Clock, Settings2, ArrowRight, Radio, Database, RefreshCw, FileText, History, Activity, BarChart3, Shield, Cpu, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ import { AttackedAssets } from '@/components/dashboard/AttackedAssets';
 import { SourceHealthWidget } from '@/components/dashboard/SourceHealth';
 import { IngestionRateWidget } from '@/components/dashboard/IngestionRate';
 import { FailedIngestions } from '@/components/dashboard/FailedIngestions';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import {
   useDashboardKpis, useDashboardFeed, useDashboardMapEvents,
   useDashboardPulse, useDashboardChanges,
@@ -136,26 +137,30 @@ export default function Dashboard() {
       {/* KPI Row */}
       <KpiCards data={kpis} isLoading={kpisLoading} />
 
-      {/* Threat Pulse */}
+      {/* ── Threat Pulse ── */}
+      <SectionHeader icon={Zap} title="Threat Pulse" subtitle="Real-time threat signals" />
       <ThreatPulse data={pulseData} isLoading={pulseLoading} />
 
-      {/* Charts Row: Severity + Timeline + Risk — responsive grid */}
+      {/* ── Analytics ── */}
+      <SectionHeader icon={BarChart3} title="Analytics" subtitle="Severity, timeline & risk" />
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <SeverityDistribution data={severityData} isLoading={severityLoading} />
         <ThreatTimeline data={timelineData} isLoading={timelineLoading} />
         <RiskScoreOverview data={riskData} isLoading={riskLoading} />
       </div>
 
-      {/* MITRE ATT&CK Heatmap */}
+      {/* ── MITRE ATT&CK ── */}
+      <SectionHeader icon={Shield} title="MITRE ATT&CK" subtitle="Technique coverage heatmap" />
       <MitreHeatmap data={mitreData} isLoading={mitreLoading} />
 
-      {/* Source Health + Ingestion Rate — operational streaming section */}
+      {/* ── Operational Health ── */}
+      <SectionHeader icon={Cpu} title="Operational Health" subtitle="Sources, ingestion & failures" />
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
         <SourceHealthWidget items={sourceHealth?.items} isLoading={sourceHealthLoading} />
         <IngestionRateWidget data={ingestionRate} isLoading={ingestionLoading} />
       </div>
 
-      {/* Failed Ingestions + Feed Status + What Changed */}
+      {/* Failures + Feed + Changes */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <FailedIngestions
           items={failedData?.items}
@@ -167,7 +172,8 @@ export default function Dashboard() {
         <WhatChanged data={changesData} isLoading={changesLoading} />
       </div>
 
-      {/* Triage + Recent Alerts — full width row */}
+      {/* ── Intelligence ── */}
+      <SectionHeader icon={Activity} title="Intelligence" subtitle="Triage, alerts & assets" />
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-[1fr_1fr]">
         <TriageQueue items={feedData?.items ?? []} isLoading={feedLoading} />
         <RecentAlerts items={recentAlerts} isLoading={alertsLoading} />
