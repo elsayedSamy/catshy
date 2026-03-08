@@ -135,8 +135,20 @@ export default function Dashboard() {
       {/* MITRE ATT&CK Heatmap */}
       <MitreHeatmap data={mitreData} isLoading={mitreLoading} />
 
-      {/* Feed Status + What Changed — full width row */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+      {/* Source Health + Ingestion Rate — operational streaming section */}
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+        <SourceHealthWidget items={sourceHealth?.items} isLoading={sourceHealthLoading} />
+        <IngestionRateWidget data={ingestionRate} isLoading={ingestionLoading} />
+      </div>
+
+      {/* Failed Ingestions + Feed Status + What Changed */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <FailedIngestions
+          items={failedData?.items}
+          isLoading={failedLoading}
+          onRetry={(id) => retryMutation.mutate(id)}
+          onResolve={(id) => resolveMutation.mutate(id)}
+        />
         <FeedStatus items={feedStatus} isLoading={feedStatusLoading} />
         <WhatChanged data={changesData} isLoading={changesLoading} />
       </div>
