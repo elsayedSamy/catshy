@@ -141,6 +141,50 @@
     transform: translateY(-1px);
   }
 
+  /* Dashboard widget card with refined hover */
+  .widget-card {
+    background: hsl(var(--card) / 0.7);
+    border: 1px solid hsl(var(--border) / 0.6);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .widget-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .widget-card:hover {
+    border-color: hsl(var(--primary) / 0.2);
+    box-shadow: 0 4px 24px -8px hsl(var(--primary) / 0.1),
+                inset 0 1px 0 hsl(var(--primary) / 0.05);
+    transform: translateY(-1px);
+  }
+  .widget-card:hover::before {
+    opacity: 1;
+  }
+
+  /* Stagger animation for list items */
+  .stagger-item {
+    animation: stagger-in 0.3s ease-out both;
+  }
+  @keyframes stagger-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Glow ring for active/selected states */
+  .glow-ring {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2),
+                0 0 12px -2px hsl(var(--primary) / 0.15);
+  }
+
   /* Pulse dot for live indicators */
   .pulse-dot {
     position: relative;

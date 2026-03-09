@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { AlertTriangle, Crosshair, Shield, Zap, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { AlertTriangle, Crosshair, Shield, Zap, TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
+import { useNavigate } from 'react-router-dom';
 
 export interface KpiData {
   criticalAlerts: number;
@@ -30,21 +31,19 @@ function AnimatedValue({ value }: { value: number }) {
 }
 
 const kpiConfig = [
-  { key: 'criticalAlerts' as const, label: 'Critical Alerts', timed: true, icon: AlertTriangle, gradient: 'from-destructive/10 to-destructive/5', iconBg: 'bg-destructive/10 border-destructive/20', iconColor: 'text-destructive', deltaKey: 'criticalAlertsDelta' as const },
-  { key: 'newIocs' as const, label: 'New High-Conf IOCs', timed: true, icon: Crosshair, gradient: 'from-orange-500/10 to-orange-500/5', iconBg: 'bg-orange-500/10 border-orange-500/20', iconColor: 'text-orange-400', deltaKey: 'newIocsDelta' as const },
-  { key: 'assetsAffected' as const, label: 'Assets Affected', timed: false, icon: Shield, gradient: 'from-primary/10 to-primary/5', iconBg: 'bg-primary/10 border-primary/20', iconColor: 'text-primary', deltaKey: null },
-  { key: 'activeCampaigns' as const, label: 'Active Campaigns', timed: false, icon: Zap, gradient: 'from-accent/10 to-accent/5', iconBg: 'bg-accent/10 border-accent/20', iconColor: 'text-accent', deltaKey: null },
+  { key: 'criticalAlerts' as const, label: 'Critical Alerts', timed: true, icon: AlertTriangle, gradient: 'from-destructive/10 to-destructive/5', iconBg: 'bg-destructive/10 border-destructive/20', iconColor: 'text-destructive', deltaKey: 'criticalAlertsDelta' as const, link: '/alerts' },
+  { key: 'newIocs' as const, label: 'New High-Conf IOCs', timed: true, icon: Crosshair, gradient: 'from-orange-500/10 to-orange-500/5', iconBg: 'bg-orange-500/10 border-orange-500/20', iconColor: 'text-orange-400', deltaKey: 'newIocsDelta' as const, link: '/feed' },
+  { key: 'assetsAffected' as const, label: 'Assets Affected', timed: false, icon: Shield, gradient: 'from-primary/10 to-primary/5', iconBg: 'bg-primary/10 border-primary/20', iconColor: 'text-primary', deltaKey: null, link: '/assets' },
+  { key: 'activeCampaigns' as const, label: 'Active Campaigns', timed: false, icon: Zap, gradient: 'from-accent/10 to-accent/5', iconBg: 'bg-accent/10 border-accent/20', iconColor: 'text-accent', deltaKey: null, link: '/investigations' },
 ];
 
 const timeRangeLabels: Record<string, string> = {
-  '1h': '1h',
-  '6h': '6h',
-  '24h': '24h',
-  '7d': '7d',
-  '30d': '30d',
+  '1h': '1h', '6h': '6h', '24h': '24h', '7d': '7d', '30d': '30d',
 };
 
 export function KpiCards({ data, isLoading, timeRange = '24h' }: { data?: KpiData; isLoading: boolean; timeRange?: string }) {
+  const navigate = useNavigate();
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {kpiConfig.map((kpi, i) => {
@@ -56,12 +55,17 @@ export function KpiCards({ data, isLoading, timeRange = '24h' }: { data?: KpiDat
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08, duration: 0.35 }}
           >
-            <div className="glass-card relative overflow-hidden rounded-xl p-4">
+            <div
+              className="glass-card relative overflow-hidden rounded-xl p-4 cursor-pointer group"
+              onClick={() => navigate(kpi.link)}
+            >
               {/* Background gradient accent */}
               <div className={`absolute inset-0 bg-gradient-to-br ${kpi.gradient} pointer-events-none`} />
               <div className="relative flex items-start justify-between">
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">{kpi.label}{kpi.timed ? ` (${timeRangeLabels[timeRange] || timeRange})` : ''}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
+                    {kpi.label}{kpi.timed ? ` (${timeRangeLabels[timeRange] || timeRange})` : ''}
+                  </p>
                   {isLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
@@ -76,9 +80,15 @@ export function KpiCards({ data, isLoading, timeRange = '24h' }: { data?: KpiDat
                     </div>
                   )}
                 </div>
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${kpi.iconBg}`}>
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${kpi.iconBg} group-hover:scale-110 transition-transform duration-200`}>
                   <Icon className={`h-4.5 w-4.5 ${kpi.iconColor}`} />
                 </div>
+              </div>
+              {/* Quick action hint */}
+              <div className="absolute bottom-2 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <span className="flex items-center gap-1 text-[9px] text-primary/70">
+                  View details <ArrowRight className="h-2.5 w-2.5" />
+                </span>
               </div>
             </div>
           </motion.div>
