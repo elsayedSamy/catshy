@@ -545,12 +545,18 @@ function Legend() {
 }
 
 export function GlobeView() {
-  const { filteredEvents, setSelectedEvent } = useThreatContext();
+  const { filteredEvents, setSelectedEvent, selectedEvent, setZoomToEvent, zoomToEvent } = useThreatContext();
+
+  const handleSelect = useCallback((ev: ThreatEvent) => {
+    setSelectedEvent(ev);
+    setZoomToEvent(ev);
+  }, [setSelectedEvent, setZoomToEvent]);
 
   return (
     <div className="w-full h-full relative">
       <Canvas camera={{ position: [0, 1.2, 4.2], fov: 45 }} gl={{ antialias: true, alpha: false }}>
         <SceneSetup />
+        <CameraController target={zoomToEvent} />
         <ambientLight intensity={0.15} color="#c0e0ff" />
         <directionalLight position={[5, 3, 5]} intensity={0.8} color="#e0f0ff" />
         <directionalLight position={[-4, 1, -3]} intensity={0.3} color="#80b0e0" />
@@ -559,7 +565,7 @@ export function GlobeView() {
           <Stars radius={200} depth={120} count={4000} factor={3.5} saturation={0.1} fade speed={0.08} />
           <RealisticEarth />
           <CountryLabels />
-          <EventPoints events={filteredEvents} onSelect={setSelectedEvent} />
+          <EventPoints events={filteredEvents} onSelect={handleSelect} />
           <AttackArcs events={filteredEvents} />
           <HeatmapGlow events={filteredEvents} />
           <TargetMarkers events={filteredEvents} />
