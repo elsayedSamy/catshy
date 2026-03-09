@@ -36,7 +36,9 @@ export default function Sources() {
   const deleteSource = useDeleteSource();
 
   const sources: SourceTemplate[] = useMemo(() => {
-    return backendSources ?? [];
+    if (backendSources && backendSources.length > 0) return backendSources;
+    // Fallback to local catalog when backend is unavailable
+    return SOURCES_CATALOG;
   }, [backendSources]);
 
   const [searchQuery, setSearchQuery] = useState('');
