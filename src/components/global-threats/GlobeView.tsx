@@ -361,7 +361,7 @@ function HeatmapGlow({ events }: { events: ThreatEvent[] }) {
 
 function SceneSetup() {
   const { gl } = useThree();
-  useEffect(() => { gl.setClearColor('#030810'); }, [gl]);
+  useEffect(() => { gl.setClearColor('#0a1220'); }, [gl]);
   return null;
 }
 
