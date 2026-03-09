@@ -531,6 +531,7 @@ export function GlobeView() {
           <CountryLabels />
           <EventPoints events={filteredEvents} onSelect={setSelectedEvent} />
           <AttackArcs events={filteredEvents} />
+          <HeatmapGlow events={filteredEvents} />
           <TargetMarkers events={filteredEvents} />
         </Suspense>
         <OrbitControls
