@@ -2,8 +2,9 @@
  * GlobeView — Dark cyber-aesthetic 3D threat globe with grid wireframe Earth.
  */
 import { useRef, useMemo, useEffect, useCallback, Suspense } from 'react';
-import { Canvas, useThree, useFrame, ThreeEvent } from '@react-three/fiber';
+import { Canvas, useThree, useFrame, ThreeEvent, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stars, Line, Html } from '@react-three/drei';
+import { TextureLoader } from 'three';
 import * as THREE from 'three';
 import { useThreatContext } from './ThreatContext';
 import { ThreatEvent, SEVERITY_COLORS } from './types';
@@ -92,102 +93,95 @@ const COUNTRY_LABELS: { name: string; lat: number; lon: number; size?: 'lg' | 'm
   { name: 'N. Korea', lat: 40, lon: 127, size: 'sm' },
 ];
 
-/* ── Dark Cyber Globe with grid wireframe ── */
-function CyberEarth() {
-  const gridRef = useRef<THREE.Group>(null);
+/* ── Realistic Earth with blue marble texture ── */
+function RealisticEarth() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [colorMap, bumpMap] = useLoader(TextureLoader, [
+    '/textures/earth-blue-marble.jpg',
+    '/textures/earth-topology.png',
+  ]);
 
-  // Create latitude/longitude grid lines
-  const gridLines = useMemo(() => {
-    const lines: { points: THREE.Vector3[]; opacity: number }[] = [];
-    
-    // Latitude lines
-    for (let lat = -80; lat <= 80; lat += 20) {
-      const points: THREE.Vector3[] = [];
-      for (let lon = -180; lon <= 180; lon += 3) {
-        points.push(latLonTo3(lat, lon, R * 1.002));
-      }
-      lines.push({ points, opacity: lat === 0 ? 0.18 : 0.06 });
+  useEffect(() => {
+    if (colorMap) {
+      colorMap.colorSpace = THREE.SRGBColorSpace;
+      colorMap.anisotropy = 8;
     }
-    
-    // Longitude lines
-    for (let lon = -180; lon < 180; lon += 20) {
-      const points: THREE.Vector3[] = [];
-      for (let lat = -90; lat <= 90; lat += 3) {
-        points.push(latLonTo3(lat, lon, R * 1.002));
-      }
-      lines.push({ points, opacity: lon === 0 ? 0.18 : 0.06 });
+  }, [colorMap]);
+
+  // Subtle slow self-rotation
+  useFrame((_, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += delta * 0.015;
     }
-    
-    return lines;
-  }, []);
+  });
 
   return (
     <group>
-      {/* Core dark sphere */}
-      <mesh>
+      {/* Main Earth sphere */}
+      <mesh ref={meshRef}>
         <sphereGeometry args={[R, 128, 128]} />
         <meshPhongMaterial
-          color="#0a0f1a"
-          emissive="#061020"
-          emissiveIntensity={0.4}
-          shininess={5}
-          specular={new THREE.Color('#0d2040')}
-          transparent
-          opacity={0.97}
+          map={colorMap}
+          bumpMap={bumpMap}
+          bumpScale={0.04}
+          shininess={15}
+          specular={new THREE.Color('#1a3a5c')}
+          emissive="#050d18"
+          emissiveIntensity={0.15}
         />
       </mesh>
 
-      {/* Grid wireframe */}
-      <group ref={gridRef}>
-        {gridLines.map((line, i) => (
-          <Line
-            key={i}
-            points={line.points.map(p => [p.x, p.y, p.z] as [number, number, number])}
-            color="#00e5ff"
-            lineWidth={0.4}
-            transparent
-            opacity={line.opacity}
-          />
-        ))}
-      </group>
+      {/* Thin cloud/haze layer */}
+      <mesh>
+        <sphereGeometry args={[R * 1.003, 96, 96]} />
+        <meshPhongMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.03}
+          depthWrite={false}
+        />
+      </mesh>
 
-      {/* Inner glow — deep teal */}
+      {/* Inner atmosphere — blue rim */}
       <mesh>
-        <sphereGeometry args={[R * 1.005, 64, 64]} />
+        <sphereGeometry args={[R * 1.02, 64, 64]} />
         <meshBasicMaterial
-          color="#004d66"
+          color="#4d9eff"
           transparent
-          opacity={0.06}
-          side={THREE.FrontSide}
-        />
-      </mesh>
-      {/* Mid atmosphere — cyan ring */}
-      <mesh>
-        <sphereGeometry args={[R * 1.04, 64, 64]} />
-        <meshBasicMaterial
-          color="#00bcd4"
-          transparent
-          opacity={0.04}
+          opacity={0.08}
           side={THREE.BackSide}
         />
       </mesh>
-      {/* Outer atmosphere — teal haze */}
+
+      {/* Mid atmosphere — softer blue */}
       <mesh>
-        <sphereGeometry args={[R * 1.1, 48, 48]} />
+        <sphereGeometry args={[R * 1.06, 64, 64]} />
         <meshBasicMaterial
-          color="#00acc1"
+          color="#3a7bd5"
           transparent
-          opacity={0.025}
+          opacity={0.05}
           side={THREE.BackSide}
         />
       </mesh>
-      {/* Outermost glow */}
+
+      {/* Outer atmosphere glow */}
       <mesh>
-        <sphereGeometry args={[R * 1.18, 32, 32]} />
+        <sphereGeometry args={[R * 1.12, 48, 48]} />
         <meshBasicMaterial
-          color="#0097a7"
+          color="#1e5bb8"
           transparent
-          opacity={0.012}
+          opacity={0.03}
+          side={THREE.BackSide}
+        />
+      </mesh>
+
+      {/* Outermost subtle glow */}
+      <mesh>
+        <sphereGeometry args={[R * 1.2, 32, 32]} />
+        <meshBasicMaterial
+          color="#1048a0"
+          transparent
+          opacity={0.015}
           side={THREE.BackSide}
         />
       </mesh>
@@ -225,11 +219,11 @@ function CountryLabels() {
             `}
             style={{
               color: label.size === 'lg'
-                ? 'rgba(0,229,255,0.7)'
+                ? 'rgba(255,255,255,0.85)'
                 : label.size === 'md'
-                ? 'rgba(0,229,255,0.5)'
-                : 'rgba(0,229,255,0.3)',
-              textShadow: '0 0 10px rgba(0,229,255,0.4), 0 0 20px rgba(0,229,255,0.15)',
+                ? 'rgba(220,235,255,0.65)'
+                : 'rgba(200,220,255,0.4)',
+              textShadow: '0 0 6px rgba(30,91,184,0.6), 0 1px 2px rgba(0,0,0,0.8)',
             }}
           >
             {label.name}
@@ -459,7 +453,7 @@ export function GlobeView() {
         <pointLight position={[-5, -3, -5]} intensity={0.1} color="#4080b0" />
         <Suspense fallback={null}>
           <Stars radius={200} depth={120} count={4000} factor={3.5} saturation={0.1} fade speed={0.08} />
-          <CyberEarth />
+          <RealisticEarth />
           <CountryLabels />
           <EventPoints events={filteredEvents} onSelect={setSelectedEvent} />
           <AttackArcs events={filteredEvents} />
