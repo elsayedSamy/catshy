@@ -131,9 +131,14 @@ export default function Integrations() {
         };
       });
       setProviders(merged);
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to load integrations');
-      setProviders([]);
+    } catch {
+      // Fallback: show catalog with default state when backend is unavailable
+      const fallback: Provider[] = PROVIDER_CATALOG.map(cat => ({
+        ...cat,
+        id: null, enabled: false, status: 'not_configured',
+        masked_key: null, last_success: null, last_error: null,
+      }));
+      setProviders(fallback);
     } finally {
       setLoading(false);
     }
