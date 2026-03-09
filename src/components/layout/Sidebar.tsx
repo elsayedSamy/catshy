@@ -16,20 +16,19 @@ const navSections = [
     title: 'Core',
     items: [
       { label: 'Dashboard', path: '/dashboard', icon: Home },
-      
       { label: 'Intel Feed', path: '/feed', icon: Rss },
       { label: 'History', path: '/history', icon: History },
       { label: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert },
       { label: 'Global Search', path: '/search', icon: Search },
       { label: 'Assets', path: '/assets', icon: Database },
       { label: 'Sources', path: '/sources', icon: Radio },
+      { label: 'Reports', path: '/reports', icon: FileText },
     ],
   },
   {
     title: 'Intelligence',
     items: [
       { label: 'AI Analysis', path: '/ai', icon: Brain },
-      
       { label: 'Leak Hub', path: '/leaks', icon: AlertTriangle },
       { label: 'Graph Explorer', path: '/graph', icon: Globe },
       { label: 'Global Threats', path: '/global-threat-monitoring', icon: MapIcon },
@@ -40,7 +39,6 @@ const navSections = [
     items: [
       { label: 'Alerts', path: '/alerts', icon: Bell },
       { label: 'Investigations', path: '/investigations', icon: FileSearch },
-      { label: 'Reports', path: '/reports', icon: FileText },
       { label: 'Playbooks', path: '/playbooks', icon: Workflow },
     ],
   },
