@@ -27,7 +27,7 @@ interface Provider {
   last_error: string | null;
 }
 
-// ── Full catalog: Enrichment + Notification + Premium CTI + ASM + Leaks ──
+// ── Full catalog: Active API services — Enrichment, SIEM/SOAR, Notifications, CTI, ASM, Leaks ──
 const PROVIDER_CATALOG: Omit<Provider, 'id' | 'enabled' | 'status' | 'masked_key' | 'last_success' | 'last_error'>[] = [
   // Enrichment (free-tier / API-key)
   { provider: 'virustotal', name: 'VirusTotal', description: 'File, URL & IP reputation scanning', category: 'Enrichment', tier: 'Free' },
@@ -39,10 +39,24 @@ const PROVIDER_CATALOG: Omit<Provider, 'id' | 'enabled' | 'status' | 'masked_key
   { provider: 'urlscan', name: 'URLscan.io', description: 'URL scanning & phishing analysis', category: 'Enrichment', tier: 'Free' },
   { provider: 'hibp', name: 'Have I Been Pwned', description: 'Breach & credential exposure lookup', category: 'Enrichment', tier: 'Free' },
 
+  // SIEM / SOAR
+  { provider: 'splunk', name: 'Splunk', description: 'Forward alerts & IOCs to Splunk SIEM', category: 'SIEM / SOAR', tier: 'Enterprise' },
+  { provider: 'elastic-siem', name: 'Elastic SIEM', description: 'Push indicators to Elasticsearch Security', category: 'SIEM / SOAR', tier: 'Premium' },
+  { provider: 'qradar', name: 'IBM QRadar', description: 'Send offenses & reference sets to QRadar', category: 'SIEM / SOAR', tier: 'Enterprise' },
+  { provider: 'sentinel', name: 'Microsoft Sentinel', description: 'Push TI indicators to Sentinel workspace', category: 'SIEM / SOAR', tier: 'Enterprise' },
+  { provider: 'chronicle', name: 'Google Chronicle', description: 'Ingest IOCs into Chronicle SOAR', category: 'SIEM / SOAR', tier: 'Enterprise' },
+  { provider: 'palo-cortex-xsoar', name: 'Cortex XSOAR', description: 'Create incidents & run playbooks in XSOAR', category: 'SIEM / SOAR', tier: 'Enterprise' },
+  { provider: 'demisto', name: 'TheHive / Cortex', description: 'Push cases & observables to TheHive', category: 'SIEM / SOAR', tier: 'Free' },
+  { provider: 'swimlane', name: 'Swimlane', description: 'Low-code SOAR automation platform', category: 'SIEM / SOAR', tier: 'Premium' },
+
   // Notifications / Ticketing
   { provider: 'slack', name: 'Slack', description: 'Team messaging & alert notifications', category: 'Notifications', tier: 'Free' },
   { provider: 'msteams', name: 'Microsoft Teams', description: 'Teams channel notifications', category: 'Notifications', tier: 'Free' },
   { provider: 'jira', name: 'Jira', description: 'Issue tracking & case management', category: 'Notifications', tier: 'Free' },
+  { provider: 'pagerduty', name: 'PagerDuty', description: 'On-call alerting & incident management', category: 'Notifications', tier: 'Premium' },
+  { provider: 'opsgenie', name: 'Opsgenie', description: 'Alert & on-call management', category: 'Notifications', tier: 'Premium' },
+  { provider: 'email-smtp', name: 'Email (SMTP)', description: 'Send report & alert emails via SMTP', category: 'Notifications', tier: 'Free' },
+  { provider: 'webhook-custom', name: 'Custom Webhook', description: 'Push events to any HTTP endpoint', category: 'Notifications', tier: 'Free' },
 
   // Premium CTI / TIP
   { provider: 'recorded-future', name: 'Recorded Future', description: 'Intelligence cloud platform', category: 'CTI / TIP', tier: 'Enterprise' },
@@ -76,7 +90,7 @@ const PROVIDER_CATALOG: Omit<Provider, 'id' | 'enabled' | 'status' | 'masked_key
   { provider: 'darkowl', name: 'DarkOwl', description: 'Darknet data intelligence', category: 'Leaks / Dark Web', tier: 'Enterprise' },
 ];
 
-const CATEGORIES = ['All', 'Enrichment', 'Notifications', 'CTI / TIP', 'ASM / Exposure', 'Leaks / Dark Web'];
+const CATEGORIES = ['All', 'Enrichment', 'SIEM / SOAR', 'Notifications', 'CTI / TIP', 'ASM / Exposure', 'Leaks / Dark Web'];
 
 const tierColor: Record<string, string> = {
   Free: 'bg-accent/20 text-accent',
