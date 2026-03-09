@@ -6,7 +6,8 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { useThreatContext } from './ThreatContext';
 import { SEVERITY_COLORS, CATEGORY_LABELS } from './types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronDown, ChevronUp, Eye, EyeOff, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, EyeOff, Zap, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 function relativeTime(ts: string) {
   const diff = Date.now() - new Date(ts).getTime();
