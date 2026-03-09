@@ -249,12 +249,21 @@ export default function Integrations() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Integrations</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {connectedCount} connected · {enabledCount} enabled · {providers.length} available providers
+            API connections for enrichment, SIEM/SOAR, notifications & premium CTI · {connectedCount} connected · {enabledCount} enabled
           </p>
         </div>
         <Button size="sm" className="glow-cyan" onClick={() => { setPickerSearch(''); setPickerOpen(true); }}>
           <Link className="mr-2 h-4 w-4" />Add Integration
         </Button>
+      </div>
+
+      {/* Role hint banner */}
+      <div className="rounded-lg border border-border bg-secondary/20 p-3 text-xs text-muted-foreground flex items-center gap-2">
+        <Shield className="h-4 w-4 text-primary shrink-0" />
+        <span>
+          <strong className="text-foreground">Integrations</strong> are active API connections — enrichment lookups, SIEM/SOAR forwarding, ticketing, and notifications.
+          For passive RSS/CSV feeds that collect threat data on a schedule, use <strong className="text-foreground">Intel Sources</strong>.
+        </span>
       </div>
 
       {/* Search */}
