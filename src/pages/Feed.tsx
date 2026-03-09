@@ -380,7 +380,10 @@ export default function Feed() {
           {/* Left: Item list */}
           <ScrollArea className="rounded-lg border border-border bg-card/30" style={{ height: 'calc(100vh - 340px)' }}>
             <div className="space-y-1 p-2">
-              {filteredItems.map(item => (
+              {filteredItems.map(item => {
+                const riskPct = Math.min(100, item.risk_score);
+                const riskColor = riskPct >= 80 ? 'bg-destructive' : riskPct >= 50 ? 'bg-orange-500' : riskPct >= 25 ? 'bg-yellow-500' : 'bg-accent';
+                return (
                 <button
                   key={item.id}
                   onClick={() => setSelectedId(item.id)}
@@ -393,15 +396,29 @@ export default function Feed() {
                     <SeverityBadge severity={item.severity} />
                     <ObservableTypeBadge type={item.observable_type} />
                     {item.asset_match && <Badge className="bg-primary/20 text-primary text-[10px]">Org</Badge>}
+                    {item.confidence_score >= 90 && (
+                      <Badge variant="outline" className="text-[10px] border-accent/30 text-accent">
+                        <Shield className="mr-0.5 h-2.5 w-2.5" />Hi-Conf
+                      </Badge>
+                    )}
                   </div>
                   <p className="font-medium text-sm text-foreground line-clamp-1">{item.title}</p>
-                  <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
-                    <span>{item.source_name}</span>
-                    <span>•</span>
-                    <span>{format(new Date(item.published_at), 'HH:mm')}</span>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      <span className="text-[11px] text-muted-foreground shrink-0">{item.source_name}</span>
+                      <span className="text-muted-foreground text-[11px]">•</span>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{format(new Date(item.published_at), 'HH:mm')}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <div className="w-12 h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${riskColor}`} style={{ width: `${riskPct}%` }} />
+                      </div>
+                      <span className="text-[9px] font-mono text-muted-foreground w-5 text-right">{item.risk_score}</span>
+                    </div>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
 
