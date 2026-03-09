@@ -219,11 +219,11 @@ function CountryLabels() {
             `}
             style={{
               color: label.size === 'lg'
-                ? 'rgba(0,229,255,0.7)'
+                ? 'rgba(255,255,255,0.85)'
                 : label.size === 'md'
-                ? 'rgba(0,229,255,0.5)'
-                : 'rgba(0,229,255,0.3)',
-              textShadow: '0 0 10px rgba(0,229,255,0.4), 0 0 20px rgba(0,229,255,0.15)',
+                ? 'rgba(220,235,255,0.65)'
+                : 'rgba(200,220,255,0.4)',
+              textShadow: '0 0 6px rgba(30,91,184,0.6), 0 1px 2px rgba(0,0,0,0.8)',
             }}
           >
             {label.name}
