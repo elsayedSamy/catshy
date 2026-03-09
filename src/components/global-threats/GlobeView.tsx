@@ -453,7 +453,7 @@ export function GlobeView() {
         <pointLight position={[-5, -3, -5]} intensity={0.1} color="#4080b0" />
         <Suspense fallback={null}>
           <Stars radius={200} depth={120} count={4000} factor={3.5} saturation={0.1} fade speed={0.08} />
-          <CyberEarth />
+          <RealisticEarth />
           <CountryLabels />
           <EventPoints events={filteredEvents} onSelect={setSelectedEvent} />
           <AttackArcs events={filteredEvents} />
