@@ -5,7 +5,6 @@ import { WorldMap2D } from '@/components/global-threats/WorldMap2D';
 import { ThreatDetailPanel } from '@/components/global-threats/ThreatDetailPanel';
 import { AnalyticsPanel } from '@/components/global-threats/AnalyticsPanel';
 import { LiveFeed } from '@/components/global-threats/LiveFeed';
-import { StatsHUD } from '@/components/global-threats/StatsHUD';
 
 function PageContent() {
   const { selectedEvent, viewMode } = useThreatContext();
@@ -17,7 +16,6 @@ function PageContent() {
         <div className="flex-1 min-w-0 relative">
           {viewMode === '3d' ? <GlobeView /> : <WorldMap2D />}
           <LiveFeed />
-          <StatsHUD />
         </div>
         {selectedEvent && <ThreatDetailPanel />}
       </div>
