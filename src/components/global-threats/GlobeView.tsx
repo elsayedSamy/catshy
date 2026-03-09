@@ -357,7 +357,7 @@ function AttackArcs({ events }: { events: ThreatEvent[] }) {
         color: SEVERITY_COLORS[ev.severity],
         id: ev.id,
         severity: ev.severity,
-        speed: ev.severity === 'critical' ? 1.2 : ev.severity === 'high' ? 0.8 : 0.5,
+        speed: ev.severity === 'critical' ? 0.15 : ev.severity === 'high' ? 0.1 : 0.07,
         offset: Math.random(), // Random start position
       };
     }),
