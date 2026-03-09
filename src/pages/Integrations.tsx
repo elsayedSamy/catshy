@@ -105,6 +105,10 @@ export default function Integrations() {
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Add Integration picker dialog
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
+
   const fetchProviders = async () => {
     setLoading(true);
     try {
