@@ -6,7 +6,8 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Search, Settings, TestTube, Loader2, Check, Shield, CheckCircle2, AlertCircle, Unlink, Link, Trash2 } from 'lucide-react';
+import { Search, Settings, TestTube, Loader2, Check, Shield, CheckCircle2, AlertCircle, Unlink, Link, Trash2, Plus } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 
