@@ -1,14 +1,8 @@
 /**
  * ThreatContext — global state for the Global Threat Monitoring page.
- *
- * Manages:
- *  • Event buffer (capped at MAX_EVENTS for memory)
- *  • Simulated WebSocket stream with batch + throttle
- *  • Filter state and derived filtered events
- *  • View mode (3D/2D), live/pause, time range
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { ThreatEvent, ThreatFilters, DEFAULT_FILTERS, ViewMode, TimeRange } from './types';
+import { ThreatEvent, ThreatFilters, DEFAULT_FILTERS, TimeRange } from './types';
 import { generateThreatEvent, generateInitialEvents } from './mockData';
 import { toast } from 'sonner';
 
@@ -17,8 +11,6 @@ interface ThreatContextValue {
   filteredEvents: ThreatEvent[];
   selectedEvent: ThreatEvent | null;
   setSelectedEvent: (e: ThreatEvent | null) => void;
-  viewMode: ViewMode;
-  setViewMode: (m: ViewMode) => void;
   isLive: boolean;
   setIsLive: (v: boolean) => void;
   timeRange: TimeRange;
@@ -45,9 +37,8 @@ const STREAM_INTERVAL_MS = 1800;
 const FLUSH_INTERVAL_MS = 1000;
 
 export function ThreatProvider({ children }: { children: React.ReactNode }) {
-  const [events, setEvents] = useState<ThreatEvent[]>(() => generateInitialEvents(120));
+  const [events, setEvents] = useState<ThreatEvent[]>(() => generateInitialEvents(150));
   const [selectedEvent, setSelectedEvent] = useState<ThreatEvent | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('3d');
   const [isLive, setIsLive] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
   const [filters, setFilters] = useState<ThreatFilters>(DEFAULT_FILTERS);
@@ -59,7 +50,6 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  /* ── Simulated WebSocket stream ── */
   useEffect(() => {
     if (!isLive) return;
 
@@ -95,7 +85,6 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isLive]);
 
-  /* ── Derived: filtered events ── */
   const filteredEvents = useMemo(() => {
     const now = Date.now();
     const timeMs: Record<TimeRange, number> = {
@@ -138,8 +127,6 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
     filteredEvents,
     selectedEvent,
     setSelectedEvent,
-    viewMode,
-    setViewMode,
     isLive,
     setIsLive,
     timeRange,

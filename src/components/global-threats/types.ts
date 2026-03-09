@@ -63,14 +63,13 @@ export type SourceType =
   | 'threat_intel_feed'
   | 'user_reports';
 
-export type ViewMode = '3d' | '2d';
 export type TimeRange = '5m' | '1h' | '24h' | '7d' | 'custom';
 
 export const SEVERITY_COLORS: Record<SeverityLevel, string> = {
-  critical: '#ef4444',
-  high: '#f97316',
-  medium: '#eab308',
-  low: '#06b6d4',
+  critical: '#ff2d55',
+  high: '#ff9500',
+  medium: '#ffcc00',
+  low: '#30d158',
 };
 
 export const SEVERITY_ORDER: Record<SeverityLevel, number> = {
