@@ -21,9 +21,9 @@ const COLORS: Record<string, string> = {
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
-  const { name, value, payload: data } = payload[0];
+  const { name, value } = payload[0];
   return (
-    <div className="rounded-xl border border-border bg-card/95 backdrop-blur-xl px-3 py-2 shadow-lg">
+    <div className="rounded-xl border border-border bg-card/95 backdrop-blur-xl px-3 py-2 shadow-xl">
       <div className="flex items-center gap-2">
         <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[name] }} />
         <span className="text-xs font-medium text-foreground">{name}</span>
@@ -47,7 +47,7 @@ export function SeverityDistribution({ data, isLoading }: { data?: SeverityDistD
   const total = chartData.reduce((s, d) => s + d.value, 0);
 
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-sm h-full card-hover">
+    <Card className="widget-card rounded-xl h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <ShieldAlert className="h-4 w-4 text-primary" />Severity Distribution
@@ -55,7 +55,7 @@ export function SeverityDistribution({ data, isLoading }: { data?: SeverityDistD
       </CardHeader>
       <CardContent className="px-3 pb-3">
         {isLoading ? (
-          <Skeleton className="h-[200px] w-full" />
+          <Skeleton className="h-[200px] w-full rounded-xl" />
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <ShieldAlert className="h-8 w-8 text-muted-foreground/20 mb-2" />

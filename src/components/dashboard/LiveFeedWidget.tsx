@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Rss, ArrowRight, Filter, RefreshCw } from 'lucide-react';
+import { Rss, ArrowRight, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { motion } from 'framer-motion';
 import type { IntelItem, SeverityLevel } from '@/types';
 
 const severityStyle: Record<string, string> = {
@@ -22,18 +23,25 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
 }) {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<SeverityLevel | 'all'>('all');
-  const nonCveItems = filter === 'all' ? items.filter(i => i.observable_type !== 'cve') : items.filter(i => i.severity === filter && i.observable_type !== 'cve');
-  const filtered = nonCveItems;
+  const filtered = filter === 'all'
+    ? items.filter(i => i.observable_type !== 'cve')
+    : items.filter(i => i.severity === filter && i.observable_type !== 'cve');
 
   return (
-    <Card className="border-border bg-card h-full flex flex-col">
+    <Card className="widget-card rounded-xl h-full flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <Rss className="h-4 w-4 text-primary" />Live Threat Feed
         </CardTitle>
         <div className="flex items-center gap-1">
           {(['all', 'critical', 'high', 'medium'] as const).map(f => (
-            <Button key={f} variant={filter === f ? 'secondary' : 'ghost'} size="sm" className="h-6 px-2 text-[10px]" onClick={() => setFilter(f)}>
+            <Button
+              key={f}
+              variant={filter === f ? 'secondary' : 'ghost'}
+              size="sm"
+              className={`h-6 px-2 text-[10px] ${filter === f ? 'glow-ring' : ''}`}
+              onClick={() => setFilter(f)}
+            >
               {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
             </Button>
           ))}
@@ -42,14 +50,14 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
               <RefreshCw className="h-3 w-3" />
             </Button>
           )}
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={() => navigate('/feed')}>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground hover:text-primary" onClick={() => navigate('/feed')}>
             Full feed <ArrowRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
       </CardHeader>
       <CardContent className="px-3 pb-3 flex-1">
         {isLoading ? (
-          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}</div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Rss className="h-8 w-8 text-muted-foreground/20 mb-2" />
@@ -61,20 +69,27 @@ export function LiveFeedWidget({ items = [], isLoading, onRefresh }: {
           </div>
         ) : (
           <div className="space-y-1 max-h-[420px] overflow-y-auto scrollbar-thin">
-            {filtered.slice(0, 20).map(item => (
-              <div key={item.id} className="flex items-start gap-2 rounded-lg border border-border bg-secondary/10 px-3 py-2 transition-colors hover:bg-secondary/30 cursor-pointer" onClick={() => navigate('/feed')}>
+            {filtered.slice(0, 20).map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.025, duration: 0.2 }}
+                className="flex items-start gap-2 rounded-lg border border-border bg-secondary/10 px-3 py-2 transition-all duration-200 hover:bg-secondary/30 hover:border-primary/15 cursor-pointer group"
+                onClick={() => navigate('/feed')}
+              >
                 <Badge variant="outline" className={`text-[10px] px-1.5 shrink-0 mt-0.5 ${severityStyle[item.severity]}`}>
                   {item.severity}
                 </Badge>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-foreground truncate">{item.title}</p>
+                  <p className="text-xs text-foreground truncate group-hover:text-primary transition-colors">{item.title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] text-muted-foreground">{item.source_name}</span>
                     {item.asset_match && <Badge variant="outline" className="text-[9px] px-1 py-0 border-accent/30 text-accent">ASSET MATCH</Badge>}
                     <code className="text-[10px] font-mono text-muted-foreground truncate">{item.observable_value}</code>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}

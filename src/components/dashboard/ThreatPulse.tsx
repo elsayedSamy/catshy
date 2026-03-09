@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, AlertTriangle, Bug, Crosshair, Shield } from 'lucide-react';
 import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
+import { motion } from 'framer-motion';
 
 export interface PulseData {
   newIntel: number;
@@ -11,16 +12,22 @@ export interface PulseData {
   malwareSpikes: number;
 }
 
-function PulseMetric({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
+function PulseMetric({ label, value, icon: Icon, color, index }: { label: string; value: number; icon: React.ElementType; color: string; index: number }) {
   const animated = useAnimatedCounter(value);
   return (
-    <div className="group flex flex-col items-center rounded-xl border border-border bg-secondary/20 p-3 text-center card-hover cursor-default">
-      <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/50 mb-1.5 group-hover:scale-110 transition-transform`}>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.06, duration: 0.3 }}
+      className="group flex flex-col items-center rounded-xl border border-border bg-secondary/20 p-3 text-center card-hover cursor-default relative overflow-hidden"
+    >
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-b from-transparent to-secondary/30 pointer-events-none`} />
+      <div className={`relative flex h-9 w-9 items-center justify-center rounded-lg bg-secondary/50 mb-1.5 group-hover:scale-110 transition-all duration-200`}>
         <Icon className={`h-4 w-4 ${color}`} />
       </div>
-      <span className="text-xl font-mono font-bold text-foreground tabular-nums">{animated}</span>
-      <span className="text-[10px] text-muted-foreground mt-0.5">{label}</span>
-    </div>
+      <span className="relative text-xl font-mono font-bold text-foreground tabular-nums">{animated}</span>
+      <span className="relative text-[10px] text-muted-foreground mt-0.5">{label}</span>
+    </motion.div>
   );
 }
 
@@ -34,7 +41,7 @@ export function ThreatPulse({ data, isLoading }: { data?: PulseData; isLoading: 
   ];
 
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-sm">
+    <Card className="widget-card rounded-xl">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <div className="relative">
@@ -42,16 +49,16 @@ export function ThreatPulse({ data, isLoading }: { data?: PulseData; isLoading: 
             <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent pulse-dot" />
           </div>
           Threat Pulse
-          <span className="text-[10px] text-muted-foreground/50 font-normal ml-1">LIVE</span>
+          <span className="text-[10px] text-accent/60 font-normal ml-1 bg-accent/5 px-1.5 py-0.5 rounded-full border border-accent/10">LIVE</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="px-3 pb-3">
         {isLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20" />)}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-            {metrics.map(m => (
-              <PulseMetric key={m.label} {...m} />
+            {metrics.map((m, i) => (
+              <PulseMetric key={m.label} {...m} index={i} />
             ))}
           </div>
         )}

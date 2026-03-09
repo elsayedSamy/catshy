@@ -1,11 +1,11 @@
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ListChecks, ArrowRight, Flag, XCircle, VolumeX, Search } from 'lucide-react';
+import { ListChecks, ArrowRight, Flag, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { IntelItem, SeverityLevel } from '@/types';
+import { motion } from 'framer-motion';
+import type { IntelItem } from '@/types';
 import { useCreateCase } from '@/hooks/useApi';
 import { toast } from '@/hooks/use-toast';
 
@@ -21,7 +21,6 @@ export function TriageQueue({ items = [], isLoading }: { items?: IntelItem[]; is
   const navigate = useNavigate();
   const createCase = useCreateCase();
 
-  // Sort by asset relevance + risk score
   const sorted = [...items]
     .sort((a, b) => {
       if (a.asset_match !== b.asset_match) return a.asset_match ? -1 : 1;
@@ -43,7 +42,7 @@ export function TriageQueue({ items = [], isLoading }: { items?: IntelItem[]; is
   };
 
   return (
-    <Card className="border-border bg-card h-full">
+    <Card className="widget-card rounded-xl h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <ListChecks className="h-4 w-4 text-primary" />Triage Queue
@@ -53,13 +52,13 @@ export function TriageQueue({ items = [], isLoading }: { items?: IntelItem[]; is
             </Badge>
           )}
         </CardTitle>
-        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={() => navigate('/feed')}>
+        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground hover:text-primary" onClick={() => navigate('/feed')}>
           Full feed <ArrowRight className="ml-1 h-3 w-3" />
         </Button>
       </CardHeader>
       <CardContent className="px-3 pb-3">
         {isLoading ? (
-          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}</div>
         ) : sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <ListChecks className="h-8 w-8 text-muted-foreground/20 mb-2" />
@@ -68,29 +67,35 @@ export function TriageQueue({ items = [], isLoading }: { items?: IntelItem[]; is
           </div>
         ) : (
           <div className="space-y-1 max-h-[360px] overflow-y-auto scrollbar-thin">
-            {sorted.map(item => (
-              <div key={item.id} className="flex items-center gap-2 rounded-lg border border-border bg-secondary/10 px-2 py-1.5 transition-colors hover:bg-secondary/30 group">
+            {sorted.map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.03, duration: 0.2 }}
+                className="flex items-center gap-2 rounded-lg border border-border bg-secondary/10 px-2 py-1.5 transition-all duration-200 hover:bg-secondary/30 hover:border-primary/15 group"
+              >
                 <Badge variant="outline" className={`text-[10px] px-1 shrink-0 ${sevStyle[item.severity]}`}>
                   {item.severity}
                 </Badge>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-foreground truncate">{item.title}</p>
+                  <p className="text-xs text-foreground truncate group-hover:text-primary transition-colors">{item.title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <code className="text-[10px] font-mono text-muted-foreground truncate">{item.observable_value}</code>
                     {item.asset_match && <Badge variant="outline" className="text-[9px] px-1 py-0 border-accent/30 text-accent">MATCH</Badge>}
-                    <span className="text-[10px] text-muted-foreground">R:{item.risk_score ?? 0}</span>
-                    <span className="text-[10px] text-muted-foreground">C:{Math.round((item.confidence_score ?? 0) * 100)}%</span>
+                    <span className="text-[10px] text-muted-foreground font-mono tabular-nums">R:{item.risk_score ?? 0}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono tabular-nums">C:{Math.round((item.confidence_score ?? 0) * 100)}%</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Create Case" onClick={() => handleCreateCase(item)}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-primary/10" title="Create Case" onClick={() => handleCreateCase(item)}>
                     <Flag className="h-3 w-3" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Enrich" onClick={() => navigate(`/search?q=${encodeURIComponent(item.observable_value)}`)}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-primary/10" title="Enrich" onClick={() => navigate(`/search?q=${encodeURIComponent(item.observable_value)}`)}>
                     <Search className="h-3 w-3" />
                   </Button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
