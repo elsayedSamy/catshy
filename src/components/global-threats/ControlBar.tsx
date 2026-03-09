@@ -3,16 +3,12 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import {
-  Search, Play, Pause, Globe, Map, BarChart3, AlertTriangle,
-  Activity, Wifi, WifiOff, Radio, Shield, Crosshair, Layers,
+  Search, BarChart3, AlertTriangle,
+  Activity, WifiOff, Radio, Shield, Crosshair, Layers,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useThreatContext } from './ThreatContext';
@@ -38,7 +34,6 @@ const TIME_OPTS: { value: TimeRange; label: string }[] = [
 export function ControlBar() {
   const {
     filters, updateFilter,
-    viewMode, setViewMode,
     isLive, setIsLive,
     timeRange, setTimeRange,
     totalCount, criticalCount,
@@ -46,7 +41,6 @@ export function ControlBar() {
     filteredEvents,
   } = useThreatContext();
 
-  // Live ticker — shows last few events scrolling
   const [tickerText, setTickerText] = useState('');
   const tickerRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +53,6 @@ export function ControlBar() {
     setTickerText(text);
   }, [filteredEvents]);
 
-  // Clock
   const [time, setTime] = useState(new Date());
   useEffect(() => {
     const iv = setInterval(() => setTime(new Date()), 1000);
@@ -68,9 +61,7 @@ export function ControlBar() {
 
   return (
     <div className="flex flex-col border-b border-border bg-card/80 backdrop-blur-md z-20">
-      {/* Top bar */}
       <div className="flex items-center gap-2 px-3 py-1.5">
-        {/* Logo / Title */}
         <div className="flex items-center gap-2 mr-2">
           <div className="w-7 h-7 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
             <Shield className="h-3.5 w-3.5 text-primary" />
@@ -87,7 +78,6 @@ export function ControlBar() {
 
         <div className="w-px h-6 bg-border mx-1" />
 
-        {/* Search */}
         <div className="relative min-w-[160px] max-w-[240px] flex-shrink-0">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input
@@ -98,7 +88,6 @@ export function ControlBar() {
           />
         </div>
 
-        {/* Filter buttons */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 px-2 font-mono">
@@ -199,7 +188,6 @@ export function ControlBar() {
 
         <div className="flex-1" />
 
-        {/* Live stats HUD */}
         <div className="hidden md:flex items-center gap-3 mr-2">
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50 border border-border/40">
             <Activity className="h-3 w-3 text-primary" />
@@ -215,7 +203,6 @@ export function ControlBar() {
           )}
         </div>
 
-        {/* Time range pills */}
         <div className="flex items-center rounded-md border border-border/50 overflow-hidden">
           {TIME_OPTS.map(t => (
             <button
@@ -232,7 +219,6 @@ export function ControlBar() {
           ))}
         </div>
 
-        {/* Live toggle */}
         <Button
           variant="ghost"
           size="sm"
@@ -258,26 +244,6 @@ export function ControlBar() {
           )}
         </Button>
 
-        {/* View toggle */}
-        <div className="flex items-center rounded-md border border-border/50 overflow-hidden">
-          <button
-            className={`h-7 px-2 flex items-center gap-1 text-[10px] font-mono transition-colors ${
-              viewMode === '3d' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-accent/10'
-            }`}
-            onClick={() => setViewMode('3d')}
-          >
-            <Globe className="h-3 w-3" /> 3D
-          </button>
-          <button
-            className={`h-7 px-2 flex items-center gap-1 text-[10px] font-mono transition-colors ${
-              viewMode === '2d' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-accent/10'
-            }`}
-            onClick={() => setViewMode('2d')}
-          >
-            <Map className="h-3 w-3" /> 2D
-          </button>
-        </div>
-
         <Button
           variant="ghost"
           size="sm"
@@ -287,24 +253,20 @@ export function ControlBar() {
           <BarChart3 className="h-3.5 w-3.5" />
         </Button>
 
-        {/* Clock */}
         <div className="hidden xl:flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
           <span>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
           <span className="text-[8px]">UTC</span>
         </div>
       </div>
 
-      {/* Ticker bar */}
       {isLive && tickerText && (
         <div className="h-5 border-t border-border/30 bg-background/40 overflow-hidden relative">
           <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-card to-transparent z-10" />
           <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-card to-transparent z-10" />
           <div
             ref={tickerRef}
-            className="flex items-center h-full whitespace-nowrap animate-marquee text-[9px] font-mono text-muted-foreground/70"
-            style={{
-              animation: 'marquee 30s linear infinite',
-            }}
+            className="flex items-center h-full whitespace-nowrap text-[9px] font-mono text-muted-foreground/70"
+            style={{ animation: 'marquee 30s linear infinite' }}
           >
             {tickerText}
           </div>
