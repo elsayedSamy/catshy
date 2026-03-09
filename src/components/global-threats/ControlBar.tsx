@@ -279,8 +279,20 @@ export function ControlBar() {
           <BarChart3 className="h-3.5 w-3.5" />
         </Button>
 
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[10px] gap-1 px-2 font-mono text-destructive hover:text-destructive"
+            onClick={() => setFilters(DEFAULT_FILTERS)}
+          >
+            <RotateCcw className="h-3 w-3" />
+            RESET
+          </Button>
+        )}
+
         <div className="hidden xl:flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
-          <span>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          <span>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })}</span>
           <span className="text-[8px]">UTC</span>
         </div>
       </div>

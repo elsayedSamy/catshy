@@ -4,7 +4,7 @@
  */
 import { useRef, useMemo, useEffect, useCallback, useState, Suspense } from 'react';
 import { Canvas, useThree, useFrame, ThreeEvent, useLoader } from '@react-three/fiber';
-import { OrbitControls, Stars, Html } from '@react-three/drei';
+import { OrbitControls, Html } from '@react-three/drei';
 import { TextureLoader } from 'three';
 import * as THREE from 'three';
 import { useThreatContext } from './ThreatContext';

@@ -119,6 +119,15 @@ export function ThreatDetailPanel() {
   const { selectedEvent: e, setSelectedEvent } = useThreatContext();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Escape key to close
+  useEffect(() => {
+    const handler = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setSelectedEvent(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [setSelectedEvent]);
+
   useEffect(() => {
     if (panelRef.current) {
       panelRef.current.style.transform = 'translateX(100%)';
