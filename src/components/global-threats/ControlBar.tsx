@@ -34,7 +34,7 @@ const TIME_OPTS: { value: TimeRange; label: string }[] = [
 
 export function ControlBar() {
   const {
-    filters, updateFilter,
+    filters, updateFilter, setFilters,
     isLive, setIsLive,
     timeRange, setTimeRange,
     totalCount, criticalCount,
@@ -42,6 +42,9 @@ export function ControlBar() {
     filteredEvents,
     viewMode, setViewMode,
   } = useThreatContext();
+
+  const hasActiveFilters = filters.search !== '' || filters.severity.length > 0 ||
+    filters.confidenceMin > 0 || filters.category.length > 0 || filters.sourceType.length > 0;
 
   const [tickerText, setTickerText] = useState('');
   const tickerRef = useRef<HTMLDivElement>(null);
