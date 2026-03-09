@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Radio, RefreshCw, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,24 +25,24 @@ export function EnableWizardDialog({ open, onOpenChange, source, onEnable, enabl
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<'success' | 'error' | null>(null);
 
-  const reset = (newUrl: string) => {
-    setUrl(newUrl);
-    setStep(0);
-    setResult(null);
-  };
-
-  // Sync URL when source changes
-  const effectiveUrl = step === 0 && url === '' && source ? (source.resolved_url || source.default_url) : url;
+  // Reset state when source changes or dialog opens
+  useEffect(() => {
+    if (open && source) {
+      setUrl(source.resolved_url || source.default_url);
+      setStep(0);
+      setResult(null);
+    }
+  }, [open, source]);
 
   const handleTest = async () => {
     setTesting(true);
     setResult(null);
     try {
-      await api.post('/sources/validate-url', { url: effectiveUrl });
+      await api.post('/sources/validate-url', { url });
       setResult('success');
       setStep(1);
     } catch {
-      const isValid = effectiveUrl.startsWith('http');
+      const isValid = url.startsWith('http');
       setResult(isValid ? 'success' : 'error');
       if (isValid) setStep(1);
     } finally {
@@ -51,7 +51,7 @@ export function EnableWizardDialog({ open, onOpenChange, source, onEnable, enabl
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(''); } onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export function EnableWizardDialog({ open, onOpenChange, source, onEnable, enabl
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Feed URL</label>
                 <Input
-                  value={effectiveUrl}
+                  value={url}
                   onChange={e => setUrl(e.target.value)}
                   placeholder="https://..."
                   className="bg-secondary/30 font-mono text-sm"
@@ -77,7 +77,7 @@ export function EnableWizardDialog({ open, onOpenChange, source, onEnable, enabl
                   <AlertTriangle className="h-4 w-4" />Feed URL could not be validated.
                 </div>
               )}
-              <Button onClick={handleTest} disabled={testing || !effectiveUrl.trim()} className="w-full">
+              <Button onClick={handleTest} disabled={testing || !url.trim()} className="w-full">
                 {testing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                 Test Connection
               </Button>
@@ -91,7 +91,7 @@ export function EnableWizardDialog({ open, onOpenChange, source, onEnable, enabl
               <div className="rounded-lg bg-secondary/30 p-3 text-sm space-y-1">
                 <p><span className="text-muted-foreground">Source:</span> {source?.name || 'Custom'}</p>
                 <p><span className="text-muted-foreground">Type:</span> {source && connectorLabels[source.connector_type]}</p>
-                <p><span className="text-muted-foreground">URL:</span> <span className="font-mono text-xs">{effectiveUrl}</span></p>
+                <p><span className="text-muted-foreground">URL:</span> <span className="font-mono text-xs">{url}</span></p>
               </div>
             </div>
           )}
@@ -99,7 +99,7 @@ export function EnableWizardDialog({ open, onOpenChange, source, onEnable, enabl
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           {step === 1 && source && (
-            <Button onClick={() => onEnable(source.id, effectiveUrl)} disabled={enabling} className="glow-cyan">
+            <Button onClick={() => onEnable(source.id, url)} disabled={enabling} className="glow-cyan">
               {enabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Enable Source
             </Button>
           )}
