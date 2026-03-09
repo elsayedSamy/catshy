@@ -1,14 +1,6 @@
 /**
- * GlobeView v2 — Premium cyber-aesthetic 3D threat globe.
- * 
- * Enhancements over v1:
- *  • Animated traveling particles along attack arcs (like tracers)
- *  • Hover tooltip on events with rich info card
- *  • Expanding pulse rings on critical/high events
- *  • Smoother spring camera with momentum
- *  • Better atmosphere with Fresnel-like multi-glow
- *  • Interactive hover glow on Earth surface
- *  • Auto-rotate pauses on interaction, resumes after idle
+ * GlobeView v3 — Clean, clear cyber globe. No traveling particles.
+ * Better zoom, brighter earth, smooth interactions.
  */
 import { useRef, useMemo, useEffect, useCallback, useState, Suspense } from 'react';
 import { Canvas, useThree, useFrame, ThreeEvent, useLoader } from '@react-three/fiber';
@@ -22,8 +14,6 @@ import { format } from 'date-fns';
 const R = 2;
 const MAX_POINTS = 600;
 const MAX_ARCS = 120;
-const MAX_PARTICLES = 300;
-const MAX_PULSE_RINGS = 40;
 
 function latLonTo3(lat: number, lon: number, r = R): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -73,7 +63,7 @@ const COUNTRY_LABELS: { name: string; lat: number; lon: number; size?: 'lg' | 'm
   { name: 'Taiwan', lat: 24, lon: 121, size: 'sm' },
 ];
 
-/* ── Realistic Earth with blue marble texture ── */
+/* ── Realistic Earth ── */
 function RealisticEarth() {
   const meshRef = useRef<THREE.Mesh>(null);
   const [colorMap, bumpMap] = useLoader(TextureLoader, [
@@ -90,7 +80,7 @@ function RealisticEarth() {
 
   useFrame((_, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.012;
+      meshRef.current.rotation.y += delta * 0.01;
     }
   });
 
@@ -98,43 +88,29 @@ function RealisticEarth() {
     <group>
       <mesh ref={meshRef}>
         <sphereGeometry args={[R, 164, 164]} />
-        <meshPhongMaterial
+        <meshStandardMaterial
           map={colorMap}
           bumpMap={bumpMap}
-          bumpScale={0.05}
-          shininess={20}
-          specular={new THREE.Color('#1a3a5c')}
-          emissive="#060e1a"
-          emissiveIntensity={0.18}
+          bumpScale={0.04}
+          roughness={0.65}
+          metalness={0.1}
+          emissive="#0a1628"
+          emissiveIntensity={0.3}
         />
       </mesh>
 
-      {/* Cloud haze */}
+      {/* Atmosphere layers */}
       <mesh>
-        <sphereGeometry args={[R * 1.003, 96, 96]} />
-        <meshPhongMaterial color="#ffffff" transparent opacity={0.025} depthWrite={false} />
-      </mesh>
-
-      {/* Multi-layer atmosphere (Fresnel-like) */}
-      <mesh>
-        <sphereGeometry args={[R * 1.015, 64, 64]} />
-        <meshBasicMaterial color="#4da6ff" transparent opacity={0.07} side={THREE.BackSide} />
+        <sphereGeometry args={[R * 1.012, 64, 64]} />
+        <meshBasicMaterial color="#60a5fa" transparent opacity={0.06} side={THREE.BackSide} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[R * 1.04, 64, 64]} />
-        <meshBasicMaterial color="#3a7bd5" transparent opacity={0.05} side={THREE.BackSide} />
+        <sphereGeometry args={[R * 1.035, 64, 64]} />
+        <meshBasicMaterial color="#3b82f6" transparent opacity={0.04} side={THREE.BackSide} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[R * 1.08, 48, 48]} />
-        <meshBasicMaterial color="#2563eb" transparent opacity={0.035} side={THREE.BackSide} />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[R * 1.15, 32, 32]} />
-        <meshBasicMaterial color="#1d4ed8" transparent opacity={0.02} side={THREE.BackSide} />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[R * 1.25, 32, 32]} />
-        <meshBasicMaterial color="#1e40af" transparent opacity={0.012} side={THREE.BackSide} />
+        <sphereGeometry args={[R * 1.07, 48, 48]} />
+        <meshBasicMaterial color="#2563eb" transparent opacity={0.025} side={THREE.BackSide} />
       </mesh>
     </group>
   );
@@ -196,29 +172,24 @@ function EventPoints({
   onHover: (e: ThreatEvent | null, pos?: { x: number; y: number }) => void;
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const pulseRef = useRef<THREE.InstancedMesh>(null);
   const hitRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const visible = useMemo(() => events.slice(0, MAX_POINTS), [events]);
-  const timeRef = useRef(0);
 
   useEffect(() => {
     const mesh = meshRef.current;
-    const pulse = pulseRef.current;
     const hit = hitRef.current;
     if (!mesh) return;
     const c = new THREE.Color();
     const colors = new Float32Array(MAX_POINTS * 3);
-    const pulseColors = new Float32Array(MAX_POINTS * 3);
 
     visible.forEach((ev, i) => {
       const pos = latLonTo3(ev.source.lat, ev.source.lon, R * 1.015);
       dummy.position.copy(pos);
-      const scale = ev.severity === 'critical' ? 4 : ev.severity === 'high' ? 3 : ev.severity === 'medium' ? 2 : 1.2;
+      const scale = ev.severity === 'critical' ? 4.5 : ev.severity === 'high' ? 3.5 : ev.severity === 'medium' ? 2.5 : 1.5;
       dummy.scale.setScalar(scale);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-      if (pulse) pulse.setMatrixAt(i, dummy.matrix);
 
       if (hit) {
         dummy.scale.setScalar(scale * 5);
@@ -228,42 +199,19 @@ function EventPoints({
 
       c.set(SEVERITY_COLORS[ev.severity]);
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-      pulseColors[i * 3] = c.r; pulseColors[i * 3 + 1] = c.g; pulseColors[i * 3 + 2] = c.b;
     });
 
     for (let i = visible.length; i < MAX_POINTS; i++) {
       dummy.scale.setScalar(0);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-      if (pulse) pulse.setMatrixAt(i, dummy.matrix);
       if (hit) hit.setMatrixAt(i, dummy.matrix);
     }
 
     mesh.instanceMatrix.needsUpdate = true;
     mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
-    if (pulse) {
-      pulse.instanceMatrix.needsUpdate = true;
-      pulse.instanceColor = new THREE.InstancedBufferAttribute(pulseColors, 3);
-    }
     if (hit) hit.instanceMatrix.needsUpdate = true;
   }, [visible, dummy]);
-
-  useFrame((_, delta) => {
-    timeRef.current += delta;
-    const pulse = pulseRef.current;
-    if (!pulse) return;
-    const t = timeRef.current;
-    visible.forEach((ev, i) => {
-      if (ev.severity !== 'critical' && ev.severity !== 'high') return;
-      const pos = latLonTo3(ev.source.lat, ev.source.lon, R * 1.015);
-      const pulseScale = 1.5 + Math.sin(t * 3 + i * 0.5) * 0.8;
-      dummy.position.copy(pos);
-      dummy.scale.setScalar(pulseScale * (ev.severity === 'critical' ? 4 : 3));
-      dummy.updateMatrix();
-      pulse.setMatrixAt(i, dummy.matrix);
-    });
-    pulse.instanceMatrix.needsUpdate = true;
-  });
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
@@ -286,11 +234,6 @@ function EventPoints({
 
   return (
     <group>
-      {/* Pulse glow layer */}
-      <instancedMesh ref={pulseRef} args={[undefined, undefined, MAX_POINTS]}>
-        <sphereGeometry args={[0.02, 6, 6]} />
-        <meshBasicMaterial transparent opacity={0.12} toneMapped={false} />
-      </instancedMesh>
       {/* Visible dots */}
       <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_POINTS]}>
         <sphereGeometry args={[0.02, 12, 12]} />
@@ -311,7 +254,7 @@ function EventPoints({
   );
 }
 
-/* ── Animated Attack Arcs with traveling particles ── */
+/* ── Static Attack Arcs (no particles) ── */
 function AttackArcs({ events }: { events: ThreatEvent[] }) {
   const arcsData = useMemo(() =>
     events.slice(0, MAX_ARCS).map(ev => {
@@ -319,126 +262,33 @@ function AttackArcs({ events }: { events: ThreatEvent[] }) {
       const e = latLonTo3(ev.target.lat, ev.target.lon, R * 1.015);
       const mid = s.clone().add(e).multiplyScalar(0.5);
       const dist = s.distanceTo(e);
-      mid.normalize().multiplyScalar(R + dist * 0.4);
+      mid.normalize().multiplyScalar(R + dist * 0.35);
       const curve = new THREE.QuadraticBezierCurve3(s, mid, e);
-      return { curve, color: SEVERITY_COLORS[ev.severity], id: ev.id, severity: ev.severity };
+      const pts = curve.getPoints(40);
+      return { pts, color: SEVERITY_COLORS[ev.severity], id: ev.id, severity: ev.severity };
     }),
   [events]);
 
   return (
     <group>
-      {arcsData.map(a => (
-        <ArcWithParticle key={a.id} curve={a.curve} color={a.color} severity={a.severity} />
-      ))}
+      {arcsData.map(a => {
+        const positions = new Float32Array(a.pts.flatMap(p => [p.x, p.y, p.z]));
+        const opacity = a.severity === 'critical' ? 0.6 : a.severity === 'high' ? 0.25 : 0.1;
+        return (
+          <line key={a.id}>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                count={a.pts.length}
+                array={positions}
+                itemSize={3}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color={a.color} transparent opacity={opacity} linewidth={1} />
+          </line>
+        );
+      })}
     </group>
-  );
-}
-
-/* Single arc line + animated traveling particle */
-function ArcWithParticle({ curve, color, severity }: { curve: THREE.QuadraticBezierCurve3; color: string; severity: string }) {
-  const particleRef = useRef<THREE.Mesh>(null);
-  const trailRef = useRef<THREE.Mesh>(null);
-  const progressRef = useRef(Math.random()); // stagger start
-  const pts = useMemo(() => curve.getPoints(48).map(p => [p.x, p.y, p.z] as [number, number, number]), [curve]);
-  const lineWidth = severity === 'critical' ? 2.5 : severity === 'high' ? 1.5 : 0.6;
-  const opacity = severity === 'critical' ? 0.7 : severity === 'high' ? 0.3 : 0.1;
-  const speed = severity === 'critical' ? 0.6 : severity === 'high' ? 0.4 : 0.25;
-
-  useFrame((_, delta) => {
-    progressRef.current = (progressRef.current + delta * speed) % 1;
-    const t = progressRef.current;
-    const pos = curve.getPointAt(t);
-    if (particleRef.current) {
-      particleRef.current.position.copy(pos);
-      const scale = severity === 'critical' ? 0.025 : severity === 'high' ? 0.018 : 0.012;
-      particleRef.current.scale.setScalar(scale);
-    }
-    // Trail slightly behind
-    if (trailRef.current) {
-      const trailT = Math.max(0, t - 0.06);
-      const trailPos = curve.getPointAt(trailT);
-      trailRef.current.position.copy(trailPos);
-      const trailScale = severity === 'critical' ? 0.018 : severity === 'high' ? 0.012 : 0.008;
-      trailRef.current.scale.setScalar(trailScale);
-    }
-  });
-
-  return (
-    <group>
-      {/* Static arc line */}
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={pts.length}
-            array={new Float32Array(pts.flat())}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial color={color} transparent opacity={opacity} linewidth={1} />
-      </line>
-      {/* White inner glow for critical/high */}
-      {(severity === 'critical' || severity === 'high') && (
-        <line>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={pts.length}
-              array={new Float32Array(pts.flat())}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial color="#ffffff" transparent opacity={severity === 'critical' ? 0.15 : 0.05} linewidth={1} />
-        </line>
-      )}
-      {/* Traveling particle */}
-      <mesh ref={particleRef}>
-        <sphereGeometry args={[1, 8, 8]} />
-        <meshBasicMaterial color="#ffffff" toneMapped={false} />
-      </mesh>
-      {/* Trail particle */}
-      <mesh ref={trailRef}>
-        <sphereGeometry args={[1, 6, 6]} />
-        <meshBasicMaterial color={color} transparent opacity={0.6} toneMapped={false} />
-      </mesh>
-    </group>
-  );
-}
-
-/* ── Expanding Pulse Rings on critical events ── */
-function PulseRings({ events }: { events: ThreatEvent[] }) {
-  const ringEvents = useMemo(() =>
-    events.filter(e => e.severity === 'critical' || e.severity === 'high').slice(0, MAX_PULSE_RINGS),
-  [events]);
-
-  return (
-    <group>
-      {ringEvents.map((ev, i) => (
-        <PulseRing key={ev.id} event={ev} offset={i * 0.3} />
-      ))}
-    </group>
-  );
-}
-
-function PulseRing({ event, offset }: { event: ThreatEvent; offset: number }) {
-  const ringRef = useRef<THREE.Mesh>(null);
-  const pos = useMemo(() => latLonTo3(event.source.lat, event.source.lon, R * 1.012), [event]);
-  const normal = useMemo(() => pos.clone().normalize(), [pos]);
-  const color = SEVERITY_COLORS[event.severity];
-
-  useFrame(({ clock }) => {
-    if (!ringRef.current) return;
-    const t = ((clock.getElapsedTime() + offset) % 3) / 3; // 3s cycle
-    const scale = 0.02 + t * 0.12;
-    ringRef.current.scale.setScalar(scale);
-    (ringRef.current.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.35;
-  });
-
-  return (
-    <mesh ref={ringRef} position={pos} quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal)}>
-      <ringGeometry args={[0.8, 1, 32]} />
-      <meshBasicMaterial color={color} transparent opacity={0.35} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
-    </mesh>
   );
 }
 
@@ -466,10 +316,7 @@ function HeatmapGlow({ events }: { events: ThreatEvent[] }) {
     return Array.from(grid.values()).sort((a, b) => b.count - a.count).slice(0, MAX_HOTSPOTS);
   }, [events]);
 
-  const timeRef = useRef(0);
-
-  useFrame((_, delta) => {
-    timeRef.current += delta;
+  useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
 
@@ -482,8 +329,7 @@ function HeatmapGlow({ events }: { events: ThreatEvent[] }) {
       dummy.position.copy(pos);
       dummy.lookAt(0, 0, 0);
       const intensity = spot.count / maxCount;
-      const breathe = 1 + Math.sin(timeRef.current * 1.5 + i * 0.3) * 0.15;
-      const scale = (0.08 + intensity * 0.25) * breathe;
+      const scale = 0.08 + intensity * 0.25;
       dummy.scale.setScalar(scale);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
@@ -503,7 +349,7 @@ function HeatmapGlow({ events }: { events: ThreatEvent[] }) {
 
     mesh.instanceMatrix.needsUpdate = true;
     mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
-  });
+  }, [hotspots, dummy]);
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_HOTSPOTS]}>
@@ -513,115 +359,9 @@ function HeatmapGlow({ events }: { events: ThreatEvent[] }) {
   );
 }
 
-/* ── Target Markers ── */
-function TargetMarkers({ events }: { events: ThreatEvent[] }) {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  const MAX_TARGETS = 100;
-  const targets = useMemo(() => {
-    const seen = new Set<string>();
-    return events.slice(0, MAX_ARCS).filter(ev => {
-      const key = `${ev.target.lat.toFixed(1)}_${ev.target.lon.toFixed(1)}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [events]);
-
-  const timeRef = useRef(0);
-
-  useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    const c = new THREE.Color('#00e5ff');
-    const colors = new Float32Array(MAX_TARGETS * 3);
-    targets.forEach((ev, i) => {
-      if (i >= MAX_TARGETS) return;
-      const pos = latLonTo3(ev.target.lat, ev.target.lon, R * 1.012);
-      dummy.position.copy(pos);
-      dummy.scale.setScalar(1.5);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-    });
-    for (let i = targets.length; i < MAX_TARGETS; i++) {
-      dummy.scale.setScalar(0);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
-  }, [targets, dummy]);
-
-  // Gentle bob animation
-  useFrame((_, delta) => {
-    timeRef.current += delta;
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    targets.forEach((ev, i) => {
-      if (i >= MAX_TARGETS) return;
-      const bob = 1.3 + Math.sin(timeRef.current * 2 + i * 0.7) * 0.3;
-      const pos = latLonTo3(ev.target.lat, ev.target.lon, R * 1.012);
-      dummy.position.copy(pos);
-      dummy.scale.setScalar(bob);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-  });
-
-  return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_TARGETS]}>
-      <octahedronGeometry args={[0.014, 0]} />
-      <meshBasicMaterial transparent opacity={0.85} toneMapped={false} />
-    </instancedMesh>
-  );
-}
-
 function SceneSetup() {
   const { gl } = useThree();
-  useEffect(() => { gl.setClearColor('#020408'); }, [gl]);
-  return null;
-}
-
-/* ── Camera zoom-to-event with spring dynamics ── */
-function CameraController({ target }: { target: ThreatEvent | null }) {
-  const { camera } = useThree();
-  const targetPos = useRef(new THREE.Vector3(0, 1.2, 4.2));
-  const velocity = useRef(new THREE.Vector3());
-  const isAnimating = useRef(false);
-
-  useEffect(() => {
-    if (target) {
-      const pos = latLonTo3(target.source.lat, target.source.lon, R * 1.015);
-      const dir = pos.clone().normalize();
-      targetPos.current = dir.multiplyScalar(3.0);
-      isAnimating.current = true;
-      velocity.current.set(0, 0, 0);
-    } else {
-      targetPos.current = new THREE.Vector3(0, 1.2, 4.2);
-      isAnimating.current = true;
-      velocity.current.set(0, 0, 0);
-    }
-  }, [target]);
-
-  useFrame((_, delta) => {
-    if (!isAnimating.current) return;
-    // Spring-damper system for smooth camera
-    const stiffness = 4;
-    const damping = 3;
-    const diff = targetPos.current.clone().sub(camera.position);
-    const springForce = diff.multiplyScalar(stiffness);
-    const dampForce = velocity.current.clone().multiplyScalar(-damping);
-    const acceleration = springForce.add(dampForce);
-    velocity.current.add(acceleration.multiplyScalar(delta));
-    camera.position.add(velocity.current.clone().multiplyScalar(delta));
-
-    if (camera.position.distanceTo(targetPos.current) < 0.005 && velocity.current.length() < 0.01) {
-      isAnimating.current = false;
-    }
-  });
-
+  useEffect(() => { gl.setClearColor('#030810'); }, [gl]);
   return null;
 }
 
@@ -674,12 +414,6 @@ function HoverTooltip({ event, position }: { event: ThreatEvent | null; position
               <span className="text-destructive font-bold">{event.indicators.cve}</span>
             </div>
           )}
-          {event.campaign_id && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Campaign</span>
-              <span className="text-primary">{event.campaign_id}</span>
-            </div>
-          )}
           <div className="text-[8px] text-muted-foreground/60 pt-1 border-t border-border/30">
             {format(new Date(event.timestamp), 'HH:mm:ss')} · Click to inspect
           </div>
@@ -699,22 +433,15 @@ function Legend() {
           <span className="text-foreground capitalize font-mono">{k}</span>
         </div>
       ))}
-      <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-border/30">
-        <span className="w-2.5 h-2.5 rotate-45" style={{ backgroundColor: '#00e5ff', boxShadow: '0 0 8px #00e5ff' }} />
-        <span className="text-foreground font-mono">Target</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="w-2.5 h-0.5 rounded-full" style={{ backgroundColor: '#ffffff', boxShadow: '0 0 4px #ffffff' }} />
-        <span className="text-foreground font-mono">Particle Trail</span>
-      </div>
     </div>
   );
 }
 
 export function GlobeView() {
-  const { filteredEvents, setSelectedEvent, selectedEvent, setZoomToEvent, zoomToEvent } = useThreatContext();
+  const { filteredEvents, setSelectedEvent, zoomToEvent, setZoomToEvent } = useThreatContext();
   const [hoveredEvent, setHoveredEvent] = useState<ThreatEvent | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+  const controlsRef = useRef<any>(null);
 
   const handleSelect = useCallback((ev: ThreatEvent) => {
     setSelectedEvent(ev);
@@ -727,40 +454,65 @@ export function GlobeView() {
     setHoverPos(pos || null);
   }, []);
 
+  // Zoom to event via OrbitControls target
+  useEffect(() => {
+    if (!zoomToEvent || !controlsRef.current) return;
+    const pos = latLonTo3(zoomToEvent.source.lat, zoomToEvent.source.lon, R * 1.015);
+    const dir = pos.clone().normalize();
+    // Move camera to look at the point from outside
+    const camTarget = dir.clone().multiplyScalar(3.2);
+    const controls = controlsRef.current;
+
+    // Animate smoothly
+    const startPos = controls.object.position.clone();
+    const startTarget = controls.target.clone();
+    const endTarget = pos.clone().multiplyScalar(0.3); // slightly toward center
+    let t = 0;
+
+    const animate = () => {
+      t += 0.03;
+      if (t > 1) t = 1;
+      const ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      controls.object.position.lerpVectors(startPos, camTarget, ease);
+      controls.target.lerpVectors(startTarget, endTarget, ease);
+      controls.update();
+      if (t < 1) requestAnimationFrame(animate);
+      else setZoomToEvent(null);
+    };
+    requestAnimationFrame(animate);
+  }, [zoomToEvent, setZoomToEvent]);
+
   return (
     <div className="w-full h-full relative">
       <Canvas
-        camera={{ position: [0, 1.2, 4.2], fov: 45 }}
+        camera={{ position: [0, 1.2, 4.5], fov: 45 }}
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         dpr={[1, 2]}
       >
         <SceneSetup />
-        <CameraController target={zoomToEvent} />
-        <ambientLight intensity={0.12} color="#c0e0ff" />
-        <directionalLight position={[5, 3, 5]} intensity={0.9} color="#e0f0ff" />
-        <directionalLight position={[-4, 1, -3]} intensity={0.3} color="#80b0e0" />
-        <pointLight position={[-5, -3, -5]} intensity={0.1} color="#4080b0" />
-        <pointLight position={[3, -2, 4]} intensity={0.08} color="#2060a0" />
+        <ambientLight intensity={0.25} color="#e0f0ff" />
+        <directionalLight position={[5, 3, 5]} intensity={1.2} color="#ffffff" />
+        <directionalLight position={[-4, 1, -3]} intensity={0.4} color="#93c5fd" />
+        <pointLight position={[0, 5, 0]} intensity={0.15} color="#60a5fa" />
         <Suspense fallback={null}>
-          <Stars radius={200} depth={120} count={5000} factor={3.5} saturation={0.1} fade speed={0.06} />
+          <Stars radius={200} depth={120} count={4000} factor={3} saturation={0.1} fade speed={0.04} />
           <RealisticEarth />
           <CountryLabels />
           <EventPoints events={filteredEvents} onSelect={handleSelect} onHover={handleHover} />
           <AttackArcs events={filteredEvents} />
           <HeatmapGlow events={filteredEvents} />
-          <TargetMarkers events={filteredEvents} />
-          <PulseRings events={filteredEvents} />
         </Suspense>
         <OrbitControls
+          ref={controlsRef}
           enablePan={false}
-          minDistance={2.5}
-          maxDistance={12}
+          minDistance={2.8}
+          maxDistance={10}
           autoRotate
-          autoRotateSpeed={0.1}
+          autoRotateSpeed={0.08}
           enableDamping
-          dampingFactor={0.06}
-          rotateSpeed={0.6}
-          zoomSpeed={0.8}
+          dampingFactor={0.08}
+          rotateSpeed={0.5}
+          zoomSpeed={1.2}
         />
       </Canvas>
 
@@ -777,8 +529,6 @@ export function GlobeView() {
       </div>
 
       <Legend />
-
-      {/* Hover tooltip rendered in DOM outside Canvas */}
       <HoverTooltip event={hoveredEvent} position={hoverPos} />
     </div>
   );
