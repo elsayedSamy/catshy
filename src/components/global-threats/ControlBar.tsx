@@ -40,6 +40,7 @@ export function ControlBar() {
     totalCount, criticalCount,
     showAnalytics, setShowAnalytics,
     filteredEvents,
+    viewMode, setViewMode,
   } = useThreatContext();
 
   const [tickerText, setTickerText] = useState('');
