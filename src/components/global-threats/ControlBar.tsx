@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Search, BarChart3, AlertTriangle,
   Activity, WifiOff, Radio, Shield, Crosshair, Layers,
-  Globe, Map,
+  Globe, Map, RotateCcw,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
