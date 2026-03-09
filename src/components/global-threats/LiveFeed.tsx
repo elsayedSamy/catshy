@@ -6,7 +6,8 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { useThreatContext } from './ThreatContext';
 import { SEVERITY_COLORS, CATEGORY_LABELS } from './types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronDown, ChevronUp, Eye, EyeOff, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, EyeOff, Zap, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 function relativeTime(ts: string) {
   const diff = Date.now() - new Date(ts).getTime();
@@ -91,8 +92,28 @@ export function LiveFeed() {
 
         {!collapsed && (
           <>
-            {/* Auto-scroll toggle */}
-            <div className="flex items-center justify-end px-2 py-1 border-b border-border/20">
+            {/* Controls row */}
+            <div className="flex items-center justify-between px-2 py-1 border-b border-border/20">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const data = recentEvents.map(ev => ({
+                    id: ev.id, timestamp: ev.timestamp, category: ev.category,
+                    severity: ev.severity, source: ev.source, target: ev.target,
+                    indicators: ev.indicators,
+                  }));
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url; a.download = `threat-events-${Date.now()}.json`; a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success(`Exported ${data.length} events`);
+                }}
+                className="flex items-center gap-1 text-[7px] font-mono text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Download className="h-2.5 w-2.5" />
+                EXPORT
+              </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setAutoScroll(!autoScroll); }}
                 className="flex items-center gap-1 text-[7px] font-mono text-muted-foreground hover:text-foreground transition-colors"

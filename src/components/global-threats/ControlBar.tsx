@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Search, BarChart3, AlertTriangle,
   Activity, WifiOff, Radio, Shield, Crosshair, Layers,
-  Globe, Map,
+  Globe, Map, RotateCcw,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { useThreatContext } from './ThreatContext';
 import {
-  CATEGORY_LABELS, SOURCE_LABELS, SEVERITY_COLORS,
+  CATEGORY_LABELS, SOURCE_LABELS, SEVERITY_COLORS, DEFAULT_FILTERS,
   ThreatCategory, SourceType, SeverityLevel, TimeRange,
 } from './types';
 
@@ -34,7 +34,7 @@ const TIME_OPTS: { value: TimeRange; label: string }[] = [
 
 export function ControlBar() {
   const {
-    filters, updateFilter,
+    filters, updateFilter, setFilters,
     isLive, setIsLive,
     timeRange, setTimeRange,
     totalCount, criticalCount,
@@ -42,6 +42,9 @@ export function ControlBar() {
     filteredEvents,
     viewMode, setViewMode,
   } = useThreatContext();
+
+  const hasActiveFilters = filters.search !== '' || filters.severity.length > 0 ||
+    filters.confidenceMin > 0 || filters.category.length > 0 || filters.sourceType.length > 0;
 
   const [tickerText, setTickerText] = useState('');
   const tickerRef = useRef<HTMLDivElement>(null);
@@ -276,8 +279,20 @@ export function ControlBar() {
           <BarChart3 className="h-3.5 w-3.5" />
         </Button>
 
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[10px] gap-1 px-2 font-mono text-destructive hover:text-destructive"
+            onClick={() => setFilters(DEFAULT_FILTERS)}
+          >
+            <RotateCcw className="h-3 w-3" />
+            RESET
+          </Button>
+        )}
+
         <div className="hidden xl:flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
-          <span>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          <span>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })}</span>
           <span className="text-[8px]">UTC</span>
         </div>
       </div>
