@@ -179,14 +179,51 @@ export const useGenerateReport = () => {
 };
 
 // Leaks
-export const useLeaks = (type?: string) => useQuery({
-  queryKey: ['leaks', type],
-  queryFn: async () => {
-    const res = await api.get<PaginatedResponse<LeakItem>>(`/leaks/${type ? `?type=${type}` : ''}`);
-    return res.items;
-  },
-  enabled: enabled(), retry: 1,
+export const useLeaks = (params?: { type?: string; status?: string; search?: string; offset?: number; limit?: number }) => {
+  const sp = new URLSearchParams();
+  if (params?.type) sp.set('type', params.type);
+  if (params?.status) sp.set('status', params.status);
+  if (params?.search) sp.set('search', params.search);
+  if (params?.offset) sp.set('offset', String(params.offset));
+  if (params?.limit) sp.set('limit', String(params.limit));
+  return useQuery({
+    queryKey: ['leaks', params],
+    queryFn: async () => {
+      const res = await api.get<PaginatedResponse<LeakItem>>(`/leaks/?${sp.toString()}`);
+      return { items: res.items, total: res.total };
+    },
+    enabled: enabled(), retry: 1,
+  });
+};
+
+export const useLeakKpis = (range = '7d') => useQuery({
+  queryKey: ['leak-kpis', range],
+  queryFn: () => api.get<{ new_leaks: number; affecting_assets: number; credential_leaks: number; range: string }>(`/leaks/kpis?range=${range}`),
+  enabled: enabled(), retry: 1, refetchInterval: 30000,
 });
+
+export const useTriageLeak = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leakId, ...body }: { leakId: string; status: string; analyst_notes?: string; attribution_notes?: string }) =>
+      api.patch(`/leaks/${leakId}/triage`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leaks'] });
+      qc.invalidateQueries({ queryKey: ['leak-kpis'] });
+    },
+  });
+};
+
+export const useCreateCaseFromLeak = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (leakId: string) => api.post<{ ok: boolean; case_id: string; case_title: string }>(`/leaks/${leakId}/create-case`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leaks'] });
+      qc.invalidateQueries({ queryKey: ['cases'] });
+    },
+  });
+};
 
 // Admin
 export const useUsers = () => useQuery({

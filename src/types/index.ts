@@ -243,6 +243,7 @@ export interface ReportSection {
 
 // ── Leaks ──
 export type LeakType = 'credential' | 'paste' | 'breach' | 'brand_mention' | 'typosquat' | 'code_leak';
+export type LeakStatus = 'new' | 'investigating' | 'confirmed' | 'false_positive' | 'resolved';
 
 export interface LeakItem {
   id: string;
@@ -253,10 +254,16 @@ export interface LeakItem {
   source_name: string;
   source_url: string;
   discovered_at: string;
+  matched_asset_ids: string[];
   matched_assets: string[];
   evidence_excerpt: string;
   provenance: string;
   is_tor_source: boolean;
+  status: LeakStatus;
+  analyst_notes?: string;
+  linked_case_id?: string;
+  attribution_notes?: string;
+  created_at?: string;
 }
 
 // ── Playbooks ──
