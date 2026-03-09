@@ -190,8 +190,10 @@ export default function Sources() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Sources</h1>
-          <p className="text-sm text-muted-foreground mt-1">{enabledCount} of {sources.length} sources enabled</p>
+          <h1 className="text-2xl font-bold text-foreground">Intel Sources</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Passive feeds that automatically collect threat news, CVEs, and advisories · {enabledCount} of {sources.length} enabled
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleTestAll} disabled={testingAll}>
@@ -204,9 +206,18 @@ export default function Sources() {
             setWizardResult(null);
             setWizardOpen(true);
           }}>
-            <Plus className="mr-2 h-4 w-4" />Add Source
+            <Plus className="mr-2 h-4 w-4" />Add Feed
           </Button>
         </div>
+      </div>
+
+      {/* Role hint banner */}
+      <div className="rounded-lg border border-border bg-secondary/20 p-3 text-xs text-muted-foreground flex items-center gap-2">
+        <Radio className="h-4 w-4 text-primary shrink-0" />
+        <span>
+          <strong className="text-foreground">Sources</strong> are scheduled feeds (RSS, CSV, JSON) that pull data on a timer.
+          For API-based enrichment, SIEM/SOAR, or notification services, use <strong className="text-foreground">Integrations</strong>.
+        </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
