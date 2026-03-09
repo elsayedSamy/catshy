@@ -50,6 +50,8 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
   const [filters, setFilters] = useState<ThreatFilters>(DEFAULT_FILTERS);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('3d');
+  const [zoomToEvent, setZoomToEvent] = useState<ThreatEvent | null>(null);
   const { playCritical, playWarning } = useSoundAlert();
 
   const batchRef = useRef<ThreatEvent[]>([]);
