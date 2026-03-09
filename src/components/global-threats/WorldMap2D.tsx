@@ -1,8 +1,8 @@
 /**
- * WorldMap2D — Enhanced flat 2D threat map with hover tooltips,
- * animated arc particles, severity pulse, and interactive zoom.
+ * WorldMap2D — Clean flat 2D threat map with pan/zoom,
+ * hover tooltips, no animated particles.
  */
-import { useMemo, useCallback, useState, useRef } from 'react';
+import { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { useThreatContext } from './ThreatContext';
 import { ThreatEvent, SEVERITY_COLORS, CATEGORY_LABELS } from './types';
 
@@ -16,8 +16,8 @@ function latLonToXY(lat: number, lon: number, w: number, h: number) {
 
 const W = 1200;
 const H = 600;
-const MAX_ARCS = 100;
-const MAX_POINTS = 500;
+const MAX_ARCS = 80;
+const MAX_POINTS = 400;
 
 function Legend() {
   return (
@@ -78,14 +78,50 @@ export function WorldMap2D() {
   const { filteredEvents, setSelectedEvent, setZoomToEvent } = useThreatContext();
   const [hoveredEvent, setHoveredEvent] = useState<ThreatEvent | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Pan & zoom state
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const isPanning = useRef(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoom(prev => Math.min(5, Math.max(0.8, prev - e.deltaY * 0.002)));
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button === 0) {
+      isPanning.current = true;
+      lastMouse.current = { x: e.clientX, y: e.clientY };
+    }
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isPanning.current) {
+      const dx = e.clientX - lastMouse.current.x;
+      const dy = e.clientY - lastMouse.current.y;
+      lastMouse.current = { x: e.clientX, y: e.clientY };
+      setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+    }
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isPanning.current = false;
+  }, []);
+
+  const resetView = useCallback(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, []);
 
   const points = useMemo(() =>
     filteredEvents.slice(0, MAX_POINTS).map(ev => ({
       ...latLonToXY(ev.source.lat, ev.source.lon, W, H),
       ev,
       color: SEVERITY_COLORS[ev.severity],
-      r: ev.severity === 'critical' ? 4.5 : ev.severity === 'high' ? 3.5 : ev.severity === 'medium' ? 2.5 : 1.8,
+      r: ev.severity === 'critical' ? 4 : ev.severity === 'high' ? 3 : ev.severity === 'medium' ? 2.2 : 1.5,
     })),
   [filteredEvents]);
 
@@ -94,14 +130,13 @@ export function WorldMap2D() {
       const s = latLonToXY(ev.source.lat, ev.source.lon, W, H);
       const t = latLonToXY(ev.target.lat, ev.target.lon, W, H);
       const mx = (s.x + t.x) / 2;
-      const my = (s.y + t.y) / 2 - Math.abs(s.x - t.x) * 0.18;
+      const my = (s.y + t.y) / 2 - Math.abs(s.x - t.x) * 0.15;
       return {
         id: ev.id,
         d: `M${s.x},${s.y} Q${mx},${my} ${t.x},${t.y}`,
         color: SEVERITY_COLORS[ev.severity],
-        opacity: ev.severity === 'critical' ? 0.65 : ev.severity === 'high' ? 0.3 : 0.1,
-        width: ev.severity === 'critical' ? 1.8 : ev.severity === 'high' ? 1.2 : 0.5,
-        severity: ev.severity,
+        opacity: ev.severity === 'critical' ? 0.5 : ev.severity === 'high' ? 0.2 : 0.08,
+        width: ev.severity === 'critical' ? 1.5 : ev.severity === 'high' ? 1 : 0.4,
       };
     }),
   [filteredEvents]);
@@ -121,14 +156,24 @@ export function WorldMap2D() {
     setHoverPos(null);
   }, []);
 
+  // Continent outlines (simplified paths for major landmasses)
+  const continentPaths = useMemo(() => {
+    const regions: { name: string; coords: [number, number][] }[] = [
+      // North America (simplified)
+      { name: 'na', coords: [[-10,170],[-10,168],[15,145],[25,130],[30,105],[48,90],[55,80],[60,70],[72,65],[75,60],[72,50],[65,55],[50,55],[45,60],[35,75],[30,80],[25,85],[20,95],[15,100],[10,105],[5,110],[0,105],[-5,100],[-10,105],[-10,170]] },
+    ];
+    // We'll use grid lines instead for a cleaner look
+    return regions;
+  }, []);
+
   const gridLines = useMemo(() => {
     const lines: { x1: number; y1: number; x2: number; y2: number }[] = [];
-    for (let lat = -60; lat <= 60; lat += 30) {
+    for (let lat = -60; lat <= 80; lat += 20) {
       const p1 = latLonToXY(lat, -180, W, H);
       const p2 = latLonToXY(lat, 180, W, H);
       lines.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
     }
-    for (let lon = -180; lon <= 180; lon += 30) {
+    for (let lon = -180; lon <= 180; lon += 20) {
       const pts: { x: number; y: number }[] = [];
       for (let lat = -80; lat <= 80; lat += 5) {
         pts.push(latLonToXY(lat, lon, W, H));
@@ -141,29 +186,38 @@ export function WorldMap2D() {
   }, []);
 
   return (
-    <div className="w-full h-full relative bg-[#020408] flex items-center justify-center overflow-hidden">
+    <div
+      ref={containerRef}
+      className="w-full h-full relative flex items-center justify-center overflow-hidden select-none"
+      style={{ background: 'linear-gradient(180deg, #060d18 0%, #0a1628 50%, #0c1a30 100%)' }}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
       <svg
-        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className="w-full h-full max-h-full"
         preserveAspectRatio="xMidYMid meet"
+        style={{
+          transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+          transition: isPanning.current ? 'none' : 'transform 0.15s ease-out',
+          cursor: isPanning.current ? 'grabbing' : 'grab',
+        }}
       >
         <defs>
-          {/* Animated particle along arc */}
-          {arcs.filter(a => a.severity === 'critical' || a.severity === 'high').map(a => (
-            <circle key={`particle-${a.id}`} r={a.severity === 'critical' ? 3 : 2} fill="#ffffff">
-              <animateMotion dur={a.severity === 'critical' ? '2s' : '3s'} repeatCount="indefinite" path={a.d} />
-            </circle>
-          ))}
-
-          {/* Glow filter */}
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="blur" />
+          <filter id="glow2d">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <radialGradient id="dotGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="white" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="white" stopOpacity="0" />
+          </radialGradient>
         </defs>
 
         {/* Grid */}
@@ -171,68 +225,73 @@ export function WorldMap2D() {
           <line
             key={i}
             x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
-            stroke="rgba(77,158,255,0.06)"
-            strokeWidth="0.5"
+            stroke="rgba(59,130,246,0.05)"
+            strokeWidth="0.4"
           />
         ))}
 
-        {/* Attack arcs */}
+        {/* Attack arcs — static, no particles */}
         {arcs.map(a => (
           <g key={a.id}>
-            {/* Glow layer */}
-            <path d={a.d} fill="none" stroke={a.color} strokeWidth={a.width * 3} opacity={a.opacity * 0.2} />
-            {/* Main arc */}
-            <path d={a.d} fill="none" stroke={a.color} strokeWidth={a.width} opacity={a.opacity} />
-            {/* Traveling particle */}
-            {(a.severity === 'critical' || a.severity === 'high') && (
-              <circle r={a.severity === 'critical' ? 2.5 : 1.8} fill="#ffffff" opacity="0.9" filter="url(#glow)">
-                <animateMotion dur={a.severity === 'critical' ? '2.5s' : '4s'} repeatCount="indefinite" path={a.d} />
-              </circle>
-            )}
+            <path d={a.d} fill="none" stroke={a.color} strokeWidth={a.width * 2.5} opacity={a.opacity * 0.15} />
+            <path d={a.d} fill="none" stroke={a.color} strokeWidth={a.width} opacity={a.opacity} strokeLinecap="round" />
           </g>
         ))}
 
-        {/* Heatmap glow */}
+        {/* Heatmap glow under dots */}
         {points.map((p, i) => (
           <circle
-            key={`glow-${i}`}
+            key={`hm-${i}`}
             cx={p.x} cy={p.y}
-            r={p.r * 5}
+            r={p.r * 6}
             fill={p.color}
-            opacity={0.06}
+            opacity={0.04}
           />
         ))}
 
-        {/* Event dots */}
+        {/* Event dots — clean, static */}
         {points.map((p, i) => (
           <g key={`dot-${i}`}>
-            {/* Outer pulse for critical */}
-            {p.ev.severity === 'critical' && (
-              <circle cx={p.x} cy={p.y} r={p.r} fill="none" stroke={p.color} strokeWidth="0.8" opacity="0.4">
-                <animate attributeName="r" values={`${p.r};${p.r * 3};${p.r}`} dur="2s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite" />
-              </circle>
-            )}
             <circle
               cx={p.x} cy={p.y}
               r={p.r}
               fill={p.color}
-              stroke={p.color}
-              strokeWidth="0.5"
-              opacity={0.9}
-              className="cursor-pointer transition-all duration-200"
+              opacity={0.85}
+              className="cursor-pointer"
               onClick={() => handleClick(p.ev)}
               onMouseOver={(e) => handlePointerOver(p.ev, e)}
               onMouseOut={handlePointerOut}
-              style={{ filter: p.ev.severity === 'critical' ? 'url(#glow)' : undefined }}
-            >
-              {p.ev.severity === 'critical' && (
-                <animate attributeName="r" values={`${p.r};${p.r * 1.5};${p.r}`} dur="1.5s" repeatCount="indefinite" />
-              )}
-            </circle>
+            />
+            {/* Subtle glow ring for critical only */}
+            {p.ev.severity === 'critical' && (
+              <circle
+                cx={p.x} cy={p.y}
+                r={p.r * 2.5}
+                fill="none"
+                stroke={p.color}
+                strokeWidth="0.6"
+                opacity={0.3}
+              />
+            )}
           </g>
         ))}
       </svg>
+
+      {/* Zoom controls */}
+      <div className="absolute bottom-3 right-3 flex flex-col gap-1 z-10">
+        <button
+          onClick={() => setZoom(prev => Math.min(5, prev + 0.3))}
+          className="bg-card/80 backdrop-blur border border-border/50 rounded-lg w-7 h-7 flex items-center justify-center text-foreground text-xs font-mono hover:bg-card transition-colors"
+        >+</button>
+        <button
+          onClick={() => setZoom(prev => Math.max(0.8, prev - 0.3))}
+          className="bg-card/80 backdrop-blur border border-border/50 rounded-lg w-7 h-7 flex items-center justify-center text-foreground text-xs font-mono hover:bg-card transition-colors"
+        >−</button>
+        <button
+          onClick={resetView}
+          className="bg-card/80 backdrop-blur border border-border/50 rounded-lg w-7 h-7 flex items-center justify-center text-muted-foreground text-[8px] font-mono hover:bg-card transition-colors"
+        >⟲</button>
+      </div>
 
       {/* Title overlay */}
       <div className="absolute top-3 left-3 z-10">

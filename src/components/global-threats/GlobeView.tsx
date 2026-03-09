@@ -508,11 +508,12 @@ export function GlobeView() {
           minDistance={2.8}
           maxDistance={10}
           autoRotate
-          autoRotateSpeed={0.08}
+          autoRotateSpeed={0.06}
           enableDamping
-          dampingFactor={0.08}
-          rotateSpeed={0.5}
-          zoomSpeed={1.2}
+          dampingFactor={0.12}
+          rotateSpeed={0.8}
+          zoomSpeed={0.8}
+          mouseButtons={{ LEFT: 0, MIDDLE: 1, RIGHT: 2 }}
         />
       </Canvas>
 
