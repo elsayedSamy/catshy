@@ -16,7 +16,6 @@ function PageContent() {
         <div className="flex-1 min-w-0 relative">
           {viewMode === '3d' ? <GlobeView /> : <WorldMap2D />}
           <LiveFeed />
-          <StatsHUD />
         </div>
         {selectedEvent && <ThreatDetailPanel />}
       </div>
