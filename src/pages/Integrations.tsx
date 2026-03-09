@@ -237,11 +237,7 @@ export default function Integrations() {
             {connectedCount} connected · {enabledCount} enabled · {providers.length} available providers
           </p>
         </div>
-        <Button size="sm" className="glow-cyan" onClick={() => {
-          const unconfigured = providers.find(p => !p.id);
-          if (unconfigured) openConfig(unconfigured);
-          else toast.info('All providers are already configured');
-        }}>
+        <Button size="sm" className="glow-cyan" onClick={() => { setPickerSearch(''); setPickerOpen(true); }}>
           <Link className="mr-2 h-4 w-4" />Add Integration
         </Button>
       </div>
