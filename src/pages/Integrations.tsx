@@ -257,14 +257,6 @@ export default function Integrations() {
         </Button>
       </div>
 
-      {/* Role hint banner */}
-      <div className="rounded-lg border border-border bg-secondary/20 p-3 text-xs text-muted-foreground flex items-center gap-2">
-        <Shield className="h-4 w-4 text-primary shrink-0" />
-        <span>
-          <strong className="text-foreground">Integrations</strong> are active API connections — enrichment lookups, SIEM/SOAR forwarding, ticketing, and notifications.
-          For passive RSS/CSV feeds that collect threat data on a schedule, use <strong className="text-foreground">Intel Sources</strong>.
-        </span>
-      </div>
 
       {/* Search */}
       <div className="relative max-w-md">
