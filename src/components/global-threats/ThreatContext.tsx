@@ -7,6 +7,8 @@ import { generateThreatEvent, generateInitialEvents } from './mockData';
 import { toast } from 'sonner';
 import { useSoundAlert } from '@/hooks/useSoundAlert';
 
+export type ViewMode = '3d' | '2d';
+
 interface ThreatContextValue {
   events: ThreatEvent[];
   filteredEvents: ThreatEvent[];
@@ -23,6 +25,10 @@ interface ThreatContextValue {
   criticalCount: number;
   showAnalytics: boolean;
   setShowAnalytics: (v: boolean) => void;
+  viewMode: ViewMode;
+  setViewMode: (v: ViewMode) => void;
+  zoomToEvent: ThreatEvent | null;
+  setZoomToEvent: (e: ThreatEvent | null) => void;
 }
 
 const ThreatContext = createContext<ThreatContextValue | null>(null);
