@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useMemo,
 import { ThreatEvent, ThreatFilters, DEFAULT_FILTERS, TimeRange } from './types';
 import { generateThreatEvent, generateInitialEvents } from './mockData';
 import { toast } from 'sonner';
+import { useSoundAlert } from '@/hooks/useSoundAlert';
 
 interface ThreatContextValue {
   events: ThreatEvent[];
