@@ -69,7 +69,7 @@ const COUNTRY_LABELS: { name: string; lat: number; lon: number; size?: 'lg' | 'm
   { name: 'Iran', lat: 33, lon: 53, size: 'md' },
   { name: 'Iraq', lat: 33, lon: 44, size: 'sm' },
   { name: 'UAE', lat: 24, lon: 54, size: 'sm' },
-  { name: 'Israel', lat: 31, lon: 35, size: 'sm' },
+  { name: 'Palestine', lat: 31, lon: 35, size: 'sm' },
   // Africa
   { name: 'Egypt', lat: 27, lon: 30, size: 'md' },
   { name: 'Nigeria', lat: 10, lon: 8, size: 'md' },
