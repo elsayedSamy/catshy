@@ -151,6 +151,10 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
     criticalCount,
     showAnalytics,
     setShowAnalytics,
+    viewMode,
+    setViewMode,
+    zoomToEvent,
+    setZoomToEvent,
   };
 
   return <ThreatContext.Provider value={value}>{children}</ThreatContext.Provider>;
