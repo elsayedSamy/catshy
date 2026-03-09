@@ -2,8 +2,9 @@
  * GlobeView — Dark cyber-aesthetic 3D threat globe with grid wireframe Earth.
  */
 import { useRef, useMemo, useEffect, useCallback, Suspense } from 'react';
-import { Canvas, useThree, useFrame, ThreeEvent } from '@react-three/fiber';
+import { Canvas, useThree, useFrame, ThreeEvent, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stars, Line, Html } from '@react-three/drei';
+import { TextureLoader } from 'three';
 import * as THREE from 'three';
 import { useThreatContext } from './ThreatContext';
 import { ThreatEvent, SEVERITY_COLORS } from './types';
