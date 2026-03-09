@@ -105,7 +105,6 @@ export default function Reports() {
               <FileDown className="mr-2 h-4 w-4" />Export CSV
             </Button>
           )}
-          <Button onClick={() => setDialogOpen(true)} className="glow-cyan"><Plus className="mr-2 h-4 w-4" />New Report</Button>
         </div>
       </div>
 
