@@ -495,7 +495,7 @@ export function GlobeView() {
         <directionalLight position={[-4, 1, -3]} intensity={0.4} color="#93c5fd" />
         <pointLight position={[0, 5, 0]} intensity={0.15} color="#60a5fa" />
         <Suspense fallback={null}>
-          <Stars radius={200} depth={120} count={4000} factor={3} saturation={0.1} fade speed={0.04} />
+          {/* No stars - clean calm background */}
           <RealisticEarth />
           <CountryLabels />
           <EventPoints events={filteredEvents} onSelect={handleSelect} onHover={handleHover} />
