@@ -1,8 +1,8 @@
 /**
- * GlobeView — Premium 3D interactive threat globe with realistic Earth.
+ * GlobeView — Dark cyber-aesthetic 3D threat globe with grid wireframe Earth.
  */
 import { useRef, useMemo, useEffect, useCallback, Suspense } from 'react';
-import { Canvas, useThree, useFrame, useLoader, ThreeEvent } from '@react-three/fiber';
+import { Canvas, useThree, useFrame, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Stars, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useThreatContext } from './ThreatContext';
@@ -48,7 +48,6 @@ const COUNTRY_LABELS: { name: string; lat: number; lon: number; size?: 'lg' | 'm
   { name: 'Norway', lat: 65, lon: 13, size: 'sm' },
   { name: 'Finland', lat: 64, lon: 26, size: 'sm' },
   { name: 'Switzerland', lat: 47, lon: 8, size: 'sm' },
-  { name: 'Portugal', lat: 39, lon: -8, size: 'sm' },
   { name: 'Greece', lat: 39, lon: 22, size: 'sm' },
   { name: 'Belarus', lat: 54, lon: 28, size: 'sm' },
   // Asia
@@ -61,12 +60,8 @@ const COUNTRY_LABELS: { name: string; lat: number; lon: number; size?: 'lg' | 'm
   { name: 'Philippines', lat: 13, lon: 122, size: 'sm' },
   { name: 'Vietnam', lat: 16, lon: 108, size: 'sm' },
   { name: 'Thailand', lat: 15, lon: 101, size: 'sm' },
-  { name: 'Malaysia', lat: 4, lon: 102, size: 'sm' },
   { name: 'Pakistan', lat: 30, lon: 69, size: 'md' },
-  { name: 'Bangladesh', lat: 24, lon: 90, size: 'sm' },
-  { name: 'Myanmar', lat: 19, lon: 96, size: 'sm' },
   { name: 'Kazakhstan', lat: 48, lon: 68, size: 'md' },
-  { name: 'Mongolia', lat: 47, lon: 104, size: 'sm' },
   // Middle East
   { name: 'Turkey', lat: 39, lon: 35, size: 'md' },
   { name: 'Saudi Arabia', lat: 24, lon: 45, size: 'md' },
@@ -74,7 +69,6 @@ const COUNTRY_LABELS: { name: string; lat: number; lon: number; size?: 'lg' | 'm
   { name: 'Iraq', lat: 33, lon: 44, size: 'sm' },
   { name: 'UAE', lat: 24, lon: 54, size: 'sm' },
   { name: 'Israel', lat: 31, lon: 35, size: 'sm' },
-  { name: 'Syria', lat: 35, lon: 38, size: 'sm' },
   // Africa
   { name: 'Egypt', lat: 27, lon: 30, size: 'md' },
   { name: 'Nigeria', lat: 10, lon: 8, size: 'md' },
@@ -84,9 +78,7 @@ const COUNTRY_LABELS: { name: string; lat: number; lon: number; size?: 'lg' | 'm
   { name: 'Morocco', lat: 32, lon: -5, size: 'sm' },
   { name: 'Algeria', lat: 28, lon: 2, size: 'sm' },
   { name: 'Libya', lat: 27, lon: 17, size: 'sm' },
-  { name: 'Sudan', lat: 16, lon: 32, size: 'sm' },
   { name: 'Tanzania', lat: -6, lon: 35, size: 'sm' },
-  { name: 'Congo', lat: -4, lon: 22, size: 'sm' },
   { name: 'Angola', lat: -12, lon: 18, size: 'sm' },
   // Oceania
   { name: 'Australia', lat: -25, lon: 133, size: 'lg' },
@@ -96,68 +88,106 @@ const COUNTRY_LABELS: { name: string; lat: number; lon: number; size?: 'lg' | 'm
   { name: 'Uzbekistan', lat: 41, lon: 65, size: 'sm' },
   // Singapore
   { name: 'Singapore', lat: 1, lon: 104, size: 'sm' },
-  // Taiwan
   { name: 'Taiwan', lat: 24, lon: 121, size: 'sm' },
-  // North Korea
   { name: 'N. Korea', lat: 40, lon: 127, size: 'sm' },
 ];
 
-function EarthSphere() {
-  const texture = useLoader(THREE.TextureLoader, '/textures/earth-blue-marble.jpg');
-  const bumpMap = useLoader(THREE.TextureLoader, '/textures/earth-topology.png');
+/* ── Dark Cyber Globe with grid wireframe ── */
+function CyberEarth() {
+  const gridRef = useRef<THREE.Group>(null);
+
+  // Create latitude/longitude grid lines
+  const gridLines = useMemo(() => {
+    const lines: { points: THREE.Vector3[]; opacity: number }[] = [];
+    
+    // Latitude lines
+    for (let lat = -80; lat <= 80; lat += 20) {
+      const points: THREE.Vector3[] = [];
+      for (let lon = -180; lon <= 180; lon += 3) {
+        points.push(latLonTo3(lat, lon, R * 1.002));
+      }
+      lines.push({ points, opacity: lat === 0 ? 0.18 : 0.06 });
+    }
+    
+    // Longitude lines
+    for (let lon = -180; lon < 180; lon += 20) {
+      const points: THREE.Vector3[] = [];
+      for (let lat = -90; lat <= 90; lat += 3) {
+        points.push(latLonTo3(lat, lon, R * 1.002));
+      }
+      lines.push({ points, opacity: lon === 0 ? 0.18 : 0.06 });
+    }
+    
+    return lines;
+  }, []);
 
   return (
     <group>
-      {/* Main Earth sphere */}
+      {/* Core dark sphere */}
       <mesh>
         <sphereGeometry args={[R, 128, 128]} />
         <meshPhongMaterial
-          map={texture}
-          bumpMap={bumpMap}
-          bumpScale={0.05}
-          shininess={8}
-          specular={new THREE.Color('#0a1628')}
-          emissive={new THREE.Color('#020810')}
-          emissiveIntensity={0.15}
+          color="#0a0f1a"
+          emissive="#061020"
+          emissiveIntensity={0.4}
+          shininess={5}
+          specular={new THREE.Color('#0d2040')}
+          transparent
+          opacity={0.97}
         />
       </mesh>
-      {/* Inner atmosphere — subtle blue rim */}
+
+      {/* Grid wireframe */}
+      <group ref={gridRef}>
+        {gridLines.map((line, i) => (
+          <Line
+            key={i}
+            points={line.points.map(p => [p.x, p.y, p.z] as [number, number, number])}
+            color="#00e5ff"
+            lineWidth={0.4}
+            transparent
+            opacity={line.opacity}
+          />
+        ))}
+      </group>
+
+      {/* Inner glow — deep teal */}
       <mesh>
-        <sphereGeometry args={[R * 1.008, 64, 64]} />
+        <sphereGeometry args={[R * 1.005, 64, 64]} />
         <meshBasicMaterial
-          color="#1a6bff"
+          color="#004d66"
           transparent
-          opacity={0.04}
+          opacity={0.06}
           side={THREE.FrontSide}
         />
       </mesh>
-      {/* Mid atmosphere glow */}
+      {/* Mid atmosphere — cyan ring */}
       <mesh>
-        <sphereGeometry args={[R * 1.03, 64, 64]} />
+        <sphereGeometry args={[R * 1.04, 64, 64]} />
         <meshBasicMaterial
-          color="#4da6ff"
+          color="#00bcd4"
           transparent
-          opacity={0.045}
+          opacity={0.04}
           side={THREE.BackSide}
         />
       </mesh>
-      {/* Outer atmosphere halo */}
+      {/* Outer atmosphere — teal haze */}
       <mesh>
-        <sphereGeometry args={[R * 1.08, 48, 48]} />
+        <sphereGeometry args={[R * 1.1, 48, 48]} />
         <meshBasicMaterial
-          color="#60b0ff"
+          color="#00acc1"
           transparent
-          opacity={0.035}
+          opacity={0.025}
           side={THREE.BackSide}
         />
       </mesh>
-      {/* Outermost faint haze */}
+      {/* Outermost glow */}
       <mesh>
-        <sphereGeometry args={[R * 1.15, 32, 32]} />
+        <sphereGeometry args={[R * 1.18, 32, 32]} />
         <meshBasicMaterial
-          color="#80c0ff"
+          color="#0097a7"
           transparent
-          opacity={0.015}
+          opacity={0.012}
           side={THREE.BackSide}
         />
       </mesh>
@@ -167,11 +197,9 @@ function EarthSphere() {
 
 /* ── Country Labels ── */
 function CountryLabels() {
-  const labelsRef = useRef<{ pos: THREE.Vector3; name: string; size: string }[]>([]);
-
-  labelsRef.current = useMemo(() =>
+  const labels = useMemo(() =>
     COUNTRY_LABELS.map(c => ({
-      pos: latLonTo3(c.lat, c.lon, R * 1.02),
+      pos: latLonTo3(c.lat, c.lon, R * 1.025),
       name: c.name,
       size: c.size || 'sm',
     })),
@@ -179,7 +207,7 @@ function CountryLabels() {
 
   return (
     <group>
-      {labelsRef.current.map((label) => (
+      {labels.map((label) => (
         <Html
           key={label.name}
           position={[label.pos.x, label.pos.y, label.pos.z]}
@@ -191,11 +219,18 @@ function CountryLabels() {
           <div
             className={`
               whitespace-nowrap select-none font-mono uppercase tracking-[0.15em]
-              ${label.size === 'lg' ? 'text-[9px] font-bold text-cyan-200/60' : ''}
-              ${label.size === 'md' ? 'text-[7px] font-semibold text-cyan-300/45' : ''}
-              ${label.size === 'sm' ? 'text-[5.5px] font-medium text-cyan-400/30' : ''}
+              ${label.size === 'lg' ? 'text-[9px] font-bold' : ''}
+              ${label.size === 'md' ? 'text-[7px] font-semibold' : ''}
+              ${label.size === 'sm' ? 'text-[5.5px] font-medium' : ''}
             `}
-            style={{ textShadow: '0 0 8px rgba(0,180,255,0.3), 0 1px 3px rgba(0,0,0,0.8)' }}
+            style={{
+              color: label.size === 'lg'
+                ? 'rgba(0,229,255,0.7)'
+                : label.size === 'md'
+                ? 'rgba(0,229,255,0.5)'
+                : 'rgba(0,229,255,0.3)',
+              textShadow: '0 0 10px rgba(0,229,255,0.4), 0 0 20px rgba(0,229,255,0.15)',
+            }}
           >
             {label.name}
           </div>
@@ -205,9 +240,11 @@ function CountryLabels() {
   );
 }
 
+/* ── Event points with LARGER hit area for reliable clicking ── */
 function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e: ThreatEvent) => void }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const pulseRef = useRef<THREE.InstancedMesh>(null);
+  const hitRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const visible = useMemo(() => events.slice(0, MAX_POINTS), [events]);
   const timeRef = useRef(0);
@@ -215,19 +252,28 @@ function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e
   useEffect(() => {
     const mesh = meshRef.current;
     const pulse = pulseRef.current;
+    const hit = hitRef.current;
     if (!mesh) return;
     const c = new THREE.Color();
     const colors = new Float32Array(MAX_POINTS * 3);
     const pulseColors = new Float32Array(MAX_POINTS * 3);
 
     visible.forEach((ev, i) => {
-      const pos = latLonTo3(ev.source.lat, ev.source.lon, R * 1.012);
+      const pos = latLonTo3(ev.source.lat, ev.source.lon, R * 1.015);
       dummy.position.copy(pos);
-      const scale = ev.severity === 'critical' ? 3.5 : ev.severity === 'high' ? 2.2 : 1.2;
+      const scale = ev.severity === 'critical' ? 3.5 : ev.severity === 'high' ? 2.5 : 1.5;
       dummy.scale.setScalar(scale);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
       if (pulse) pulse.setMatrixAt(i, dummy.matrix);
+
+      // Hit detection sphere — 4x larger
+      if (hit) {
+        dummy.scale.setScalar(scale * 4);
+        dummy.updateMatrix();
+        hit.setMatrixAt(i, dummy.matrix);
+      }
+
       c.set(SEVERITY_COLORS[ev.severity]);
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
       pulseColors[i * 3] = c.r; pulseColors[i * 3 + 1] = c.g; pulseColors[i * 3 + 2] = c.b;
@@ -238,6 +284,7 @@ function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
       if (pulse) pulse.setMatrixAt(i, dummy.matrix);
+      if (hit) hit.setMatrixAt(i, dummy.matrix);
     }
 
     mesh.instanceMatrix.needsUpdate = true;
@@ -245,6 +292,9 @@ function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e
     if (pulse) {
       pulse.instanceMatrix.needsUpdate = true;
       pulse.instanceColor = new THREE.InstancedBufferAttribute(pulseColors, 3);
+    }
+    if (hit) {
+      hit.instanceMatrix.needsUpdate = true;
     }
   }, [visible, dummy]);
 
@@ -255,10 +305,10 @@ function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e
     const t = timeRef.current;
     visible.forEach((ev, i) => {
       if (ev.severity !== 'critical' && ev.severity !== 'high') return;
-      const pos = latLonTo3(ev.source.lat, ev.source.lon, R * 1.012);
+      const pos = latLonTo3(ev.source.lat, ev.source.lon, R * 1.015);
       const pulseScale = 1.5 + Math.sin(t * 3 + i * 0.5) * 0.8;
       dummy.position.copy(pos);
-      dummy.scale.setScalar(pulseScale * (ev.severity === 'critical' ? 3.5 : 2.2));
+      dummy.scale.setScalar(pulseScale * (ev.severity === 'critical' ? 3.5 : 2.5));
       dummy.updateMatrix();
       pulse.setMatrixAt(i, dummy.matrix);
     });
@@ -267,18 +317,27 @@ function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    if (e.instanceId !== undefined && visible[e.instanceId]) onSelect(visible[e.instanceId]);
+    if (e.instanceId !== undefined && visible[e.instanceId]) {
+      onSelect(visible[e.instanceId]);
+    }
   }, [visible, onSelect]);
 
   return (
     <group>
+      {/* Pulse glow layer */}
       <instancedMesh ref={pulseRef} args={[undefined, undefined, MAX_POINTS]}>
-        <sphereGeometry args={[0.018, 6, 6]} />
+        <sphereGeometry args={[0.02, 6, 6]} />
         <meshBasicMaterial transparent opacity={0.12} toneMapped={false} />
       </instancedMesh>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_POINTS]} onClick={handleClick}>
-        <sphereGeometry args={[0.018, 10, 10]} />
+      {/* Visible dots */}
+      <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_POINTS]}>
+        <sphereGeometry args={[0.02, 10, 10]} />
         <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
+      {/* Invisible hit detection mesh — much larger for easy clicking */}
+      <instancedMesh ref={hitRef} args={[undefined, undefined, MAX_POINTS]} onClick={handleClick}>
+        <sphereGeometry args={[0.02, 6, 6]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </instancedMesh>
     </group>
   );
@@ -287,8 +346,8 @@ function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e
 function AttackArcs({ events }: { events: ThreatEvent[] }) {
   const arcsData = useMemo(() =>
     events.slice(0, MAX_ARCS).map(ev => {
-      const s = latLonTo3(ev.source.lat, ev.source.lon, R * 1.012);
-      const e = latLonTo3(ev.target.lat, ev.target.lon, R * 1.012);
+      const s = latLonTo3(ev.source.lat, ev.source.lon, R * 1.015);
+      const e = latLonTo3(ev.target.lat, ev.target.lon, R * 1.015);
       const mid = s.clone().add(e).multiplyScalar(0.5);
       const dist = s.distanceTo(e);
       mid.normalize().multiplyScalar(R + dist * 0.4);
@@ -307,11 +366,11 @@ function AttackArcs({ events }: { events: ThreatEvent[] }) {
       {arcsData.map(a => (
         <group key={a.id}>
           <Line points={a.pts} color={a.color}
-            lineWidth={a.severity === 'critical' ? 2.8 : a.severity === 'high' ? 1.5 : 0.8}
-            transparent opacity={a.severity === 'critical' ? 0.8 : a.severity === 'high' ? 0.4 : 0.15} />
+            lineWidth={a.severity === 'critical' ? 2.5 : a.severity === 'high' ? 1.5 : 0.6}
+            transparent opacity={a.severity === 'critical' ? 0.75 : a.severity === 'high' ? 0.35 : 0.12} />
           {(a.severity === 'critical' || a.severity === 'high') && (
             <Line points={a.pts} color="#ffffff" lineWidth={0.3}
-              transparent opacity={a.severity === 'critical' ? 0.2 : 0.08} />
+              transparent opacity={a.severity === 'critical' ? 0.18 : 0.06} />
           )}
         </group>
       ))}
@@ -335,11 +394,11 @@ function TargetMarkers({ events }: { events: ThreatEvent[] }) {
   useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
-    const c = new THREE.Color('#22d3ee');
+    const c = new THREE.Color('#00e5ff');
     const colors = new Float32Array(100 * 3);
     targets.forEach((ev, i) => {
       if (i >= 100) return;
-      const pos = latLonTo3(ev.target.lat, ev.target.lon, R * 1.01);
+      const pos = latLonTo3(ev.target.lat, ev.target.lon, R * 1.012);
       dummy.position.copy(pos);
       dummy.scale.setScalar(1.5);
       dummy.updateMatrix();
@@ -358,14 +417,14 @@ function TargetMarkers({ events }: { events: ThreatEvent[] }) {
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, 100]}>
       <octahedronGeometry args={[0.014, 0]} />
-      <meshBasicMaterial transparent opacity={0.8} toneMapped={false} />
+      <meshBasicMaterial transparent opacity={0.85} toneMapped={false} />
     </instancedMesh>
   );
 }
 
 function SceneSetup() {
   const { gl } = useThree();
-  useEffect(() => { gl.setClearColor('#030810'); }, [gl]);
+  useEffect(() => { gl.setClearColor('#020408'); }, [gl]);
   return null;
 }
 
@@ -380,7 +439,7 @@ function Legend() {
         </div>
       ))}
       <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-border/30">
-        <span className="w-2.5 h-2.5 rotate-45" style={{ backgroundColor: '#22d3ee', boxShadow: '0 0 8px #22d3ee' }} />
+        <span className="w-2.5 h-2.5 rotate-45" style={{ backgroundColor: '#00e5ff', boxShadow: '0 0 8px #00e5ff' }} />
         <span className="text-foreground font-mono">Target</span>
       </div>
     </div>
@@ -394,15 +453,13 @@ export function GlobeView() {
     <div className="w-full h-full relative">
       <Canvas camera={{ position: [0, 1.2, 4.2], fov: 45 }} gl={{ antialias: true, alpha: false }}>
         <SceneSetup />
-        {/* Realistic lighting */}
-        <ambientLight intensity={0.25} color="#e8f0ff" />
-        <directionalLight position={[5, 3, 5]} intensity={1.4} color="#fff8e8" />
-        <directionalLight position={[-4, 1, -3]} intensity={0.25} color="#b0d0ff" />
-        <pointLight position={[-5, -3, -5]} intensity={0.08} color="#6090c0" />
-        <pointLight position={[3, -2, 4]} intensity={0.05} color="#90b0d0" />
+        <ambientLight intensity={0.15} color="#c0e0ff" />
+        <directionalLight position={[5, 3, 5]} intensity={0.8} color="#e0f0ff" />
+        <directionalLight position={[-4, 1, -3]} intensity={0.3} color="#80b0e0" />
+        <pointLight position={[-5, -3, -5]} intensity={0.1} color="#4080b0" />
         <Suspense fallback={null}>
-          <Stars radius={200} depth={120} count={3500} factor={3.5} saturation={0.15} fade speed={0.1} />
-          <EarthSphere />
+          <Stars radius={200} depth={120} count={4000} factor={3.5} saturation={0.1} fade speed={0.08} />
+          <CyberEarth />
           <CountryLabels />
           <EventPoints events={filteredEvents} onSelect={setSelectedEvent} />
           <AttackArcs events={filteredEvents} />
@@ -419,7 +476,6 @@ export function GlobeView() {
         />
       </Canvas>
 
-      {/* HUD overlay */}
       <div className="absolute top-3 left-3 z-10">
         <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl px-3 py-2 shadow-lg">
           <div className="text-[9px] font-mono uppercase tracking-[0.15em] text-primary font-semibold">
