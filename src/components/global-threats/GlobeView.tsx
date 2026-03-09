@@ -337,7 +337,12 @@ function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e
   );
 }
 
+/* ── Attack Arcs with animated particle trails ── */
 function AttackArcs({ events }: { events: ThreatEvent[] }) {
+  const particleRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const timeRef = useRef(0);
+
   const arcsData = useMemo(() =>
     events.slice(0, MAX_ARCS).map(ev => {
       const s = latLonTo3(ev.source.lat, ev.source.lon, R * 1.015);
@@ -348,15 +353,54 @@ function AttackArcs({ events }: { events: ThreatEvent[] }) {
       const curve = new THREE.QuadraticBezierCurve3(s, mid, e);
       return {
         pts: curve.getPoints(48).map(p => [p.x, p.y, p.z] as [number, number, number]),
+        curve,
         color: SEVERITY_COLORS[ev.severity],
         id: ev.id,
         severity: ev.severity,
+        speed: ev.severity === 'critical' ? 1.2 : ev.severity === 'high' ? 0.8 : 0.5,
+        offset: Math.random(), // Random start position
       };
     }),
   [events]);
 
+  // Animate particles along curves
+  useFrame((_, delta) => {
+    timeRef.current += delta;
+    const mesh = particleRef.current;
+    if (!mesh) return;
+
+    const c = new THREE.Color();
+    const colors = new Float32Array(MAX_ARCS * 3);
+
+    arcsData.forEach((arc, i) => {
+      // Calculate position along curve (0-1 with wrapping)
+      const t = ((timeRef.current * arc.speed + arc.offset) % 1);
+      const pos = arc.curve.getPoint(t);
+      
+      dummy.position.copy(pos);
+      const scale = arc.severity === 'critical' ? 2.5 : arc.severity === 'high' ? 1.8 : 1.2;
+      dummy.scale.setScalar(scale);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+
+      c.set(arc.color);
+      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    });
+
+    // Hide unused instances
+    for (let i = arcsData.length; i < MAX_ARCS; i++) {
+      dummy.scale.setScalar(0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+  });
+
   return (
     <group>
+      {/* Static arc lines */}
       {arcsData.map(a => (
         <group key={a.id}>
           <Line points={a.pts} color={a.color}
@@ -368,6 +412,12 @@ function AttackArcs({ events }: { events: ThreatEvent[] }) {
           )}
         </group>
       ))}
+      
+      {/* Animated particle heads */}
+      <instancedMesh ref={particleRef} args={[undefined, undefined, MAX_ARCS]}>
+        <sphereGeometry args={[0.025, 8, 8]} />
+        <meshBasicMaterial toneMapped={false} transparent opacity={0.95} />
+      </instancedMesh>
     </group>
   );
 }
