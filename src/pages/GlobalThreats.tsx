@@ -5,7 +5,6 @@ import { WorldMap2D } from '@/components/global-threats/WorldMap2D';
 import { ThreatDetailPanel } from '@/components/global-threats/ThreatDetailPanel';
 import { AnalyticsPanel } from '@/components/global-threats/AnalyticsPanel';
 import { LiveFeed } from '@/components/global-threats/LiveFeed';
-import { StatsHUD } from '@/components/global-threats/StatsHUD';
 
 function PageContent() {
   const { selectedEvent, viewMode } = useThreatContext();
