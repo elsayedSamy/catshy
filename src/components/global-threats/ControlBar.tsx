@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Search, BarChart3, AlertTriangle,
   Activity, WifiOff, Radio, Shield, Crosshair, Layers,
+  Globe, Map,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ export function ControlBar() {
     totalCount, criticalCount,
     showAnalytics, setShowAnalytics,
     filteredEvents,
+    viewMode, setViewMode,
   } = useThreatContext();
 
   const [tickerText, setTickerText] = useState('');
@@ -243,6 +245,27 @@ export function ControlBar() {
             </>
           )}
         </Button>
+
+        <div className="flex items-center rounded-md border border-border/50 overflow-hidden mr-1">
+          <button
+            className={`h-7 px-2 text-[10px] font-mono transition-colors flex items-center gap-1 ${
+              viewMode === '3d' ? 'bg-primary/20 text-primary font-bold' : 'text-muted-foreground hover:bg-accent/10'
+            }`}
+            onClick={() => setViewMode('3d')}
+          >
+            <Globe className="h-3 w-3" />
+            3D
+          </button>
+          <button
+            className={`h-7 px-2 text-[10px] font-mono transition-colors flex items-center gap-1 ${
+              viewMode === '2d' ? 'bg-primary/20 text-primary font-bold' : 'text-muted-foreground hover:bg-accent/10'
+            }`}
+            onClick={() => setViewMode('2d')}
+          >
+            <Map className="h-3 w-3" />
+            2D
+          </button>
+        </div>
 
         <Button
           variant="ghost"

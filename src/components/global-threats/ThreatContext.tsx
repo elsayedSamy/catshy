@@ -7,6 +7,8 @@ import { generateThreatEvent, generateInitialEvents } from './mockData';
 import { toast } from 'sonner';
 import { useSoundAlert } from '@/hooks/useSoundAlert';
 
+export type ViewMode = '3d' | '2d';
+
 interface ThreatContextValue {
   events: ThreatEvent[];
   filteredEvents: ThreatEvent[];
@@ -23,6 +25,10 @@ interface ThreatContextValue {
   criticalCount: number;
   showAnalytics: boolean;
   setShowAnalytics: (v: boolean) => void;
+  viewMode: ViewMode;
+  setViewMode: (v: ViewMode) => void;
+  zoomToEvent: ThreatEvent | null;
+  setZoomToEvent: (e: ThreatEvent | null) => void;
 }
 
 const ThreatContext = createContext<ThreatContextValue | null>(null);
@@ -44,6 +50,8 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
   const [filters, setFilters] = useState<ThreatFilters>(DEFAULT_FILTERS);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('3d');
+  const [zoomToEvent, setZoomToEvent] = useState<ThreatEvent | null>(null);
   const { playCritical, playWarning } = useSoundAlert();
 
   const batchRef = useRef<ThreatEvent[]>([]);
@@ -143,6 +151,10 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
     criticalCount,
     showAnalytics,
     setShowAnalytics,
+    viewMode,
+    setViewMode,
+    zoomToEvent,
+    setZoomToEvent,
   };
 
   return <ThreatContext.Provider value={value}>{children}</ThreatContext.Provider>;

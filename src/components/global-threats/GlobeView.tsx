@@ -496,6 +496,36 @@ function SceneSetup() {
   return null;
 }
 
+/* ── Camera zoom-to-event controller ── */
+function CameraController({ target }: { target: ThreatEvent | null }) {
+  const { camera } = useThree();
+  const targetPos = useRef(new THREE.Vector3(0, 1.2, 4.2));
+  const isAnimating = useRef(false);
+
+  useEffect(() => {
+    if (target) {
+      const pos = latLonTo3(target.source.lat, target.source.lon, R * 1.015);
+      // Position camera looking at the point from outside
+      const dir = pos.clone().normalize();
+      targetPos.current = dir.multiplyScalar(3.2);
+      isAnimating.current = true;
+    } else {
+      targetPos.current = new THREE.Vector3(0, 1.2, 4.2);
+      isAnimating.current = true;
+    }
+  }, [target]);
+
+  useFrame(() => {
+    if (!isAnimating.current) return;
+    camera.position.lerp(targetPos.current, 0.04);
+    if (camera.position.distanceTo(targetPos.current) < 0.01) {
+      isAnimating.current = false;
+    }
+  });
+
+  return null;
+}
+
 function Legend() {
   return (
     <div className="absolute bottom-3 left-3 bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl px-3 py-2.5 text-[9px] space-y-1 z-10 shadow-lg">
@@ -515,12 +545,18 @@ function Legend() {
 }
 
 export function GlobeView() {
-  const { filteredEvents, setSelectedEvent } = useThreatContext();
+  const { filteredEvents, setSelectedEvent, selectedEvent, setZoomToEvent, zoomToEvent } = useThreatContext();
+
+  const handleSelect = useCallback((ev: ThreatEvent) => {
+    setSelectedEvent(ev);
+    setZoomToEvent(ev);
+  }, [setSelectedEvent, setZoomToEvent]);
 
   return (
     <div className="w-full h-full relative">
       <Canvas camera={{ position: [0, 1.2, 4.2], fov: 45 }} gl={{ antialias: true, alpha: false }}>
         <SceneSetup />
+        <CameraController target={zoomToEvent} />
         <ambientLight intensity={0.15} color="#c0e0ff" />
         <directionalLight position={[5, 3, 5]} intensity={0.8} color="#e0f0ff" />
         <directionalLight position={[-4, 1, -3]} intensity={0.3} color="#80b0e0" />
@@ -529,7 +565,7 @@ export function GlobeView() {
           <Stars radius={200} depth={120} count={4000} factor={3.5} saturation={0.1} fade speed={0.08} />
           <RealisticEarth />
           <CountryLabels />
-          <EventPoints events={filteredEvents} onSelect={setSelectedEvent} />
+          <EventPoints events={filteredEvents} onSelect={handleSelect} />
           <AttackArcs events={filteredEvents} />
           <HeatmapGlow events={filteredEvents} />
           <TargetMarkers events={filteredEvents} />
