@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useMemo,
 import { ThreatEvent, ThreatFilters, DEFAULT_FILTERS, TimeRange } from './types';
 import { generateThreatEvent, generateInitialEvents } from './mockData';
 import { toast } from 'sonner';
+import { useSoundAlert } from '@/hooks/useSoundAlert';
 
 interface ThreatContextValue {
   events: ThreatEvent[];
@@ -43,6 +44,7 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
   const [filters, setFilters] = useState<ThreatFilters>(DEFAULT_FILTERS);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const { playCritical, playWarning } = useSoundAlert();
 
   const batchRef = useRef<ThreatEvent[]>([]);
 
@@ -60,6 +62,7 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
         batchRef.current.push(event);
 
         if (event.severity === 'critical') {
+          playCritical();
           toast.error(
             `🚨 Critical: ${event.category} from ${event.source.city}`,
             {
@@ -69,6 +72,8 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
               closeButton: true,
             },
           );
+        } else if (event.severity === 'high') {
+          playWarning();
         }
       }
     }, STREAM_INTERVAL_MS);
