@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { useThreatContext } from './ThreatContext';
 import {
-  CATEGORY_LABELS, SOURCE_LABELS, SEVERITY_COLORS,
+  CATEGORY_LABELS, SOURCE_LABELS, SEVERITY_COLORS, DEFAULT_FILTERS,
   ThreatCategory, SourceType, SeverityLevel, TimeRange,
 } from './types';
 
