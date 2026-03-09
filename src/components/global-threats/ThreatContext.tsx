@@ -62,6 +62,7 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
         batchRef.current.push(event);
 
         if (event.severity === 'critical') {
+          playCritical();
           toast.error(
             `🚨 Critical: ${event.category} from ${event.source.city}`,
             {
@@ -71,6 +72,8 @@ export function ThreatProvider({ children }: { children: React.ReactNode }) {
               closeButton: true,
             },
           );
+        } else if (event.severity === 'high') {
+          playWarning();
         }
       }
     }, STREAM_INTERVAL_MS);
