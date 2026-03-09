@@ -337,12 +337,8 @@ function EventPoints({ events, onSelect }: { events: ThreatEvent[]; onSelect: (e
   );
 }
 
-/* ── Attack Arcs with animated particle trails ── */
+/* ── Attack Arcs — static curved lines ── */
 function AttackArcs({ events }: { events: ThreatEvent[] }) {
-  const particleRef = useRef<THREE.InstancedMesh>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  const timeRef = useRef(0);
-
   const arcsData = useMemo(() =>
     events.slice(0, MAX_ARCS).map(ev => {
       const s = latLonTo3(ev.source.lat, ev.source.lon, R * 1.015);
@@ -353,54 +349,15 @@ function AttackArcs({ events }: { events: ThreatEvent[] }) {
       const curve = new THREE.QuadraticBezierCurve3(s, mid, e);
       return {
         pts: curve.getPoints(48).map(p => [p.x, p.y, p.z] as [number, number, number]),
-        curve,
         color: SEVERITY_COLORS[ev.severity],
         id: ev.id,
         severity: ev.severity,
-        speed: ev.severity === 'critical' ? 0.15 : ev.severity === 'high' ? 0.1 : 0.07,
-        offset: Math.random(), // Random start position
       };
     }),
   [events]);
 
-  // Animate particles along curves
-  useFrame((_, delta) => {
-    timeRef.current += delta;
-    const mesh = particleRef.current;
-    if (!mesh) return;
-
-    const c = new THREE.Color();
-    const colors = new Float32Array(MAX_ARCS * 3);
-
-    arcsData.forEach((arc, i) => {
-      // Calculate position along curve (0-1 with wrapping)
-      const t = ((timeRef.current * arc.speed + arc.offset) % 1);
-      const pos = arc.curve.getPoint(t);
-      
-      dummy.position.copy(pos);
-      const scale = arc.severity === 'critical' ? 2.5 : arc.severity === 'high' ? 1.8 : 1.2;
-      dummy.scale.setScalar(scale);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-
-      c.set(arc.color);
-      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-    });
-
-    // Hide unused instances
-    for (let i = arcsData.length; i < MAX_ARCS; i++) {
-      dummy.scale.setScalar(0);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    }
-
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
-  });
-
   return (
     <group>
-      {/* Static arc lines */}
       {arcsData.map(a => (
         <group key={a.id}>
           <Line points={a.pts} color={a.color}
@@ -412,13 +369,80 @@ function AttackArcs({ events }: { events: ThreatEvent[] }) {
           )}
         </group>
       ))}
-      
-      {/* Animated particle heads */}
-      <instancedMesh ref={particleRef} args={[undefined, undefined, MAX_ARCS]}>
-        <sphereGeometry args={[0.025, 8, 8]} />
-        <meshBasicMaterial toneMapped={false} transparent opacity={0.95} />
-      </instancedMesh>
     </group>
+  );
+}
+
+/* ── Heatmap Glow — density-based glow spots on high-threat areas ── */
+function HeatmapGlow({ events }: { events: ThreatEvent[] }) {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const MAX_HOTSPOTS = 80;
+
+  const hotspots = useMemo(() => {
+    const grid = new Map<string, { lat: number; lon: number; count: number; maxSev: number }>();
+    events.forEach(ev => {
+      const gLat = Math.round(ev.source.lat / 5) * 5;
+      const gLon = Math.round(ev.source.lon / 5) * 5;
+      const key = `${gLat}_${gLon}`;
+      const existing = grid.get(key);
+      const sevScore = ev.severity === 'critical' ? 4 : ev.severity === 'high' ? 3 : ev.severity === 'medium' ? 2 : 1;
+      if (existing) {
+        existing.count++;
+        existing.maxSev = Math.max(existing.maxSev, sevScore);
+      } else {
+        grid.set(key, { lat: gLat, lon: gLon, count: 1, maxSev: sevScore });
+      }
+    });
+    return Array.from(grid.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, MAX_HOTSPOTS);
+  }, [events]);
+
+  const timeRef = useRef(0);
+
+  useFrame((_, delta) => {
+    timeRef.current += delta;
+    const mesh = meshRef.current;
+    if (!mesh) return;
+
+    const c = new THREE.Color();
+    const colors = new Float32Array(MAX_HOTSPOTS * 3);
+    const maxCount = Math.max(...hotspots.map(h => h.count), 1);
+
+    hotspots.forEach((spot, i) => {
+      const pos = latLonTo3(spot.lat, spot.lon, R * 1.005);
+      dummy.position.copy(pos);
+      dummy.lookAt(0, 0, 0);
+      const intensity = spot.count / maxCount;
+      const breathe = 1 + Math.sin(timeRef.current * 1.5 + i * 0.3) * 0.15;
+      const scale = (0.08 + intensity * 0.25) * breathe;
+      dummy.scale.setScalar(scale);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+
+      if (spot.maxSev >= 4) c.set('#ff2d55');
+      else if (spot.maxSev >= 3) c.set('#ff9500');
+      else if (spot.maxSev >= 2) c.set('#ffcc00');
+      else c.set('#30d158');
+      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    });
+
+    for (let i = hotspots.length; i < MAX_HOTSPOTS; i++) {
+      dummy.scale.setScalar(0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+  });
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_HOTSPOTS]}>
+      <sphereGeometry args={[1, 16, 16]} />
+      <meshBasicMaterial transparent opacity={0.18} toneMapped={false} depthWrite={false} />
+    </instancedMesh>
   );
 }
 
@@ -507,6 +531,7 @@ export function GlobeView() {
           <CountryLabels />
           <EventPoints events={filteredEvents} onSelect={setSelectedEvent} />
           <AttackArcs events={filteredEvents} />
+          <HeatmapGlow events={filteredEvents} />
           <TargetMarkers events={filteredEvents} />
         </Suspense>
         <OrbitControls
